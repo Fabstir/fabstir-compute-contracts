@@ -57,10 +57,10 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 1.4: PaymentEscrow Contract
 
-- [ ] Implement multi-token support
-- [ ] Implement escrow mechanics
-- [ ] Implement automatic release
-- [ ] Implement dispute resolution
+- [x] Implement multi-token support
+- [x] Implement escrow mechanics
+- [x] Implement automatic release
+- [x] Implement dispute resolution
 
 **Test Files:**
 
