@@ -9,10 +9,10 @@ if [ ! -f "foundry.toml" ]; then
     forge init --force --no-git
 fi
 
-# Install dependencies
+# Install dependencies (without --no-commit flag)
 if [ ! -d "lib/openzeppelin-contracts" ]; then
-    forge install OpenZeppelin/openzeppelin-contracts --no-commit
-    forge install base-org/contracts --no-commit
+    forge install OpenZeppelin/openzeppelin-contracts
+    forge install base-org/contracts || true
 fi
 
 # Start test watcher
