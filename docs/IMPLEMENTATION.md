@@ -43,10 +43,10 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 1.3: JobMarketplace Contract
 
-- [ ] Implement direct job posting
-- [ ] Implement job claiming by hosts
-- [ ] Implement job status tracking
-- [ ] Implement completion verification
+- [x] Implement direct job posting
+- [x] Implement job claiming by hosts
+- [x] Implement job status tracking
+- [x] Implement completion verification
 
 **Test Files:**
 
