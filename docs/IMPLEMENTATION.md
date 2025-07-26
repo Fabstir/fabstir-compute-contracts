@@ -73,10 +73,10 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 2.1: ReputationSystem Contract
 
-- [ ] Implement performance tracking
-- [ ] Implement quality scoring
-- [ ] Implement reputation-based incentives
-- [ ] Implement slashing mechanics
+- [x] Implement performance tracking
+- [x] Implement quality scoring
+- [x] Implement reputation-based incentives
+- [x] Implement slashing mechanics
 
 **Test Files:**
 

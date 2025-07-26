@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "./NodeRegistry.sol";
+import "./ReputationSystem.sol";
 
 contract JobMarketplace {
     enum JobStatus {
@@ -22,6 +23,7 @@ contract JobMarketplace {
     }
     
     NodeRegistry public nodeRegistry;
+    ReputationSystem public reputationSystem;
     mapping(uint256 => Job) private jobs;
     uint256 private nextJobId;
     
@@ -31,6 +33,11 @@ contract JobMarketplace {
     
     constructor(address _nodeRegistry) {
         nodeRegistry = NodeRegistry(_nodeRegistry);
+    }
+    
+    function setReputationSystem(address _reputationSystem) external {
+        require(address(reputationSystem) == address(0), "ReputationSystem already set");
+        reputationSystem = ReputationSystem(_reputationSystem);
     }
     
     function createJob(
@@ -90,12 +97,34 @@ contract JobMarketplace {
         job.status = JobStatus.Completed;
         
         // Transfer payment to host
-        payable(msg.sender).transfer(job.maxPrice);
+        (bool success, ) = payable(msg.sender).call{value: job.maxPrice}("");
+        require(success, "ETH transfer failed");
+        
+        // Update reputation if system is set
+        if (address(reputationSystem) != address(0)) {
+            reputationSystem.recordJobCompletion(msg.sender, _jobId, true);
+        }
         
         emit JobCompleted(_jobId, msg.sender, _resultHash);
     }
     
     function getJob(uint256 _jobId) external view returns (Job memory) {
         return jobs[_jobId];
+    }
+    
+    // For testing purposes - allows marking a job as failed
+    function failJob(uint256 _jobId) external {
+        Job storage job = jobs[_jobId];
+        require(job.assignedHost == msg.sender || job.renter == msg.sender, "Not authorized");
+        require(job.status == JobStatus.Claimed, "Job not in claimed state");
+        
+        address failedHost = job.assignedHost;
+        job.status = JobStatus.Posted; // Reset to allow re-claiming
+        job.assignedHost = address(0);
+        
+        // Update reputation if system is set
+        if (address(reputationSystem) != address(0) && failedHost != address(0)) {
+            reputationSystem.recordJobCompletion(failedHost, _jobId, false);
+        }
     }
 }
