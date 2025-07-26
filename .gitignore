@@ -1,0 +1,40 @@
+# Foundry
+cache/
+out/
+broadcast/
+
+# Foundry default libraries
+lib/
+
+# Node (for any JS tooling)
+node_modules/
+.pnpm-store/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+
+# Test artifacts
+coverage/
+coverage.json
+lcov.info
+
+# Deployment artifacts
+deployments/localhost/
+deployments/hardhat/
+
+# Build artifacts
+artifacts/
+typechain/
+typechain-types/
