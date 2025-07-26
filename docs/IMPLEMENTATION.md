@@ -15,10 +15,10 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 1.1: Project Setup
 
-- [ ] Initialize Foundry project structure
-- [ ] Configure for Base L2 deployment
-- [ ] Set up development environment
-- [ ] Create contract interfaces
+- [x] Initialize Foundry project structure
+- [x] Configure for Base L2 deployment
+- [x] Set up development environment
+- [x] Create contract interfaces
 
 **Test Files:**
 
@@ -29,10 +29,10 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 1.2: NodeRegistry Contract
 
-- [ ] Implement host registration with staking
-- [ ] Implement capability advertisement
-- [ ] Implement node discovery helpers
-- [ ] Implement stake management
+- [x] Implement host registration with staking
+- [x] Implement capability advertisement
+- [x] Implement node discovery helpers
+- [x] Implement stake management
 
 **Test Files:**
 
