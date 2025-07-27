@@ -30,6 +30,11 @@ contract JobMarketplaceMock is IJobMarketplace {
     event JobClaimed(uint256 indexed jobId, address indexed host);
     event JobCompleted(uint256 indexed jobId, address indexed host, bytes32 outputHash);
     
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    
+    uint256 public maxJobDuration = 7 days;
+    bool public paused;
+    
     constructor() {
         _roles[bytes32(0)][msg.sender] = true; // Grant admin role
     }
@@ -37,6 +42,21 @@ contract JobMarketplaceMock is IJobMarketplace {
     function grantRole(bytes32 role, address account) external {
         require(_roles[bytes32(0)][msg.sender], "Not admin");
         _roles[role][account] = true;
+    }
+    
+    function setMaxJobDuration(uint256 _maxJobDuration) external {
+        require(_roles[GOVERNANCE_ROLE][msg.sender], "Not governance");
+        maxJobDuration = _maxJobDuration;
+    }
+    
+    function pause() external {
+        require(_roles[GOVERNANCE_ROLE][msg.sender], "Not governance");
+        paused = true;
+    }
+    
+    function unpause() external {
+        require(_roles[GOVERNANCE_ROLE][msg.sender], "Not governance");
+        paused = false;
     }
     
     function postJob(

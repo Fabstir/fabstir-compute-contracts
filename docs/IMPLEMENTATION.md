@@ -115,17 +115,15 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 2.4: Governance Contract
 
-- [ ] Implement parameter updates
-- [ ] Implement emergency pause
-- [ ] Implement upgrade mechanisms
-- [ ] Implement community voting
+- [x] Implement parameter updates
+- [x] Implement emergency pause
+- [x] Implement upgrade mechanisms
+- [x] Implement community voting
 
 **Test Files:**
 
-- `test/Governance/test_parameters.t.sol`
-- `test/Governance/test_emergency.t.sol`
-- `test/Governance/test_upgrades.t.sol`
-- `test/Governance/test_voting.t.sol`
+- `test/Governance/test_governance.t.sol`
+- `test/Governance/test_governance_token.t.sol`
 
 ## Phase 3: Production Ready (Month 3)
 
