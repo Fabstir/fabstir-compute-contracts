@@ -112,6 +112,35 @@ contract JobMarketplace {
         return jobs[_jobId];
     }
     
+    // For BaseAccountIntegration - create job on behalf of a wallet
+    function createJobFor(
+        address renter,
+        string memory _modelId,
+        string memory _inputHash,
+        uint256 _maxPrice,
+        uint256 _deadline
+    ) external payable returns (uint256) {
+        require(msg.value >= _maxPrice, "Insufficient payment");
+        require(_deadline > block.timestamp, "Invalid deadline");
+        
+        uint256 jobId = nextJobId++;
+        
+        jobs[jobId] = Job({
+            renter: renter,
+            modelId: _modelId,
+            inputHash: _inputHash,
+            maxPrice: _maxPrice,
+            deadline: _deadline,
+            status: JobStatus.Posted,
+            assignedHost: address(0),
+            resultHash: ""
+        });
+        
+        emit JobCreated(jobId, renter, _modelId, _maxPrice);
+        
+        return jobId;
+    }
+    
     // For testing purposes - allows marking a job as failed
     function failJob(uint256 _jobId) external {
         Job storage job = jobs[_jobId];
@@ -126,5 +155,22 @@ contract JobMarketplace {
         if (address(reputationSystem) != address(0) && failedHost != address(0)) {
             reputationSystem.recordJobCompletion(failedHost, _jobId, false);
         }
+    }
+    
+    // For BaseAccountIntegration - claim job on behalf of a host
+    function claimJobFor(address host, uint256 _jobId) external {
+        Job storage job = jobs[_jobId];
+        require(job.renter != address(0), "Job does not exist");
+        require(job.status == JobStatus.Posted, "Job already claimed");
+        
+        // Verify host is registered
+        NodeRegistry.Node memory node = nodeRegistry.getNode(host);
+        require(node.operator != address(0), "Not a registered host");
+        require(node.active, "Host not active");
+        
+        job.assignedHost = host;
+        job.status = JobStatus.Claimed;
+        
+        emit JobClaimed(_jobId, host);
     }
 }

@@ -39,4 +39,26 @@ contract NodeRegistry {
     function getNode(address _operator) external view returns (Node memory) {
         return nodes[_operator];
     }
+    
+    // For BaseAccountIntegration - register node on behalf of a wallet
+    function registerNodeFor(
+        address operator,
+        string memory _peerId,
+        string[] memory _models,
+        string memory _region
+    ) external payable {
+        require(msg.value >= MIN_STAKE, "Insufficient stake");
+        require(nodes[operator].operator == address(0), "Already registered");
+        
+        nodes[operator] = Node({
+            operator: operator,
+            peerId: _peerId,
+            stake: msg.value,
+            active: true,
+            models: _models,
+            region: _region
+        });
+        
+        emit NodeRegistered(operator, _peerId, msg.value);
+    }
 }

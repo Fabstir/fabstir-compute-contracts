@@ -87,10 +87,10 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 2.2: Base Account Integration
 
-- [ ] Implement smart wallet support
-- [ ] Implement gasless transactions
-- [ ] Implement session keys
-- [ ] Implement batch operations
+- [x] Implement smart wallet support
+- [x] Implement gasless transactions
+- [x] Implement session keys
+- [x] Implement batch operations
 
 **Test Files:**
 
