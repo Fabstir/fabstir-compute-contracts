@@ -101,10 +101,10 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 2.3: ProofSystem Contract
 
-- [ ] Implement EZKL verification
-- [ ] Implement proof submission
-- [ ] Implement batch verification
-- [ ] Implement proof challenges
+- [x] Implement EZKL verification
+- [x] Implement proof submission
+- [x] Implement batch verification
+- [x] Implement proof challenges
 
 **Test Files:**
 
