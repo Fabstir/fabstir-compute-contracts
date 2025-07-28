@@ -125,6 +125,34 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 - `test/Governance/test_governance.t.sol`
 - `test/Governance/test_governance_token.t.sol`
 
+### Sub-phase 2.5: Tokenomics & Revenue Distribution (**NEW**)
+
+- [ ] Implement payment splitting (85% host, 10% protocol, 5% stakers)
+- [ ] Implement FAB buyback mechanism
+- [ ] Implement stakers pool distribution
+- [ ] Implement staking tiers and multipliers
+
+**Test Files:**
+
+- `test/Tokenomics/test_payment_splits.t.sol`
+- `test/Tokenomics/test_buyback.t.sol`
+- `test/Tokenomics/test_staker_rewards.t.sol`
+- `test/Tokenomics/test_staking_tiers.t.sol`
+
+### Sub-phase 2.6: Model Marketplace Features (**NEW**)
+
+- [ ] Implement model listing with pricing
+- [ ] Implement host pricing per token/minute
+- [ ] Implement dynamic pricing mechanisms
+- [ ] Implement subscription plans
+
+**Test Files:**
+
+- `test/Marketplace/test_model_listing.t.sol`
+- `test/Marketplace/test_pricing.t.sol`
+- `test/Marketplace/test_dynamic_pricing.t.sol`
+- `test/Marketplace/test_subscriptions.t.sol`
+
 ## Phase 3: Production Ready (Month 3)
 
 ### Sub-phase 3.1: Integration Testing
