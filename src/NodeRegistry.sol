@@ -61,4 +61,8 @@ contract NodeRegistry {
         
         emit NodeRegistered(operator, _peerId, msg.value);
     }
+    
+    function isActiveNode(address operator) external view returns (bool) {
+        return nodes[operator].active && nodes[operator].stake >= MIN_STAKE;
+    }
 }

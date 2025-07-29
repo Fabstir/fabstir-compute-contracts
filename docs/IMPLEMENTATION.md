@@ -141,17 +141,17 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 2.6: Model Marketplace Features (**NEW**)
 
-- [ ] Implement model listing with pricing
-- [ ] Implement host pricing per token/minute
-- [ ] Implement dynamic pricing mechanisms
-- [ ] Implement subscription plans
+- [x] Implement model listing with pricing
+- [x] Implement host pricing per token/minute
+- [x] Implement dynamic pricing mechanisms
+- [x] Implement subscription plans
 
 **Test Files:**
 
-- `test/Marketplace/test_model_listing.t.sol`
-- `test/Marketplace/test_pricing.t.sol`
-- `test/Marketplace/test_dynamic_pricing.t.sol`
-- `test/Marketplace/test_subscriptions.t.sol`
+- `test/ModelMarketplace/test_model_listing.t.sol`
+- `test/ModelMarketplace/test_pricing.t.sol`
+- `test/ModelMarketplace/test_dynamic_pricing.t.sol`
+- `test/ModelMarketplace/test_subscriptions.t.sol`
 
 ## Phase 3: Production Ready (Month 3)
 
