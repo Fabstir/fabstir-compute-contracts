@@ -6,10 +6,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PaymentSplitter is ReentrancyGuard, Ownable {
-    address public protocolTreasury;
+    address public protocolTreasury; // Now points to TreasuryManager
     address public stakersPool;
     
-    uint256 public protocolFeeBasisPoints = 1000; // 10%
+    uint256 public protocolFeeBasisPoints = 1000; // 10% - goes to TreasuryManager for splitting
     uint256 public stakersFeeBasisPoints = 500; // 5%
     uint256 public constant MAX_TOTAL_FEE = 3000; // 30%
     uint256 public constant BASIS_POINTS = 10000;
@@ -40,7 +40,7 @@ contract PaymentSplitter is ReentrancyGuard, Ownable {
         uint256 amount,
         address host,
         address token
-    ) external nonReentrant {
+    ) external payable nonReentrant {
         _splitPaymentInternal(jobId, amount, host, token);
     }
     
@@ -73,6 +73,7 @@ contract PaymentSplitter is ReentrancyGuard, Ownable {
             require(tokenContract.balanceOf(address(this)) >= amount, "Insufficient token balance");
             
             require(tokenContract.transfer(host, hostAmount), "Token transfer to host failed");
+            // Transfer to TreasuryManager and let it pull the tokens
             require(tokenContract.transfer(protocolTreasury, protocolAmount), "Token transfer to protocol failed");
             require(tokenContract.transfer(stakersPool, stakersAmount), "Token transfer to stakers failed");
         }
@@ -85,7 +86,7 @@ contract PaymentSplitter is ReentrancyGuard, Ownable {
         uint256[] calldata amounts,
         address[] calldata hosts,
         address token
-    ) external nonReentrant {
+    ) external payable nonReentrant {
         require(jobIds.length == amounts.length && amounts.length == hosts.length, "Array length mismatch");
         
         for (uint256 i = 0; i < jobIds.length; i++) {

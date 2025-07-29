@@ -51,6 +51,10 @@ contract FABBuyback is ReentrancyGuard, Ownable {
         uint256 fabToStaking
     );
     
+    event DirectBurnExecuted(
+        uint256 fabAmount
+    );
+    
     event BuybackScheduled(uint256 timestamp, uint256 amount);
     event AutoBuybackEnabled(uint256 threshold, uint256 frequency);
     event PriceOracleUpdated(address oldOracle, address newOracle);
@@ -224,6 +228,11 @@ contract FABBuyback is ReentrancyGuard, Ownable {
         stakingRewards = newRewards;
     }
     
+    function updateProtocolTreasury(address newTreasury) external onlyGovernance {
+        require(newTreasury != address(0), "Invalid treasury");
+        protocolTreasury = newTreasury;
+    }
+    
     function getBuybackMetrics() external view returns (
         uint256 _totalBought,
         uint256 _totalBurned,
@@ -242,6 +251,27 @@ contract FABBuyback is ReentrancyGuard, Ownable {
             // We want price in 6 decimals, so: (USDC * 10^18) / FAB = price in 6 decimals
             averagePrice = (totalUSDCSpent * 10**18) / _totalBought;
         }
+    }
+    
+    // Direct burn function for FAB tokens (no DEX swap needed)
+    function directBurnFAB(uint256 amount) external nonReentrant {
+        require(!buybacksPaused, "Buybacks paused");
+        require(amount > 0, "Amount must be greater than zero");
+        require(IERC20(fabToken).balanceOf(address(this)) >= amount, "Insufficient FAB balance");
+        
+        // Burn all FAB directly (100% burn for direct FAB)
+        IERC20(fabToken).transfer(BURN_ADDRESS, amount);
+        
+        // Update metrics
+        totalBurned += amount;
+        
+        emit DirectBurnExecuted(amount);
+    }
+    
+    // Allow TreasuryManager to execute buybacks
+    function executeBuybackFromTreasury(uint256 usdcAmount) external nonReentrant {
+        require(msg.sender == protocolTreasury, "Only treasury manager");
+        _executeBuybackInternal(usdcAmount);
     }
     
     // Emergency function to recover stuck tokens
