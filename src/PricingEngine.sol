@@ -118,7 +118,9 @@ contract PricingEngine is ReentrancyGuard, AccessControl {
         uint256 pricePerToken,
         address paymentToken
     ) external onlyHost {
-        require(pricePerToken >= MINIMUM_PRICE_PER_TOKEN, "Price below minimum");
+        // Adjust minimum price based on token decimals
+        uint256 minPrice = paymentToken == usdcToken ? 1 : MINIMUM_PRICE_PER_TOKEN; // 1 unit for USDC (0.000001 USDC)
+        require(pricePerToken >= minPrice, "Price below minimum");
         require(paymentToken == fabToken || paymentToken == usdcToken, "Invalid payment token");
         
         Price storage price = prices[msg.sender][modelId][paymentToken];
@@ -142,7 +144,9 @@ contract PricingEngine is ReentrancyGuard, AccessControl {
         uint256 pricePerMinute,
         address paymentToken
     ) external onlyHost {
-        require(pricePerMinute >= MINIMUM_PRICE_PER_MINUTE, "Price below minimum");
+        // Adjust minimum price based on token decimals
+        uint256 minPrice = paymentToken == usdcToken ? 60 : MINIMUM_PRICE_PER_MINUTE; // 60 units for USDC (0.00006 USDC/min)
+        require(pricePerMinute >= minPrice, "Price below minimum");
         require(paymentToken == fabToken || paymentToken == usdcToken, "Invalid payment token");
         
         Price storage price = prices[msg.sender][modelId][paymentToken];
@@ -403,7 +407,9 @@ contract PricingEngine is ReentrancyGuard, AccessControl {
         uint256 newPricePerToken,
         address paymentToken
     ) external onlyRole(DYNAMIC_PRICING_ROLE) {
-        require(newPricePerToken >= MINIMUM_PRICE_PER_TOKEN, "Price below minimum");
+        // Adjust minimum price based on token decimals
+        uint256 minPrice = paymentToken == usdcToken ? 1 : MINIMUM_PRICE_PER_TOKEN;
+        require(newPricePerToken >= minPrice, "Price below minimum");
         
         Price storage price = prices[host][modelId][paymentToken];
         price.pricePerToken = newPricePerToken;

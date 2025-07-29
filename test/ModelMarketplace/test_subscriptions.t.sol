@@ -174,11 +174,9 @@ contract SubscriptionsTest is Test {
         
         // Check payment amount
         uint256 expectedFABPrice = (PRO_PRICE * 80) / 100; // 20% discount
-        // Convert USDC price to FAB (assuming 1:1 for test)
-        expectedFABPrice = expectedFABPrice * 10**12; // Adjust decimals
         
-        uint256 treasuryBalance = fab.balanceOf(TREASURY);
-        assertEq(treasuryBalance, expectedFABPrice);
+        uint256 contractBalance = fab.balanceOf(address(subscriptions));
+        assertEq(contractBalance, expectedFABPrice);
     }
     
     function test_UsageTracking() public {
@@ -390,9 +388,9 @@ contract SubscriptionsTest is Test {
         assertEq(expiresAt, block.timestamp + 365 days);
         
         // Verify payment (should be less than 12x monthly)
-        uint256 treasuryBalance = usdc.balanceOf(TREASURY);
-        assertEq(treasuryBalance, 480 * 10**6);
-        assertLt(treasuryBalance, PRO_PRICE * 12); // Less than monthly x 12
+        uint256 contractBalance = usdc.balanceOf(address(subscriptions));
+        assertEq(contractBalance, 480 * 10**6);
+        assertLt(contractBalance, PRO_PRICE * 12); // Less than monthly x 12
     }
     
     // Helper functions

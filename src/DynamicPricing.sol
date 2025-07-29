@@ -70,6 +70,9 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
     // modelId => timestamp => demand count
     mapping(bytes32 => mapping(uint256 => uint256)) public demandHistory;
     
+    // modelId => host => usage share
+    mapping(bytes32 => mapping(address => uint256)) public hostUsageShares;
+    
     event SurgePricingActivated(
         bytes32 indexed modelId,
         uint256 demandLevel,
@@ -123,7 +126,7 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
         // Calculate rolling average
         uint256 totalDemand = 0;
         uint256 hourCount = 0;
-        for (uint256 i = 0; i < 24; i++) {
+        for (uint256 i = 0; i < 24 && i <= currentHour; i++) {
             uint256 hourSlot = currentHour - i;
             if (demandHistory[modelId][hourSlot] > 0) {
                 totalDemand += demandHistory[modelId][hourSlot];
@@ -204,7 +207,6 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
     // Utilization-based pricing
     
     function updateHostUtilization(address host, uint256 utilizationPercentage) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || msg.sender == address(this), "Unauthorized");
         require(utilizationPercentage <= 100, "Invalid utilization");
         
         hostUtilization[host] = HostUtilization({
@@ -243,7 +245,7 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || msg.sender == address(marketplace), "Unauthorized");
         
         MarketData storage market = marketData[modelId];
-        market.hostUsageShare = requestShare;
+        hostUsageShares[modelId][host] = requestShare;
         market.totalMarketRequests++;
     }
     
@@ -259,8 +261,11 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
         // Get current price
         (uint256 currentPrice,,) = pricingEngine.getPrice(host, modelId);
         
+        // Get host's usage share
+        uint256 hostShare = hostUsageShares[modelId][host];
+        
         // If host has low market share, suggest lower price
-        if (market.hostUsageShare < 20 && market.totalMarketRequests > 100) {
+        if (hostShare <= 20 && market.totalMarketRequests >= 100) {
             return (currentPrice * 900) / 1000; // 10% reduction
         }
         
@@ -318,7 +323,7 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
         
         // Check for sustained high demand
         DemandData memory demand = modelDemand[modelId];
-        if (demand.requestCount > 200 && demand.averageDemand > 150) {
+        if (demand.requestCount >= 200 && demand.averageDemand >= 150) {
             newPrice = (currentPrice * 11) / 10; // 10% increase
             reason = "High sustained demand";
         }
@@ -348,14 +353,17 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
         
         // Look at same hour/day in previous weeks
         for (uint256 week = 1; week <= 4; week++) {
-            uint256 pastTime = targetTime - (week * 7 days);
-            uint256 pastHour = pastTime / 1 hours;
-            
-            for (uint256 h = 0; h < (duration / 1 hours); h++) {
-                uint256 demand = demandHistory[modelId][pastHour + h];
-                if (demand > 0) {
-                    totalDemand += demand;
-                    samples++;
+            uint256 weekSeconds = week * 7 days;
+            if (targetTime > weekSeconds) {
+                uint256 pastTime = targetTime - weekSeconds;
+                uint256 pastHour = pastTime / 1 hours;
+                
+                for (uint256 h = 0; h < (duration / 1 hours); h++) {
+                    uint256 demand = demandHistory[modelId][pastHour + h];
+                    if (demand > 0) {
+                        totalDemand += demand;
+                        samples++;
+                    }
                 }
             }
         }
@@ -377,7 +385,7 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
     function getRegionalPrice(string memory region, uint256 basePrice) public view returns (uint256) {
         uint256 multiplier = regionalMultipliers[region];
         if (multiplier == 0) {
-            multiplier = BASIS_POINTS; // Default 1.0x
+            return basePrice; // Default 1.0x
         }
         return (basePrice * multiplier) / BASIS_POINTS;
     }
@@ -401,7 +409,7 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
         uint256 _high
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(
-            _low >= BASIS_POINTS && _medium >= _low && _high >= _medium,
+            _low > 0 && _medium >= _low && _high >= _medium,
             "Invalid multipliers"
         );
         lowSurgeMultiplier = _low;
@@ -416,7 +424,7 @@ contract DynamicPricing is AccessControl, ReentrancyGuard {
     }
     
     function setPeakPriceMultiplier(uint256 multiplier) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(multiplier >= BASIS_POINTS && multiplier <= 20000, "Invalid multiplier");
+        require(multiplier > 0 && multiplier <= 20000, "Invalid multiplier");
         peakPriceMultiplier = multiplier;
     }
     

@@ -248,12 +248,10 @@ contract SubscriptionManager is ReentrancyGuard, AccessControl {
         if (paymentToken == fabToken) {
             // Apply FAB discount
             paymentAmount = (paymentAmount * (BASIS_POINTS - FAB_DISCOUNT)) / BASIS_POINTS;
-            // Convert USDC price to FAB (assuming 1:1 for simplicity, would use oracle in production)
-            paymentAmount = paymentAmount * 10**12; // Adjust for decimal difference
         }
         
-        // Transfer payment
-        IERC20(paymentToken).transferFrom(msg.sender, treasury, paymentAmount);
+        // Transfer payment to contract (will send to treasury later if non-refundable)
+        IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
         
         subscriptionIdCounter++;
         uint256 subscriptionId = subscriptionIdCounter;
@@ -291,12 +289,10 @@ contract SubscriptionManager is ReentrancyGuard, AccessControl {
         if (paymentToken == fabToken) {
             // Apply FAB discount
             paymentAmount = (paymentAmount * (BASIS_POINTS - FAB_DISCOUNT)) / BASIS_POINTS;
-            // Convert USDC price to FAB (assuming 1:1 for simplicity, would use oracle in production)
-            paymentAmount = paymentAmount * 10**12; // Adjust for decimal difference
         }
         
-        // Transfer payment
-        IERC20(paymentToken).transferFrom(msg.sender, treasury, paymentAmount);
+        // Transfer payment to contract (will send to treasury later if non-refundable)
+        IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
         
         subscriptionIdCounter++;
         uint256 subscriptionId = subscriptionIdCounter;
@@ -352,7 +348,6 @@ contract SubscriptionManager is ReentrancyGuard, AccessControl {
             if (sub.paymentToken == fabToken) {
                 // Apply same discount as original payment
                 refundAmount = (refundAmount * (BASIS_POINTS - FAB_DISCOUNT)) / BASIS_POINTS;
-                refundAmount = refundAmount * 10**12; // Adjust decimals
             }
             
             // Transfer refund
@@ -389,11 +384,10 @@ contract SubscriptionManager is ReentrancyGuard, AccessControl {
         
         if (paymentToken == fabToken) {
             upgradeCost = (upgradeCost * (BASIS_POINTS - FAB_DISCOUNT)) / BASIS_POINTS;
-            upgradeCost = upgradeCost * 10**12; // Adjust decimals
         }
         
         // Transfer upgrade payment
-        IERC20(paymentToken).transferFrom(msg.sender, treasury, upgradeCost);
+        IERC20(paymentToken).transferFrom(msg.sender, address(this), upgradeCost);
         
         emit SubscriptionUpgraded(subscriptionId, sub.planId, newPlanId);
         
@@ -465,7 +459,6 @@ contract SubscriptionManager is ReentrancyGuard, AccessControl {
                 uint256 paymentAmount = plan.price;
                 if (sub.paymentToken == fabToken) {
                     paymentAmount = (paymentAmount * (BASIS_POINTS - FAB_DISCOUNT)) / BASIS_POINTS;
-                    paymentAmount = paymentAmount * 10**12;
                 }
                 
                 // Check allowance and balance
@@ -474,7 +467,7 @@ contract SubscriptionManager is ReentrancyGuard, AccessControl {
                     token.balanceOf(sub.user) >= paymentAmount) {
                     
                     // Process renewal
-                    token.transferFrom(sub.user, treasury, paymentAmount);
+                    token.transferFrom(sub.user, address(this), paymentAmount);
                     
                     sub.expiresAt = sub.expiresAt + plan.duration;
                     sub.tokensUsed = 0; // Reset usage
@@ -511,12 +504,10 @@ contract SubscriptionManager is ReentrancyGuard, AccessControl {
         if (paymentToken == fabToken) {
             // Apply FAB discount
             paymentAmount = (paymentAmount * (BASIS_POINTS - FAB_DISCOUNT)) / BASIS_POINTS;
-            // Convert USDC price to FAB (assuming 1:1 for simplicity, would use oracle in production)
-            paymentAmount = paymentAmount * 10**12; // Adjust for decimal difference
         }
         
-        // Transfer payment
-        IERC20(paymentToken).transferFrom(msg.sender, treasury, paymentAmount);
+        // Transfer payment to contract (will send to treasury later if non-refundable)
+        IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
         
         subscriptionIdCounter++;
         uint256 subscriptionId = subscriptionIdCounter;
@@ -671,5 +662,11 @@ contract SubscriptionManager is ReentrancyGuard, AccessControl {
     
     function hasUsageAlert(uint256 subscriptionId) external view returns (bool) {
         return usageAlerts[subscriptionId].triggered;
+    }
+    
+    // Treasury withdrawal function for non-refundable funds
+    function withdrawToTreasury(address token, uint256 amount) external onlyRole(ADMIN_ROLE) {
+        require(token == fabToken || token == usdcToken, "Invalid token");
+        IERC20(token).transfer(treasury, amount);
     }
 }
