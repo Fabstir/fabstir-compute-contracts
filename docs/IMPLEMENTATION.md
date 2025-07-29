@@ -127,10 +127,10 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 
 ### Sub-phase 2.5: Tokenomics & Revenue Distribution (**NEW**)
 
-- [ ] Implement payment splitting (85% host, 10% protocol, 5% stakers)
-- [ ] Implement FAB buyback mechanism
-- [ ] Implement stakers pool distribution
-- [ ] Implement staking tiers and multipliers
+- [x] Implement payment splitting (85% host, 10% protocol, 5% stakers)
+- [x] Implement FAB buyback mechanism
+- [x] Implement stakers pool distribution
+- [x] Implement staking tiers and multipliers
 
 **Test Files:**
 

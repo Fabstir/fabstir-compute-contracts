@@ -22,6 +22,9 @@ RUN mv /root/.foundry /opt/foundry && \
     chmod -R 755 /opt/foundry
 ENV PATH="/opt/foundry/bin:${PATH}"
 
+# Install Claude Code globally as root
+RUN npm install -g @anthropic-ai/claude-code
+
 WORKDIR /workspace
 
 # Copy YOLO scripts
