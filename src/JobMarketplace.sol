@@ -163,7 +163,7 @@ contract JobMarketplace is ReentrancyGuard {
         uint256 _jobId,
         string memory _resultHash,
         bytes memory _proof
-    ) external {
+    ) external nonReentrant {
         Job storage job = jobs[_jobId];
         require(job.assignedHost == msg.sender, "Not assigned host");
         require(job.status == JobStatus.Claimed, "Job not in claimed state");

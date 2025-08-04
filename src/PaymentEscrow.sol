@@ -2,8 +2,9 @@
 pragma solidity ^0.8.19;
 
 import "./interfaces/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract PaymentEscrow {
+contract PaymentEscrow is ReentrancyGuard {
     enum EscrowStatus {
         Active,
         Released,
@@ -88,7 +89,7 @@ contract PaymentEscrow {
         emit EscrowCreated(_jobId, msg.sender, _host, _amount, _token);
     }
     
-    function releaseEscrow(bytes32 _jobId) external onlyParties(_jobId) {
+    function releaseEscrow(bytes32 _jobId) external onlyParties(_jobId) nonReentrant {
         Escrow storage escr = escrows[_jobId];
         require(escr.status == EscrowStatus.Active, "Escrow not active");
         
@@ -119,7 +120,7 @@ contract PaymentEscrow {
         emit EscrowDisputed(_jobId, msg.sender);
     }
     
-    function resolveDispute(bytes32 _jobId, address _winner) external onlyArbiter {
+    function resolveDispute(bytes32 _jobId, address _winner) external onlyArbiter nonReentrant {
         Escrow storage escr = escrows[_jobId];
         require(escr.status == EscrowStatus.Disputed, "Not in dispute");
         require(_winner == escr.renter || _winner == escr.host, "Invalid winner");
@@ -161,7 +162,7 @@ contract PaymentEscrow {
         emit RefundRequested(_jobId);
     }
     
-    function confirmRefund(bytes32 _jobId) external onlyParties(_jobId) {
+    function confirmRefund(bytes32 _jobId) external onlyParties(_jobId) nonReentrant {
         Escrow storage escr = escrows[_jobId];
         require(escr.status == EscrowStatus.Active, "Escrow not active");
         require(escr.refundRequested, "Refund not requested");
