@@ -158,7 +158,7 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 ### Sub-phase 3.1: Integration Testing
 
 - [x] Test contract interactions
-- [ ] Test edge cases
+- [x] Test edge cases
 - [ ] Test gas optimization
 - [ ] Test failure scenarios
 
