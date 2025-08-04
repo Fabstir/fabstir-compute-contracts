@@ -28,6 +28,12 @@ contract PaymentEscrow {
     
     mapping(bytes32 => Escrow) private escrows;
     
+    address public jobMarketplace;
+    
+    function setJobMarketplace(address _jobMarketplace) external {
+        jobMarketplace = _jobMarketplace;
+    }
+    
     event EscrowCreated(bytes32 indexed jobId, address indexed renter, address indexed host, uint256 amount, address token);
     event EscrowReleased(bytes32 indexed jobId, uint256 amount, uint256 fee);
     event EscrowDisputed(bytes32 indexed jobId, address disputer);

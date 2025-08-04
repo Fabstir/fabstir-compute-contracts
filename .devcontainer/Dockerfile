@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js for Base Account SDK integration
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
 # Install Foundry globally
@@ -22,14 +22,11 @@ RUN mv /root/.foundry /opt/foundry && \
     chmod -R 755 /opt/foundry
 ENV PATH="/opt/foundry/bin:${PATH}"
 
-# Install Claude Code globally as root
-RUN npm install -g @anthropic-ai/claude-code
-
 WORKDIR /workspace
 
-# Copy YOLO scripts
-COPY yolo-runner.sh test-watcher.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/*.sh
+# Copy test watcher script
+COPY test-watcher.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/test-watcher.sh
 
 # Create developer user
 RUN useradd -m -s /bin/bash developer && \
@@ -40,5 +37,3 @@ RUN echo 'export PATH="/opt/foundry/bin:$PATH"' >> /home/developer/.bashrc
 
 USER developer
 WORKDIR /workspace
-
-ENTRYPOINT ["/usr/local/bin/yolo-runner.sh"]

@@ -43,7 +43,7 @@ contract ModelListingTest is Test {
     );
     
     function setUp() public {
-        nodeRegistry = new NodeRegistry();
+        nodeRegistry = new NodeRegistry(10 ether);
         marketplace = new ModelMarketplace(address(nodeRegistry));
         fab = new MockERC20("Fabstir Token", "FAB", 18);
         

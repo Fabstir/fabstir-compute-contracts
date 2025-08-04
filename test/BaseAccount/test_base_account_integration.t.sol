@@ -29,7 +29,7 @@ contract BaseAccountIntegrationTest is Test {
     event GaslessTransactionSponsored(address indexed wallet, address indexed paymaster, uint256 gasUsed);
     
     function setUp() public {
-        nodeRegistry = new NodeRegistry();
+        nodeRegistry = new NodeRegistry(10 ether);
         jobMarketplace = new JobMarketplace(address(nodeRegistry));
         baseIntegration = new BaseAccountIntegration(
             ENTRYPOINT,
@@ -85,7 +85,7 @@ contract BaseAccountIntegrationTest is Test {
         );
         
         // Verify job was created
-        JobMarketplace.Job memory job = jobMarketplace.getJob(jobId);
+        JobMarketplace.Job memory job = jobMarketplace.getJobStruct(jobId);
         assertEq(job.renter, SMART_WALLET);
         assertEq(job.modelId, "llama3-70b");
     }

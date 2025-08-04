@@ -4,11 +4,7 @@ pragma solidity ^0.8.19;
 import "./interfaces/IJobMarketplace.sol";
 import "./interfaces/IPaymentEscrow.sol";
 import "./interfaces/IReputationSystem.sol";
-
-interface IERC20 {
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
-    function transfer(address to, uint256 amount) external returns (bool);
-}
+import "./interfaces/IERC20.sol";
 
 contract ProofSystem {
     // Roles

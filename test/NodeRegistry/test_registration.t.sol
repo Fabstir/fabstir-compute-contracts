@@ -14,7 +14,7 @@ contract NodeRegistryTest is Test {
     string[] models = ["llama3", "mistral"];
     
     function setUp() public {
-        nodeRegistry = new NodeRegistry();
+        nodeRegistry = new NodeRegistry(10 ether);
         
         // Give test addresses some ETH
         vm.deal(HOST, 1000 ether);

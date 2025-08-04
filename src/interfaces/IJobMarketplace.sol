@@ -8,6 +8,22 @@ interface IJobMarketplace {
         Completed
     }
     
+    struct JobDetails {
+        string modelId;
+        string prompt;
+        uint256 maxTokens;
+        uint256 temperature;
+        uint32 seed;
+        string resultFormat;
+    }
+    
+    struct JobRequirements {
+        uint256 minGPUMemory;
+        uint256 minReputationScore;
+        uint256 maxTimeToComplete;
+        bool requiresProof;
+    }
+    
     function getJob(uint256 jobId) external view returns (
         address renter,
         string memory modelId,

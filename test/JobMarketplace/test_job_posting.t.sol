@@ -20,7 +20,7 @@ contract JobMarketplaceTest is Test {
     string constant INPUT_HASH = "QmExample123";
     
     function setUp() public {
-        nodeRegistry = new NodeRegistry();
+        nodeRegistry = new NodeRegistry(10 ether);
         jobMarketplace = new JobMarketplace(address(nodeRegistry));
         
         // Setup test accounts
@@ -54,7 +54,7 @@ contract JobMarketplaceTest is Test {
             block.timestamp + 1 hours
         );
         
-        JobMarketplace.Job memory job = jobMarketplace.getJob(jobId);
+        JobMarketplace.Job memory job = jobMarketplace.getJobStruct(jobId);
         
         assertEq(job.renter, RENTER);
         assertEq(job.modelId, MODEL_ID);
@@ -94,7 +94,7 @@ contract JobMarketplaceTest is Test {
         vm.prank(HOST);
         jobMarketplace.claimJob(jobId);
         
-        JobMarketplace.Job memory job = jobMarketplace.getJob(jobId);
+        JobMarketplace.Job memory job = jobMarketplace.getJobStruct(jobId);
         assertEq(job.assignedHost, HOST);
         assertEq(uint256(job.status), uint256(JobMarketplace.JobStatus.Claimed));
     }
@@ -158,7 +158,7 @@ contract JobMarketplaceTest is Test {
         jobMarketplace.completeJob(jobId, resultHash, proof);
         
         // Verify job status and payment
-        JobMarketplace.Job memory job = jobMarketplace.getJob(jobId);
+        JobMarketplace.Job memory job = jobMarketplace.getJobStruct(jobId);
         assertEq(uint256(job.status), uint256(JobMarketplace.JobStatus.Completed));
         assertEq(job.resultHash, resultHash);
         

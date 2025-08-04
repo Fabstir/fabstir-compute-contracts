@@ -12,9 +12,31 @@ contract NodeRegistry {
     }
     
     mapping(address => Node) private nodes;
-    uint256 public constant MIN_STAKE = 100 ether;
+    uint256 public MIN_STAKE;
     
-    event NodeRegistered(address indexed operator, string peerId, uint256 stake);
+    constructor(uint256 _minStake) {
+        MIN_STAKE = _minStake;
+    }
+    
+    event NodeRegistered(address indexed node, string metadata);
+    
+    function registerNodeSimple(string memory metadata) external payable {
+        require(msg.value >= MIN_STAKE, "Insufficient stake");
+        require(nodes[msg.sender].operator == address(0), "Already registered");
+        
+        // For simplicity, parse metadata as peerId
+        string[] memory emptyModels = new string[](0);
+        nodes[msg.sender] = Node({
+            operator: msg.sender,
+            peerId: metadata,
+            stake: msg.value,
+            active: true,
+            models: emptyModels,
+            region: ""
+        });
+        
+        emit NodeRegistered(msg.sender, metadata);
+    }
     
     function registerNode(
         string memory _peerId,
@@ -33,11 +55,28 @@ contract NodeRegistry {
             region: _region
         });
         
-        emit NodeRegistered(msg.sender, _peerId, msg.value);
+        emit NodeRegistered(msg.sender, _peerId);
     }
     
     function getNode(address _operator) external view returns (Node memory) {
         return nodes[_operator];
+    }
+    
+    function isNodeActive(address _operator) external view returns (bool) {
+        return nodes[_operator].active && nodes[_operator].operator != address(0);
+    }
+    
+    function getNodeStake(address _operator) external view returns (uint256) {
+        return nodes[_operator].stake;
+    }
+    
+    function requiredStake() external view returns (uint256) {
+        return MIN_STAKE;
+    }
+    
+    function updateStakeAmount(uint256 newAmount) external {
+        // In production, this would have access control
+        MIN_STAKE = newAmount;
     }
     
     // For BaseAccountIntegration - register node on behalf of a wallet
@@ -59,7 +98,7 @@ contract NodeRegistry {
             region: _region
         });
         
-        emit NodeRegistered(operator, _peerId, msg.value);
+        emit NodeRegistered(operator, _peerId);
     }
     
     function isActiveNode(address operator) external view returns (bool) {
