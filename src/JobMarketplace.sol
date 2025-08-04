@@ -4,13 +4,16 @@ pragma solidity ^0.8.19;
 import "./NodeRegistry.sol";
 import "./ReputationSystem.sol";
 import "./interfaces/IJobMarketplace.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract JobMarketplace {
+contract JobMarketplace is ReentrancyGuard {
     enum JobStatus {
         Posted,
         Claimed,
         Completed
     }
+    
+    uint256 public constant MAX_PAYMENT = 10000 ether;
     
     struct Job {
         address renter;
@@ -75,7 +78,21 @@ contract JobMarketplace {
         IJobMarketplace.JobRequirements memory requirements,
         uint256 payment
     ) external payable returns (uint256) {
+        require(payment > 0, "Payment too low");
+        require(payment <= MAX_PAYMENT, "Payment too large");
         require(msg.value >= payment, "Insufficient payment");
+        
+        // Validate job details
+        require(bytes(details.modelId).length > 0 && bytes(details.prompt).length > 0, "Invalid job details");
+        require(details.maxTokens > 0, "Invalid max tokens");
+        require(requirements.maxTimeToComplete > 0, "Invalid deadline");
+        require(bytes(details.prompt).length <= 10000, "Prompt too large"); // 10KB limit
+        
+        // Validate reasonable parameters
+        require(details.maxTokens <= 100000, "Invalid parameters"); // Max 100k tokens
+        require(details.temperature <= 20000, "Invalid parameters"); // Max temperature 2.0
+        require(requirements.minGPUMemory <= 128, "Invalid parameters"); // Max 128GB GPU
+        require(requirements.maxTimeToComplete <= 30 days, "Invalid parameters"); // Max 30 days
         
         uint256 jobId = nextJobId++;
         
@@ -99,7 +116,12 @@ contract JobMarketplace {
         Job storage job = jobs[_jobId];
         require(job.renter != address(0), "Job does not exist");
         
-        // Allow reclaiming if job is past deadline
+        // If job is posted and expired, don't allow claiming
+        if (job.status == JobStatus.Posted && block.timestamp > job.deadline) {
+            revert("Job expired");
+        }
+        
+        // Allow reclaiming if job was claimed but is past deadline
         if (job.status == JobStatus.Claimed && block.timestamp > job.deadline) {
             // Reset job to allow reclaiming
             job.status = JobStatus.Posted;
@@ -147,6 +169,7 @@ contract JobMarketplace {
     function submitResult(uint256 _jobId, string memory _resultCID, bytes memory _proof) external {
         Job storage job = jobs[_jobId];
         require(job.renter != address(0), "Job does not exist");
+        require(job.status != JobStatus.Completed, "Job already completed");
         require(job.status == JobStatus.Claimed, "Job not claimed");
         require(job.assignedHost == msg.sender, "Not assigned host");
         
@@ -241,7 +264,7 @@ contract JobMarketplace {
         emit JobClaimed(_jobId, host);
     }
     
-    function releasePayment(uint256 _jobId) external {
+    function releasePayment(uint256 _jobId) external nonReentrant {
         Job storage job = jobs[_jobId];
         require(job.renter == msg.sender, "Not job renter");
         require(job.status == JobStatus.Completed, "Job not completed");

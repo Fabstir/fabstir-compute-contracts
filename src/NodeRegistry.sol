@@ -24,12 +24,19 @@ contract NodeRegistry {
         require(msg.value >= MIN_STAKE, "Insufficient stake");
         require(nodes[msg.sender].operator == address(0), "Already registered");
         
+        // Refund excess stake
+        uint256 excess = msg.value - MIN_STAKE;
+        if (excess > 0) {
+            (bool success, ) = payable(msg.sender).call{value: excess}("");
+            require(success, "Refund failed");
+        }
+        
         // For simplicity, parse metadata as peerId
         string[] memory emptyModels = new string[](0);
         nodes[msg.sender] = Node({
             operator: msg.sender,
             peerId: metadata,
-            stake: msg.value,
+            stake: MIN_STAKE,
             active: true,
             models: emptyModels,
             region: ""

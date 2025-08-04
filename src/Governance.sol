@@ -432,7 +432,7 @@ contract Governance {
     
     function executeProposal(uint256 proposalId) external {
         Proposal storage proposal = proposals[proposalId];
-        require(!proposal.executed, "Already executed");
+        require(!proposal.executed, "Proposal already executed");
         require(proposal.forVotes > proposal.againstVotes, "Proposal failed");
         
         proposal.executed = true;
