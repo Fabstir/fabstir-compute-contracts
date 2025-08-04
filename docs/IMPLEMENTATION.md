@@ -160,7 +160,7 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 - [x] Test contract interactions
 - [x] Test edge cases
 - [x] Test gas optimization
-- [ ] Test failure scenarios
+- [x] Test failure scenarios
 
 **Test Files:**
 
