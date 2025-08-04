@@ -56,6 +56,7 @@ contract ReputationSystem is Ownable {
     }
     
     function addAuthorizedContract(address _contract) external onlyOwner {
+        require(_contract != address(0), "Invalid address");
         authorizedContracts[_contract] = true;
     }
     

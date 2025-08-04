@@ -31,6 +31,9 @@ contract NodeRegistry is Ownable {
     event StakeRestored(address indexed node, uint256 amount);
     
     function registerNodeSimple(string memory metadata) external payable {
+        require(bytes(metadata).length > 0, "Empty metadata");
+        require(bytes(metadata).length <= 10000, "Metadata too long");
+        require(_validateString(metadata), "Invalid characters");
         require(msg.value >= MIN_STAKE, "Insufficient stake");
         require(nodes[msg.sender].operator == address(0), "Already registered");
         
@@ -92,6 +95,8 @@ contract NodeRegistry is Ownable {
     }
     
     function updateStakeAmount(uint256 newAmount) external onlyOwner {
+        require(newAmount > 0, "Stake must be positive");
+        require(newAmount < 10000 ether, "Stake too high");
         MIN_STAKE = newAmount;
     }
     
@@ -122,6 +127,7 @@ contract NodeRegistry is Ownable {
     }
     
     function setGovernance(address _governance) external onlyOwner {
+        require(_governance != address(0), "Invalid address");
         require(governance == address(0), "Governance already set");
         governance = _governance;
     }
@@ -192,5 +198,17 @@ contract NodeRegistry is Ownable {
     
     function getNodeController(address node) external view returns (address) {
         return nodeController[node];
+    }
+    
+    function _validateString(string memory str) private pure returns (bool) {
+        bytes memory b = bytes(str);
+        for (uint i = 0; i < b.length; i++) {
+            uint8 char = uint8(b[i]);
+            // Reject null bytes, newlines, carriage returns, and other control characters
+            if (char < 0x20 || char == 0x7F) {
+                return false;
+            }
+        }
+        return true;
     }
 }

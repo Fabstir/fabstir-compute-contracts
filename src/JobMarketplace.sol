@@ -14,7 +14,7 @@ contract JobMarketplace is ReentrancyGuard {
         Completed
     }
     
-    uint256 public constant MAX_PAYMENT = 10000 ether;
+    uint256 public constant MAX_PAYMENT = 1000 ether;
     
     struct Job {
         address renter;        // 20 bytes
@@ -114,7 +114,7 @@ contract JobMarketplace is ReentrancyGuard {
         IJobMarketplace.JobRequirements memory requirements,
         uint256 payment
     ) external payable whenNotPaused returns (uint256) {
-        require(msg.value >= payment, "Insufficient payment");
+        require(msg.value == payment, "Payment mismatch");
         return _postJobInternal(details, requirements, payment, msg.sender);
     }
     
@@ -284,6 +284,7 @@ contract JobMarketplace is ReentrancyGuard {
     
     function releasePayment(uint256 _jobId) external nonReentrant {
         Job storage job = jobs[_jobId];
+        require(job.renter != address(0), "Job does not exist");
         require(job.renter == msg.sender, "Not job renter");
         require(job.status == JobStatus.Completed, "Job not completed");
         
@@ -323,7 +324,8 @@ contract JobMarketplace is ReentrancyGuard {
         uint256[] memory payments
     ) external payable returns (uint256[] memory) {
         require(detailsList.length == requirementsList.length && detailsList.length == payments.length, "Array length mismatch");
-        require(detailsList.length > 0, "Empty batch");
+        require(detailsList.length > 0, "Empty array");
+        require(detailsList.length <= 100, "Too many jobs");
         
         uint256 totalPayment = 0;
         uint256 len = payments.length;
@@ -381,13 +383,13 @@ contract JobMarketplace is ReentrancyGuard {
         require(payment > 0, "Payment too low");
         require(payment <= MAX_PAYMENT, "Payment too large");
         require(details.maxTokens > 0, "Invalid max tokens");
-        require(requirements.maxTimeToComplete > 0, "Invalid deadline");
+        require(requirements.maxTimeToComplete >= 60, "Deadline too short");
         
         // Validate reasonable parameters (still cheap)
-        require(details.maxTokens <= 100000, "Invalid parameters");
-        require(details.temperature <= 20000, "Invalid parameters");
+        require(details.maxTokens <= 1000000, "Invalid max tokens");
+        require(details.temperature <= 20000, "Temperature out of range");
         require(requirements.minGPUMemory <= 128, "Invalid parameters");
-        require(requirements.maxTimeToComplete <= 30 days, "Invalid parameters");
+        require(requirements.maxTimeToComplete < 365 days, "Deadline too long");
         
         // String operations last (more expensive)
         require(bytes(details.modelId).length > 0 && bytes(details.prompt).length > 0, "Invalid job details");
@@ -414,7 +416,7 @@ contract JobMarketplace is ReentrancyGuard {
     // Batch release payments for gas efficiency
     function batchReleasePayments(uint256[] memory jobIds) external nonReentrant {
         uint256 len = jobIds.length;
-        require(len > 0, "Empty batch");
+        require(len > 0, "Empty array");
         
         for (uint i = 0; i < len; i++) {
             Job storage job = jobs[jobIds[i]];

@@ -33,6 +33,12 @@ contract PaymentEscrow is ReentrancyGuard, Ownable {
     address public jobMarketplace;
     
     function setJobMarketplace(address _jobMarketplace) external onlyOwner {
+        require(_jobMarketplace != address(0), "Invalid address");
+        uint256 size;
+        assembly {
+            size := extcodesize(_jobMarketplace)
+        }
+        require(size > 0, "Not a contract");
         jobMarketplace = _jobMarketplace;
     }
     

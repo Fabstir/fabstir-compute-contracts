@@ -37,6 +37,7 @@ contract ProofSystem {
     }
     
     function grantRole(bytes32 role, address account) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(account != address(0), "Invalid address");
         _grantRole(role, account);
     }
     
