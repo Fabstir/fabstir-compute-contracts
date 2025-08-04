@@ -172,7 +172,7 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 ### Sub-phase 3.2: Security Hardening
 
 - [x] Implement reentrancy guards
-- [ ] Implement access controls
+- [x] Implement access controls
 - [ ] Implement input validation
 - [ ] Implement circuit breakers
 

@@ -4,8 +4,9 @@ pragma solidity ^0.8.19;
 import "./NodeRegistry.sol";
 import "./JobMarketplace.sol";
 import "./interfaces/IJobMarketplace.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ReputationSystem {
+contract ReputationSystem is Ownable {
     struct HostReputation {
         uint256 score;
         uint256 totalRatings;
@@ -48,17 +49,18 @@ contract ReputationSystem {
         address _nodeRegistry,
         address _jobMarketplace,
         address _governance
-    ) {
+    ) Ownable(msg.sender) {
         nodeRegistry = NodeRegistry(_nodeRegistry);
         jobMarketplace = JobMarketplace(_jobMarketplace);
         governance = _governance;
     }
     
-    function addAuthorizedContract(address _contract) external {
+    function addAuthorizedContract(address _contract) external onlyOwner {
         authorizedContracts[_contract] = true;
     }
     
     function updateReputation(address host, uint256 change, bool positive) external {
+        require(authorizedContracts[msg.sender], "Not authorized");
         isTrackedHost[host] = true;
         if (positive) {
             hostReputations[host].score += change;

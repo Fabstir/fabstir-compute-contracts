@@ -3,8 +3,9 @@ pragma solidity ^0.8.19;
 
 import "./interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract PaymentEscrow is ReentrancyGuard {
+contract PaymentEscrow is ReentrancyGuard, Ownable {
     enum EscrowStatus {
         Active,
         Released,
@@ -31,7 +32,7 @@ contract PaymentEscrow is ReentrancyGuard {
     
     address public jobMarketplace;
     
-    function setJobMarketplace(address _jobMarketplace) external {
+    function setJobMarketplace(address _jobMarketplace) external onlyOwner {
         jobMarketplace = _jobMarketplace;
     }
     
@@ -53,7 +54,12 @@ contract PaymentEscrow is ReentrancyGuard {
         _;
     }
     
-    constructor(address _arbiter, uint256 _feeBasisPoints) {
+    modifier onlyMarketplace() {
+        require(msg.sender == jobMarketplace, "Only marketplace");
+        _;
+    }
+    
+    constructor(address _arbiter, uint256 _feeBasisPoints) Ownable(msg.sender) {
         arbiter = _arbiter;
         feeBasisPoints = _feeBasisPoints;
     }
@@ -63,7 +69,7 @@ contract PaymentEscrow is ReentrancyGuard {
         address _host,
         uint256 _amount,
         address _token
-    ) external payable {
+    ) external payable onlyMarketplace {
         require(escrows[_jobId].renter == address(0), "Escrow already exists");
         require(_host != address(0), "Invalid host address");
         require(_amount > 0, "Invalid amount");

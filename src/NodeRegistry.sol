@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-contract NodeRegistry {
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract NodeRegistry is Ownable {
     struct Node {
         address operator;
         string peerId;
@@ -20,7 +22,7 @@ contract NodeRegistry {
     mapping(address => address) private nodeController; // node => controller
     uint256 private constant SYBIL_THRESHOLD = 3;
     
-    constructor(uint256 _minStake) {
+    constructor(uint256 _minStake) Ownable(msg.sender) {
         MIN_STAKE = _minStake;
     }
     
@@ -89,8 +91,7 @@ contract NodeRegistry {
         return MIN_STAKE;
     }
     
-    function updateStakeAmount(uint256 newAmount) external {
-        // In production, this would have access control
+    function updateStakeAmount(uint256 newAmount) external onlyOwner {
         MIN_STAKE = newAmount;
     }
     
@@ -120,13 +121,13 @@ contract NodeRegistry {
         return nodes[operator].active && nodes[operator].stake >= MIN_STAKE;
     }
     
-    function setGovernance(address _governance) external {
+    function setGovernance(address _governance) external onlyOwner {
         require(governance == address(0), "Governance already set");
         governance = _governance;
     }
     
     function slashNode(address node, uint256 amount, string memory reason) external {
-        require(msg.sender == governance, "Only governance can slash");
+        require(msg.sender == governance, "Only governance");
         require(nodes[node].operator != address(0), "Node not registered");
         require(nodes[node].stake >= amount, "Insufficient stake to slash");
         
