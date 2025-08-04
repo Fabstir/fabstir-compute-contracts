@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "./NodeRegistry.sol";
+import "./interfaces/INodeRegistry.sol";
 import "./ReputationSystem.sol";
 import "./interfaces/IJobMarketplace.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -31,19 +32,54 @@ contract JobMarketplace is ReentrancyGuard {
     mapping(uint256 => Job) private jobs;
     uint256 private nextJobId = 1;
     
+    // Pause state
+    bool private paused;
+    address private owner;
+    address private governance;
+    
+    // Rate limiting
+    uint256 private constant RATE_LIMIT = 10;
+    uint256 private constant RATE_LIMIT_WINDOW = 1 hours;
+    mapping(address => uint256) private lastPostTime;
+    mapping(address => uint256) private postCount;
+    
+    // Sybil detection
+    mapping(uint256 => address[]) private jobFailedNodes; // jobId => failed nodes
+    
     event JobCreated(uint256 indexed jobId, address indexed renter, string modelId, uint256 maxPrice);
     event JobPosted(uint256 indexed jobId, address indexed client, uint256 payment);
     event JobClaimed(uint256 indexed jobId, address indexed host);
     event JobCompleted(uint256 indexed jobId, string resultCID);
     event PaymentReleased(uint256 indexed jobId, address indexed node, uint256 amount);
+    event JobFailed(uint256 indexed jobId, address indexed host, string reason);
+    event PaymentRefunded(uint256 indexed jobId, address indexed client, uint256 amount);
+    event EmergencyPause(string reason);
+    event EmergencyUnpause();
+    event DisputeResolved(uint256 indexed jobId, bool favorClient);
     
     constructor(address _nodeRegistry) {
         nodeRegistry = NodeRegistry(_nodeRegistry);
+        owner = msg.sender;
+    }
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+    
+    modifier whenNotPaused() {
+        require(!paused, "Contract is paused");
+        _;
     }
     
     function setReputationSystem(address _reputationSystem) external {
         require(address(reputationSystem) == address(0), "ReputationSystem already set");
         reputationSystem = ReputationSystem(_reputationSystem);
+    }
+    
+    function setGovernance(address _governance) external {
+        require(governance == address(0), "Governance already set");
+        governance = _governance;
     }
     
     function createJob(
@@ -77,7 +113,7 @@ contract JobMarketplace is ReentrancyGuard {
         IJobMarketplace.JobDetails memory details,
         IJobMarketplace.JobRequirements memory requirements,
         uint256 payment
-    ) external payable returns (uint256) {
+    ) external payable whenNotPaused returns (uint256) {
         require(msg.value >= payment, "Insufficient payment");
         return _postJobInternal(details, requirements, payment, msg.sender);
     }
@@ -104,6 +140,18 @@ contract JobMarketplace is ReentrancyGuard {
         NodeRegistry.Node memory node = nodeRegistry.getNode(msg.sender);
         require(node.operator != address(0), "Not a registered host");
         require(node.active, "Host not active");
+        
+        // Sybil attack detection - check if this node's controller has failed this job before
+        address controller = nodeRegistry.getNodeController(msg.sender);
+        if (controller != address(0)) {
+            // Check if any node from this controller has failed this job
+            address[] memory failedNodes = jobFailedNodes[_jobId];
+            for (uint i = 0; i < failedNodes.length; i++) {
+                if (nodeRegistry.getNodeController(failedNodes[i]) == controller) {
+                    revert("Sybil attack detected");
+                }
+            }
+        }
         
         job.assignedHost = msg.sender;
         job.status = JobStatus.Claimed;
@@ -242,15 +290,21 @@ contract JobMarketplace is ReentrancyGuard {
         address payable host = payable(job.assignedHost);
         uint256 payment = job.maxPrice;
         
-        // Transfer payment to host
-        host.transfer(payment);
+        // Try to transfer payment to host
+        (bool success, ) = host.call{value: payment}("");
         
-        // Update reputation for successful completion
-        if (address(reputationSystem) != address(0)) {
-            reputationSystem.updateReputation(host, 10, true); // Give 10 reputation points
+        if (success) {
+            // Update reputation for successful completion
+            if (address(reputationSystem) != address(0)) {
+                reputationSystem.updateReputation(host, 10, true); // Give 10 reputation points
+            }
+            
+            emit PaymentReleased(_jobId, host, payment);
+        } else {
+            // Payment failed, refund to client
+            payable(job.renter).transfer(payment);
+            emit PaymentRefunded(_jobId, job.renter, payment);
         }
-        
-        emit PaymentReleased(_jobId, host, payment);
     }
     
     function disputeResult(uint256 _jobId, string memory reason) external {
@@ -313,6 +367,16 @@ contract JobMarketplace is ReentrancyGuard {
         uint256 payment,
         address renter
     ) internal returns (uint256) {
+        // Rate limiting check
+        if (block.timestamp > lastPostTime[renter] + RATE_LIMIT_WINDOW) {
+            // Reset rate limit window
+            postCount[renter] = 0;
+            lastPostTime[renter] = block.timestamp;
+        }
+        
+        require(postCount[renter] < RATE_LIMIT, "Rate limit exceeded");
+        postCount[renter]++;
+        
         // Check simple numeric validations first (cheaper)
         require(payment > 0, "Payment too low");
         require(payment <= MAX_PAYMENT, "Payment too large");
@@ -376,5 +440,89 @@ contract JobMarketplace is ReentrancyGuard {
             
             emit PaymentReleased(jobIds[i], host, payment);
         }
+    }
+    
+    // Mark job as failed
+    function markJobFailed(uint256 _jobId, string memory reason) external {
+        Job storage job = jobs[_jobId];
+        require(job.renter != address(0), "Job does not exist");
+        require(job.status == JobStatus.Claimed, "Job not in claimed state");
+        require(msg.sender == address(this), "Only marketplace can mark failed");
+        
+        address failedHost = job.assignedHost;
+        
+        // Track failed node for sybil detection
+        jobFailedNodes[_jobId].push(failedHost);
+        
+        // Reset job to allow reclaiming
+        job.status = JobStatus.Posted;
+        job.assignedHost = address(0);
+        
+        // Slash node stake (10% of current stake)
+        uint256 nodeStake = nodeRegistry.getNode(failedHost).stake;
+        uint256 slashAmount = (nodeStake * 10) / 100;
+        
+        if (slashAmount > 0) {
+            nodeRegistry.slashNode(failedHost, slashAmount, reason);
+        }
+        
+        emit JobFailed(_jobId, failedHost, reason);
+    }
+    
+    // Claim abandoned payment for unclaimed or incomplete jobs
+    function claimAbandonedPayment(uint256 _jobId) external nonReentrant {
+        Job storage job = jobs[_jobId];
+        require(job.renter == msg.sender, "Not job renter");
+        require(job.status == JobStatus.Posted || job.status == JobStatus.Claimed, "Job already completed");
+        
+        // Check if sufficient time has passed
+        uint256 abandonedDeadline = 30 days;
+        require(block.timestamp > job.deadline + abandonedDeadline, "Not abandoned yet");
+        
+        uint256 payment = job.maxPrice;
+        
+        // Mark job as completed to prevent re-claims
+        job.status = JobStatus.Completed;
+        
+        // Refund to renter
+        payable(job.renter).transfer(payment);
+        
+        emit PaymentRefunded(_jobId, job.renter, payment);
+    }
+    
+    // Emergency pause functions
+    function emergencyPause(string memory reason) external onlyOwner {
+        paused = true;
+        emit EmergencyPause(reason);
+    }
+    
+    function unpause() external onlyOwner {
+        paused = false;
+        emit EmergencyUnpause();
+    }
+    
+    function isPaused() external view returns (bool) {
+        return paused;
+    }
+    
+    // Dispute resolution
+    function resolveDispute(uint256 _jobId, bool favorClient) external {
+        require(msg.sender == governance, "Only governance can resolve disputes");
+        
+        Job storage job = jobs[_jobId];
+        require(job.renter != address(0), "Job does not exist");
+        require(job.status == JobStatus.Completed, "Job not completed");
+        
+        uint256 payment = job.maxPrice;
+        
+        if (favorClient) {
+            // Refund to client
+            payable(job.renter).transfer(payment);
+        } else {
+            // Pay to node
+            payable(job.assignedHost).transfer(payment);
+        }
+        
+        emit DisputeResolved(_jobId, favorClient);
     }
 }
