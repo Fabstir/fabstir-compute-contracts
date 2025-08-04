@@ -17,6 +17,13 @@ contract NodeRegistry is Ownable {
     uint256 public MIN_STAKE;
     address private governance;
     
+    // Circuit breaker for registration spam
+    uint256 private registrationCount;
+    uint256 private registrationWindowStart;
+    uint256 private constant REGISTRATION_WINDOW = 1 hours;
+    uint256 private constant MAX_REGISTRATIONS_PER_WINDOW = 10;
+    bool private registrationPaused;
+    
     // Sybil detection
     mapping(address => address[]) private controllerNodes; // controller => nodes[]
     mapping(address => address) private nodeController; // node => controller
@@ -31,11 +38,23 @@ contract NodeRegistry is Ownable {
     event StakeRestored(address indexed node, uint256 amount);
     
     function registerNodeSimple(string memory metadata) external payable {
+        require(!registrationPaused, "Registration is paused");
         require(bytes(metadata).length > 0, "Empty metadata");
         require(bytes(metadata).length <= 10000, "Metadata too long");
         require(_validateString(metadata), "Invalid characters");
         require(msg.value >= MIN_STAKE, "Insufficient stake");
         require(nodes[msg.sender].operator == address(0), "Already registered");
+        
+        // Check registration rate
+        if (block.timestamp > registrationWindowStart + REGISTRATION_WINDOW) {
+            registrationWindowStart = block.timestamp;
+            registrationCount = 0;
+        }
+        
+        registrationCount++;
+        if (registrationCount >= MAX_REGISTRATIONS_PER_WINDOW) {
+            registrationPaused = true;
+        }
         
         // Refund excess stake
         uint256 excess = msg.value - MIN_STAKE;
@@ -130,6 +149,14 @@ contract NodeRegistry is Ownable {
         require(_governance != address(0), "Invalid address");
         require(governance == address(0), "Governance already set");
         governance = _governance;
+    }
+    
+    function getGovernance() external view returns (address) {
+        return governance;
+    }
+    
+    function isRegistrationPaused() external view returns (bool) {
+        return registrationPaused;
     }
     
     function slashNode(address node, uint256 amount, string memory reason) external {

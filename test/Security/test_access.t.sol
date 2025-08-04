@@ -276,7 +276,7 @@ contract AccessControlTest is Test {
     function test_JobMarketplace_EmergencyPause_OnlyOwner() public {
         // Non-owner should fail
         vm.prank(alice);
-        vm.expectRevert("Not owner");
+        vm.expectRevert("Not authorized to pause");
         jobMarketplace.emergencyPause("test");
         
         // Owner should succeed
