@@ -188,7 +188,7 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 - [x] Create deployment scripts
 - [x] Create verification scripts
 - [x] Create migration scripts
-- [ ] Create monitoring scripts
+- [x] Create monitoring scripts
 
 **Test Files:**
 
