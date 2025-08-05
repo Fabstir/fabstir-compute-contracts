@@ -23,11 +23,11 @@ contract ReentrancyAttacker {
     
     function setTarget(address _target, string memory targetType) external {
         if (keccak256(bytes(targetType)) == keccak256("NodeRegistry")) {
-            nodeRegistry = NodeRegistry(_target);
+            nodeRegistry = NodeRegistry(payable(_target));
         } else if (keccak256(bytes(targetType)) == keccak256("JobMarketplace")) {
             jobMarketplace = JobMarketplace(_target);
         } else if (keccak256(bytes(targetType)) == keccak256("PaymentEscrow")) {
-            paymentEscrow = PaymentEscrow(_target);
+            paymentEscrow = PaymentEscrow(payable(_target));
         } else if (keccak256(bytes(targetType)) == keccak256("Governance")) {
             governance = Governance(payable(_target));
         }

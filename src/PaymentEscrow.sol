@@ -196,4 +196,65 @@ contract PaymentEscrow is ReentrancyGuard, Ownable {
     function getEscrow(bytes32 _jobId) external view returns (Escrow memory) {
         return escrows[_jobId];
     }
+    
+    // ========== Migration Functions ==========
+    
+    address public migrationHelper;
+    
+    modifier onlyMigrationHelper() {
+        require(msg.sender == migrationHelper, "Only migration helper");
+        _;
+    }
+    
+    function setMigrationHelper(address _migrationHelper) external onlyOwner {
+        require(_migrationHelper != address(0), "Invalid address");
+        migrationHelper = _migrationHelper;
+    }
+    
+    function addMigratedEscrow(
+        bytes32 escrowId,
+        address payer,
+        address payee,
+        uint256 amount,
+        address token,
+        uint256 releaseTime,
+        bool isReleased,
+        bool isRefunded
+    ) external onlyMigrationHelper {
+        require(escrows[escrowId].renter == address(0), "Escrow exists");
+        
+        EscrowStatus status;
+        if (isReleased) {
+            status = EscrowStatus.Released;
+        } else if (isRefunded) {
+            status = EscrowStatus.Refunded;
+        } else {
+            status = EscrowStatus.Active;
+        }
+        
+        escrows[escrowId] = Escrow({
+            renter: payer,
+            host: payee,
+            amount: amount,
+            token: token,
+            status: status,
+            refundRequested: false
+        });
+    }
+    
+    function emergencyWithdraw(address to, uint256 amount) external {
+        require(msg.sender == owner() || msg.sender == migrationHelper, "Not authorized");
+        require(amount <= address(this).balance, "Insufficient balance");
+        
+        (bool success, ) = payable(to).call{value: amount}("");
+        require(success, "Transfer failed");
+    }
+    
+    function getActiveEscrowIds() external view returns (bytes32[] memory) {
+        // Simplified - in production would need proper tracking
+        return new bytes32[](0);
+    }
+    
+    // Receive function to accept ETH during migration
+    receive() external payable {}
 }

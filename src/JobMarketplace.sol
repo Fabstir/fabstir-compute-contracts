@@ -723,4 +723,75 @@ contract JobMarketplace is ReentrancyGuard {
         
         emit DisputeResolved(_jobId, favorClient);
     }
+    
+    // ========== Migration Functions ==========
+    
+    address public migrationHelper;
+    
+    modifier onlyMigrationHelper() {
+        require(msg.sender == migrationHelper, "Only migration helper");
+        _;
+    }
+    
+    function setMigrationHelper(address _migrationHelper) external onlyOwner {
+        require(_migrationHelper != address(0), "Invalid address");
+        migrationHelper = _migrationHelper;
+    }
+    
+    function addMigratedJob(
+        uint256 jobId,
+        address client,
+        string memory modelId,
+        string memory inputHash,
+        uint256 payment,
+        address paymentToken,
+        uint256 deadline,
+        uint256 status,
+        address assignedNode,
+        string memory resultCID
+    ) external onlyMigrationHelper {
+        require(jobs[jobId].renter == address(0), "Job already exists");
+        
+        jobs[jobId] = Job({
+            renter: client,
+            status: JobStatus(status),
+            assignedHost: assignedNode,
+            maxPrice: payment,
+            deadline: deadline,
+            completedAt: 0,
+            modelId: modelId,
+            inputHash: inputHash,
+            resultHash: resultCID
+        });
+        
+        // Update nextJobId if needed
+        if (jobId >= nextJobId) {
+            nextJobId = jobId + 1;
+        }
+        
+        emit JobPosted(jobId, client, payment);
+    }
+    
+    function getActiveJobIds() external view returns (uint256[] memory) {
+        // For testing, return a small fixed array
+        // In production, this would need proper job tracking
+        uint256 count = 0;
+        for (uint256 i = 0; i < nextJobId && count < 100; i++) {
+            if (jobs[i].renter != address(0) && 
+                (jobs[i].status == JobStatus.Posted || jobs[i].status == JobStatus.Claimed)) {
+                count++;
+            }
+        }
+        
+        uint256[] memory activeJobs = new uint256[](count);
+        uint256 index = 0;
+        for (uint256 i = 0; i < nextJobId && index < count; i++) {
+            if (jobs[i].renter != address(0) && 
+                (jobs[i].status == JobStatus.Posted || jobs[i].status == JobStatus.Claimed)) {
+                activeJobs[index++] = i;
+            }
+        }
+        
+        return activeJobs;
+    }
 }

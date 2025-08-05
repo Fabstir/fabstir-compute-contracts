@@ -16,6 +16,7 @@ contract NodeRegistry is Ownable {
     mapping(address => Node) private nodes;
     uint256 public MIN_STAKE;
     address private governance;
+    address[] private nodeList; // Track all registered nodes
     
     // Circuit breaker for registration spam
     uint256 private registrationCount;
@@ -74,6 +75,9 @@ contract NodeRegistry is Ownable {
             region: ""
         });
         
+        // Track node in list
+        nodeList.push(msg.sender);
+        
         emit NodeRegistered(msg.sender, metadata);
     }
     
@@ -93,6 +97,9 @@ contract NodeRegistry is Ownable {
             models: _models,
             region: _region
         });
+        
+        // Track node in list
+        nodeList.push(msg.sender);
         
         emit NodeRegistered(msg.sender, _peerId);
     }
@@ -137,6 +144,9 @@ contract NodeRegistry is Ownable {
             models: _models,
             region: _region
         });
+        
+        // Track node in list
+        nodeList.push(operator);
         
         emit NodeRegistered(operator, _peerId);
     }
@@ -212,6 +222,9 @@ contract NodeRegistry is Ownable {
             region: ""
         });
         
+        // Track node in list
+        nodeList.push(nodeOperator);
+        
         // Track controller relationship
         controllerNodes[msg.sender].push(nodeOperator);
         nodeController[nodeOperator] = msg.sender;
@@ -237,5 +250,68 @@ contract NodeRegistry is Ownable {
             }
         }
         return true;
+    }
+
+    // ========== Migration Functions ==========
+    
+    address public migrationHelper;
+    
+    modifier onlyMigrationHelper() {
+        require(msg.sender == migrationHelper, "Only migration helper");
+        _;
+    }
+    
+    function setMigrationHelper(address _migrationHelper) external onlyOwner {
+        require(_migrationHelper != address(0), "Invalid address");
+        migrationHelper = _migrationHelper;
+    }
+    
+    function addMigratedNode(
+        address operator,
+        string memory peerId,
+        string[] memory models,
+        string memory region
+    ) external payable onlyMigrationHelper {
+        require(nodes[operator].operator == address(0), "Node exists");
+        require(msg.value > 0, "No stake provided");
+        
+        nodes[operator] = Node({
+            operator: operator,
+            peerId: peerId,
+            stake: msg.value,
+            active: true,
+            models: models,
+            region: region
+        });
+        
+        // Track node in list
+        nodeList.push(operator);
+        
+        emit NodeRegistered(operator, peerId);
+    }
+    
+    function getActiveNodes() external view returns (address[] memory) {
+        // Count active nodes
+        uint256 activeCount = 0;
+        for (uint256 i = 0; i < nodeList.length; i++) {
+            if (nodes[nodeList[i]].active) {
+                activeCount++;
+            }
+        }
+        
+        // Create array of active nodes
+        address[] memory activeNodes = new address[](activeCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < nodeList.length; i++) {
+            if (nodes[nodeList[i]].active) {
+                activeNodes[index++] = nodeList[i];
+            }
+        }
+        
+        return activeNodes;
+    }
+    
+    function minimumStake() external view returns (uint256) {
+        return MIN_STAKE;
     }
 }

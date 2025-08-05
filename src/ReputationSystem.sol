@@ -62,7 +62,13 @@ contract ReputationSystem is Ownable {
     
     function updateReputation(address host, uint256 change, bool positive) external {
         require(authorizedContracts[msg.sender], "Not authorized");
-        isTrackedHost[host] = true;
+        
+        // Initialize host if needed
+        if (!isTrackedHost[host]) {
+            allHosts.push(host);
+            isTrackedHost[host] = true;
+        }
+        
         if (positive) {
             hostReputations[host].score += change;
         } else {
@@ -280,5 +286,36 @@ contract ReputationSystem is Ownable {
                 isTrackedHost[host] = true;
             }
         }
+    }
+    
+    // ========== Migration Functions ==========
+    
+    address public migrationHelper;
+    
+    modifier onlyMigrationHelper() {
+        require(msg.sender == migrationHelper, "Only migration helper");
+        _;
+    }
+    
+    function setMigrationHelper(address _migrationHelper) external onlyOwner {
+        require(_migrationHelper != address(0), "Invalid address");
+        migrationHelper = _migrationHelper;
+    }
+    
+    function setMigratedReputation(
+        address node,
+        uint256 score
+    ) external onlyMigrationHelper {
+        _initializeHostIfNeeded(node);
+        
+        HostReputation storage rep = hostReputations[node];
+        rep.score = score;
+        rep.lastActivityTimestamp = block.timestamp;
+        
+        emit ReputationUpdated(node, int256(score), score);
+    }
+    
+    function getNodesWithReputation() external view returns (address[] memory) {
+        return allHosts;
     }
 }
