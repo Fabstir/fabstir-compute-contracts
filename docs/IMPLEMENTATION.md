@@ -186,7 +186,7 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 ### Sub-phase 3.3: Deployment Scripts
 
 - [x] Create deployment scripts
-- [ ] Create verification scripts
+- [ x Create verification scripts
 - [ ] Create migration scripts
 - [ ] Create monitoring scripts
 
