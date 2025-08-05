@@ -1,0 +1,543 @@
+/**
+ * Example: Escrow Management
+ * Purpose: Demonstrates advanced escrow operations including multi-token payments and refunds
+ * Prerequisites:
+ *   - Understanding of payment escrow system
+ *   - ERC20 tokens for testing (optional)
+ *   - Active jobs or disputes
+ */
+
+const { ethers } = require('ethers');
+require('dotenv').config({ path: '../.env' });
+
+// Contract ABIs
+const PAYMENT_ESCROW_ABI = [
+    'function deposit(address token, uint256 amount) payable',
+    'function withdraw(address token, uint256 amount)',
+    'function getBalance(address account, address token) view returns (uint256)',
+    'function lockFunds(address from, address token, uint256 amount, uint256 jobId)',
+    'function releaseFunds(address to, address token, uint256 amount, uint256 jobId)',
+    'function refundFunds(address to, address token, uint256 amount, uint256 jobId)',
+    'function getLockedFunds(uint256 jobId) view returns (tuple(address token, uint256 amount, address from, address to, bool released))',
+    'function getTotalLocked(address account) view returns (uint256)',
+    'function getSupportedTokens() view returns (address[])',
+    'event FundsDeposited(address indexed account, address token, uint256 amount)',
+    'event FundsWithdrawn(address indexed account, address token, uint256 amount)',
+    'event FundsLocked(uint256 indexed jobId, address from, address token, uint256 amount)',
+    'event FundsReleased(uint256 indexed jobId, address to, address token, uint256 amount)',
+    'event FundsRefunded(uint256 indexed jobId, address to, address token, uint256 amount)'
+];
+
+const ERC20_ABI = [
+    'function approve(address spender, uint256 amount) returns (bool)',
+    'function allowance(address owner, address spender) view returns (uint256)',
+    'function balanceOf(address account) view returns (uint256)',
+    'function symbol() view returns (string)',
+    'function decimals() view returns (uint8)'
+];
+
+const JOB_MARKETPLACE_ABI = [
+    'function getJob(uint256 jobId) view returns (tuple(uint256 id, address poster, string modelId, uint256 payment, uint256 maxTokens, uint256 deadline, address assignedHost, uint8 status, bytes inputData, bytes outputData, uint256 postedAt, uint256 completedAt))',
+    'function cancelJob(uint256 jobId)',
+    'function disputeJob(uint256 jobId, string reason)'
+];
+
+// Configuration
+const config = {
+    rpcUrl: process.env.RPC_URL || 'https://base-mainnet.g.alchemy.com/v2/YOUR_KEY',
+    chainId: parseInt(process.env.CHAIN_ID || '8453'),
+    paymentEscrow: process.env.PAYMENT_ESCROW || '0x...',
+    jobMarketplace: process.env.JOB_MARKETPLACE || '0x...',
+    
+    // Token addresses (Base mainnet)
+    tokens: {
+        ETH: ethers.ZeroAddress, // Native ETH
+        USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        DAI: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb'
+    },
+    
+    // Gas settings
+    gasLimit: 200000,
+    maxFeePerGas: ethers.parseUnits('50', 'gwei'),
+    maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei')
+};
+
+// Escrow manager class
+class EscrowManager {
+    constructor(escrowContract, provider) {
+        this.escrow = escrowContract;
+        this.provider = provider;
+        this.tokenCache = new Map();
+    }
+    
+    async getTokenInfo(tokenAddress) {
+        if (tokenAddress === ethers.ZeroAddress) {
+            return { symbol: 'ETH', decimals: 18 };
+        }
+        
+        if (!this.tokenCache.has(tokenAddress)) {
+            const token = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
+            const [symbol, decimals] = await Promise.all([
+                token.symbol(),
+                token.decimals()
+            ]);
+            this.tokenCache.set(tokenAddress, { symbol, decimals });
+        }
+        
+        return this.tokenCache.get(tokenAddress);
+    }
+    
+    async formatBalance(amount, tokenAddress) {
+        const info = await this.getTokenInfo(tokenAddress);
+        return `${ethers.formatUnits(amount, info.decimals)} ${info.symbol}`;
+    }
+    
+    async checkAllBalances(account) {
+        console.log(`\n💰 Escrow Balances for ${account}:`);
+        
+        const supportedTokens = await this.escrow.getSupportedTokens();
+        const balances = [];
+        
+        // Check ETH balance
+        const ethBalance = await this.escrow.getBalance(account, ethers.ZeroAddress);
+        if (ethBalance > 0n) {
+            balances.push({
+                token: ethers.ZeroAddress,
+                balance: ethBalance,
+                formatted: await this.formatBalance(ethBalance, ethers.ZeroAddress)
+            });
+        }
+        
+        // Check token balances
+        for (const token of supportedTokens) {
+            const balance = await this.escrow.getBalance(account, token);
+            if (balance > 0n) {
+                balances.push({
+                    token,
+                    balance,
+                    formatted: await this.formatBalance(balance, token)
+                });
+            }
+        }
+        
+        if (balances.length === 0) {
+            console.log('   No balances in escrow');
+        } else {
+            balances.forEach(b => {
+                console.log(`   • ${b.formatted}`);
+            });
+        }
+        
+        // Check locked funds
+        const totalLocked = await this.escrow.getTotalLocked(account);
+        if (totalLocked > 0n) {
+            console.log(`   🔒 Total locked: ${ethers.formatEther(totalLocked)} ETH equivalent`);
+        }
+        
+        return balances;
+    }
+}
+
+// Example: Deposit funds to escrow
+async function depositExample(escrow, wallet) {
+    console.log('\n📥 Deposit Example');
+    
+    // Deposit ETH
+    const ethAmount = ethers.parseEther('0.5');
+    console.log(`   Depositing ${ethers.formatEther(ethAmount)} ETH...`);
+    
+    const tx = await escrow.deposit(ethers.ZeroAddress, 0, {
+        value: ethAmount,
+        gasLimit: config.gasLimit,
+        maxFeePerGas: config.maxFeePerGas,
+        maxPriorityFeePerGas: config.maxPriorityFeePerGas
+    });
+    
+    console.log(`   Transaction: ${tx.hash}`);
+    const receipt = await tx.wait();
+    console.log(`   ✅ Deposit successful!`);
+    
+    // Check new balance
+    const newBalance = await escrow.getBalance(wallet.address, ethers.ZeroAddress);
+    console.log(`   New escrow balance: ${ethers.formatEther(newBalance)} ETH`);
+    
+    return receipt;
+}
+
+// Example: Deposit ERC20 tokens
+async function depositTokenExample(escrow, wallet, tokenAddress, amount) {
+    console.log('\n🪙 Token Deposit Example');
+    
+    const token = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
+    const tokenInfo = await new EscrowManager(escrow, wallet.provider).getTokenInfo(tokenAddress);
+    
+    console.log(`   Depositing ${ethers.formatUnits(amount, tokenInfo.decimals)} ${tokenInfo.symbol}...`);
+    
+    // Check token balance
+    const tokenBalance = await token.balanceOf(wallet.address);
+    if (tokenBalance < amount) {
+        throw new Error(`Insufficient ${tokenInfo.symbol} balance`);
+    }
+    
+    // Approve escrow to spend tokens
+    console.log('   Approving token transfer...');
+    const approveTx = await token.approve(escrow.target, amount);
+    await approveTx.wait();
+    
+    // Deposit tokens
+    console.log('   Depositing tokens...');
+    const depositTx = await escrow.deposit(tokenAddress, amount, {
+        gasLimit: config.gasLimit,
+        maxFeePerGas: config.maxFeePerGas,
+        maxPriorityFeePerGas: config.maxPriorityFeePerGas
+    });
+    
+    console.log(`   Transaction: ${depositTx.hash}`);
+    const receipt = await depositTx.wait();
+    console.log(`   ✅ Token deposit successful!`);
+    
+    return receipt;
+}
+
+// Example: Withdraw funds
+async function withdrawExample(escrow, wallet, tokenAddress, amount) {
+    console.log('\n📤 Withdraw Example');
+    
+    const manager = new EscrowManager(escrow, wallet.provider);
+    const formatted = await manager.formatBalance(amount, tokenAddress);
+    
+    console.log(`   Withdrawing ${formatted}...`);
+    
+    // Check balance
+    const balance = await escrow.getBalance(wallet.address, tokenAddress);
+    if (balance < amount) {
+        throw new Error('Insufficient escrow balance');
+    }
+    
+    // Withdraw
+    const tx = await escrow.withdraw(tokenAddress, amount, {
+        gasLimit: config.gasLimit,
+        maxFeePerGas: config.maxFeePerGas,
+        maxPriorityFeePerGas: config.maxPriorityFeePerGas
+    });
+    
+    console.log(`   Transaction: ${tx.hash}`);
+    const receipt = await tx.wait();
+    console.log(`   ✅ Withdrawal successful!`);
+    
+    // Check new balance
+    const newBalance = await escrow.getBalance(wallet.address, tokenAddress);
+    const newFormatted = await manager.formatBalance(newBalance, tokenAddress);
+    console.log(`   Remaining escrow balance: ${newFormatted}`);
+    
+    return receipt;
+}
+
+// Example: Handle job payment flow
+async function jobPaymentFlow(contracts, jobId) {
+    console.log(`\n💼 Job Payment Flow for Job #${jobId}`);
+    
+    const job = await contracts.marketplace.getJob(jobId);
+    const manager = new EscrowManager(contracts.escrow, contracts.marketplace.provider);
+    
+    console.log('   Job Details:');
+    console.log(`   • Poster: ${job.poster}`);
+    console.log(`   • Host: ${job.assignedHost || 'Not assigned'}`);
+    console.log(`   • Payment: ${ethers.formatEther(job.payment)} ETH`);
+    console.log(`   • Status: ${['Posted', 'Claimed', 'Completed', 'Cancelled'][job.status]}`);
+    
+    // Check locked funds
+    try {
+        const locked = await contracts.escrow.getLockedFunds(jobId);
+        console.log('\n   Locked Funds:');
+        console.log(`   • Amount: ${await manager.formatBalance(locked.amount, locked.token)}`);
+        console.log(`   • From: ${locked.from}`);
+        console.log(`   • To: ${locked.to || 'Not assigned'}`);
+        console.log(`   • Released: ${locked.released ? 'Yes' : 'No'}`);
+        
+        if (!locked.released && job.status === 2) { // Completed
+            console.log('\n   ⚠️  Job completed but funds not released!');
+        }
+    } catch (error) {
+        console.log('   No locked funds for this job');
+    }
+    
+    return job;
+}
+
+// Example: Multi-token payment job
+async function multiTokenJobExample(contracts, wallet) {
+    console.log('\n🌈 Multi-Token Payment Example');
+    
+    // Simulate a job that accepts multiple payment tokens
+    const paymentOptions = [
+        { token: ethers.ZeroAddress, amount: ethers.parseEther('0.1') },
+        { token: config.tokens.USDC, amount: ethers.parseUnits('100', 6) }, // 100 USDC
+        { token: config.tokens.DAI, amount: ethers.parseUnits('100', 18) } // 100 DAI
+    ];
+    
+    console.log('   Payment options for job:');
+    const manager = new EscrowManager(contracts.escrow, wallet.provider);
+    
+    for (const option of paymentOptions) {
+        const formatted = await manager.formatBalance(option.amount, option.token);
+        console.log(`   • ${formatted}`);
+    }
+    
+    // Check which tokens user has in escrow
+    console.log('\n   Checking available balances...');
+    const balances = await manager.checkAllBalances(wallet.address);
+    
+    // Find best payment option
+    const availableOption = paymentOptions.find(option => {
+        const balance = balances.find(b => b.token === option.token);
+        return balance && balance.balance >= option.amount;
+    });
+    
+    if (availableOption) {
+        const formatted = await manager.formatBalance(availableOption.amount, availableOption.token);
+        console.log(`\n   ✅ Can pay with ${formatted}`);
+    } else {
+        console.log('\n   ❌ Insufficient balance for any payment option');
+    }
+    
+    return availableOption;
+}
+
+// Example: Handle refunds
+async function refundExample(contracts, jobId, reason) {
+    console.log(`\n💸 Refund Example for Job #${jobId}`);
+    console.log(`   Reason: ${reason}`);
+    
+    // In a real implementation, this would be called by an admin or dispute resolver
+    const job = await contracts.marketplace.getJob(jobId);
+    
+    if (job.status === 2) {
+        console.log('   ❌ Cannot refund completed job');
+        return;
+    }
+    
+    try {
+        const locked = await contracts.escrow.getLockedFunds(jobId);
+        
+        if (locked.released) {
+            console.log('   ❌ Funds already released');
+            return;
+        }
+        
+        const manager = new EscrowManager(contracts.escrow, contracts.marketplace.provider);
+        const formatted = await manager.formatBalance(locked.amount, locked.token);
+        
+        console.log(`   Refunding ${formatted} to ${locked.from}...`);
+        
+        // Note: In production, only authorized addresses can call refund
+        const tx = await contracts.escrow.refundFunds(
+            locked.from,
+            locked.token,
+            locked.amount,
+            jobId
+        );
+        
+        console.log(`   Transaction: ${tx.hash}`);
+        const receipt = await tx.wait();
+        console.log(`   ✅ Refund successful!`);
+        
+        return receipt;
+        
+    } catch (error) {
+        console.log(`   ❌ Refund failed: ${error.message}`);
+    }
+}
+
+// Main function
+async function main() {
+    try {
+        console.log('💎 Fabstir Escrow Management Example\n');
+        
+        // 1. Setup
+        console.log('1️⃣ Setting up connection...');
+        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+        
+        console.log(`   Account: ${wallet.address}`);
+        console.log(`   Network: ${config.chainId === 8453 ? 'Base Mainnet' : 'Base Sepolia'}`);
+        
+        // 2. Initialize contracts
+        console.log('\n2️⃣ Initializing contracts...');
+        const escrow = new ethers.Contract(
+            config.paymentEscrow,
+            PAYMENT_ESCROW_ABI,
+            wallet
+        );
+        
+        const marketplace = new ethers.Contract(
+            config.jobMarketplace,
+            JOB_MARKETPLACE_ABI,
+            wallet
+        );
+        
+        const contracts = { escrow, marketplace };
+        
+        // 3. Check initial balances
+        console.log('\n3️⃣ Checking escrow balances...');
+        const manager = new EscrowManager(escrow, provider);
+        await manager.checkAllBalances(wallet.address);
+        
+        // 4. Demonstrate deposit
+        await depositExample(escrow, wallet);
+        
+        // 5. Demonstrate withdrawal
+        const withdrawAmount = ethers.parseEther('0.1');
+        await withdrawExample(escrow, wallet, ethers.ZeroAddress, withdrawAmount);
+        
+        // 6. Check job payments (example job ID)
+        const exampleJobId = 42;
+        await jobPaymentFlow(contracts, exampleJobId);
+        
+        // 7. Multi-token example
+        await multiTokenJobExample(contracts, wallet);
+        
+        // 8. Monitor escrow events
+        console.log('\n📡 Setting up event monitoring...');
+        
+        escrow.on('FundsDeposited', (account, token, amount, event) => {
+            if (account.toLowerCase() === wallet.address.toLowerCase()) {
+                manager.formatBalance(amount, token).then(formatted => {
+                    console.log(`\n🔔 Funds Deposited: ${formatted}`);
+                });
+            }
+        });
+        
+        escrow.on('FundsLocked', (jobId, from, token, amount, event) => {
+            manager.formatBalance(amount, token).then(formatted => {
+                console.log(`\n🔔 Funds Locked for Job #${jobId}: ${formatted}`);
+            });
+        });
+        
+        escrow.on('FundsReleased', (jobId, to, token, amount, event) => {
+            if (to.toLowerCase() === wallet.address.toLowerCase()) {
+                manager.formatBalance(amount, token).then(formatted => {
+                    console.log(`\n🔔 Payment Received for Job #${jobId}: ${formatted}`);
+                });
+            }
+        });
+        
+        // 9. Summary
+        console.log('\n📊 Escrow Management Summary:');
+        console.log('   ✅ Demonstrated deposits and withdrawals');
+        console.log('   ✅ Showed multi-token support');
+        console.log('   ✅ Explained job payment flow');
+        console.log('   ✅ Set up event monitoring');
+        
+        console.log('\n💡 Best Practices:');
+        console.log('   • Always check balances before operations');
+        console.log('   • Use appropriate gas limits for token operations');
+        console.log('   • Monitor events for payment notifications');
+        console.log('   • Handle multiple payment tokens for flexibility');
+        console.log('   • Implement proper error handling for failed transactions');
+        
+        // Keep listening for events
+        console.log('\n👂 Listening for escrow events... (Press Ctrl+C to exit)');
+        
+        // Prevent script from exiting
+        await new Promise(() => {});
+        
+    } catch (error) {
+        console.error('\n❌ Error:', error.message);
+        process.exit(1);
+    }
+}
+
+// Execute if run directly
+if (require.main === module) {
+    main();
+}
+
+// Export for use in other modules
+module.exports = { 
+    main, 
+    config,
+    EscrowManager,
+    depositExample,
+    withdrawExample,
+    jobPaymentFlow
+};
+
+/**
+ * Expected Output:
+ * 
+ * 💎 Fabstir Escrow Management Example
+ * 
+ * 1️⃣ Setting up connection...
+ *    Account: 0x742d35Cc6634C0532925a3b844Bc9e7595f6789
+ *    Network: Base Mainnet
+ * 
+ * 2️⃣ Initializing contracts...
+ * 
+ * 3️⃣ Checking escrow balances...
+ * 
+ * 💰 Escrow Balances for 0x742d35Cc6634C0532925a3b844Bc9e7595f6789:
+ *    • 2.35 ETH
+ *    • 500.00 USDC
+ *    • 250.50 DAI
+ *    🔒 Total locked: 0.15 ETH equivalent
+ * 
+ * 📥 Deposit Example
+ *    Depositing 0.5 ETH...
+ *    Transaction: 0xabc123...
+ *    ✅ Deposit successful!
+ *    New escrow balance: 2.85 ETH
+ * 
+ * 📤 Withdraw Example
+ *    Withdrawing 0.1 ETH...
+ *    Transaction: 0xdef456...
+ *    ✅ Withdrawal successful!
+ *    Remaining escrow balance: 2.75 ETH
+ * 
+ * 💼 Job Payment Flow for Job #42
+ *    Job Details:
+ *    • Poster: 0x1234...5678
+ *    • Host: 0x742d35Cc6634C0532925a3b844Bc9e7595f6789
+ *    • Payment: 0.15 ETH
+ *    • Status: Claimed
+ * 
+ *    Locked Funds:
+ *    • Amount: 0.15 ETH
+ *    • From: 0x1234...5678
+ *    • To: 0x742d35Cc6634C0532925a3b844Bc9e7595f6789
+ *    • Released: No
+ * 
+ * 🌈 Multi-Token Payment Example
+ *    Payment options for job:
+ *    • 0.1 ETH
+ *    • 100.0 USDC
+ *    • 100.0 DAI
+ * 
+ *    Checking available balances...
+ * 
+ * 💰 Escrow Balances for 0x742d35Cc6634C0532925a3b844Bc9e7595f6789:
+ *    • 2.75 ETH
+ *    • 500.00 USDC
+ *    • 250.50 DAI
+ * 
+ *    ✅ Can pay with 0.1 ETH
+ * 
+ * 📡 Setting up event monitoring...
+ * 
+ * 📊 Escrow Management Summary:
+ *    ✅ Demonstrated deposits and withdrawals
+ *    ✅ Showed multi-token support
+ *    ✅ Explained job payment flow
+ *    ✅ Set up event monitoring
+ * 
+ * 💡 Best Practices:
+ *    • Always check balances before operations
+ *    • Use appropriate gas limits for token operations
+ *    • Monitor events for payment notifications
+ *    • Handle multiple payment tokens for flexibility
+ *    • Implement proper error handling for failed transactions
+ * 
+ * 👂 Listening for escrow events... (Press Ctrl+C to exit)
+ * 
+ * 🔔 Payment Received for Job #42: 0.15 ETH
+ */
