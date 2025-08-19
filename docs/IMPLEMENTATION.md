@@ -294,23 +294,22 @@ Enable USDC token payments for proper account abstraction UX (users shouldn't ne
 
 **Status: READY FOR DEPLOYMENT**
 
-#### Task 3.5.4: Deployment & Integration 🔴 TODO
-- [ ] Deploy updated JobMarketplace to Base Sepolia
-- [ ] Verify PaymentEscrow linkage
-- [ ] Update frontend SDK with new contract address
-- [ ] Update SDK to use postJobWithToken for USDC
-- [ ] Remove ETH payment requirements from UI
-- [ ] Test complete user flow with MetaMask
+#### Task 3.5.4: Deployment & Integration ✅ COMPLETE
+- [x] Deploy updated JobMarketplace to Base Sepolia
+- [x] Verify PaymentEscrow linkage
+- [x] Update frontend SDK with new contract address
+- [x] Update SDK to use postJobWithToken for USDC
+- [x] Remove ETH payment requirements from UI
+- [x] Test complete user flow with MetaMask
 
-**Deployment Script:**
-- `script/DeployUSDCMarketplace.s.sol` ✅ (needs update for escrow)
+**Deployed Contracts:**
+- JobMarketplace: 0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6
+- PaymentEscrow: 0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894
+- USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
 
-**Critical Path for MVP:**
-1. Fix PaymentEscrow integration (Task 3.5.2)
-2. Fix completeJob for USDC (Task 3.5.3)
-3. Deploy and test (Task 3.5.4)
+### Sub-phase 3.5: USDC Payment Integration ✅ COMPLETE
 
-**Status: BLOCKED - USDC payments broken without Tasks 3.5.2 and 3.5.3**
+**Status: DEPLOYED TO BASE SEPOLIA - MVP READY!** 🚀
 
 ## Progress Summary
 

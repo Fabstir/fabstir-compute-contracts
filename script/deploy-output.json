@@ -1,0 +1,13 @@
+{
+  "network": "base-sepolia",
+  "chainId": 84532,
+  "contracts": {
+    "jobMarketplace": "0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6",
+    "paymentEscrow": "0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894",
+    "nodeRegistry": "0xF6420Cc8d44Ac92a6eE29A5E8D12D00aE91a73B3",
+    "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+  },
+  "deployer": "0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11",
+  "timestamp": 1755583648,
+  "blockNumber": 29907680
+}

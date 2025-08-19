@@ -9,91 +9,78 @@ import "../src/PaymentEscrow.sol";
 contract DeployUSDCMarketplace is Script {
     // Base Sepolia addresses
     address constant USDC_ADDRESS = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
-    address constant EXISTING_NODE_REGISTRY = address(0); // Set this if you have existing registry
+    address constant EXISTING_NODE_REGISTRY = 0xF6420Cc8d44Ac92a6eE29A5E8D12D00aE91a73B3; // Using existing ETH-based registry
     address constant EXISTING_PAYMENT_ESCROW = 0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894;
     
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         
-        console.log("Deploying USDC-enabled JobMarketplace with account:", deployer);
+        console.log("========================================");
+        console.log("USDC-Enabled JobMarketplace Deployment");
+        console.log("========================================");
+        console.log("Deployer:", deployer);
         console.log("Account balance:", deployer.balance);
         
         vm.startBroadcast(deployerPrivateKey);
         
-        // Deploy or get existing NodeRegistry
-        address nodeRegistryAddress;
-        if (EXISTING_NODE_REGISTRY != address(0)) {
-            nodeRegistryAddress = EXISTING_NODE_REGISTRY;
-            console.log("Using existing NodeRegistry at:", nodeRegistryAddress);
-        } else {
-            NodeRegistry nodeRegistry = new NodeRegistry(10 ether); // 10 ETH min stake
-            nodeRegistryAddress = address(nodeRegistry);
-            console.log("Deployed new NodeRegistry at:", nodeRegistryAddress);
-        }
+        // Use existing NodeRegistry
+        address nodeRegistryAddress = EXISTING_NODE_REGISTRY;
+        console.log("\nUsing existing NodeRegistry at:", nodeRegistryAddress);
         
         // Deploy new JobMarketplace with USDC support
+        console.log("\nDeploying new JobMarketplace...");
         JobMarketplace jobMarketplace = new JobMarketplace(nodeRegistryAddress);
-        console.log("Deployed JobMarketplace with USDC support at:", address(jobMarketplace));
+        console.log("[OK] JobMarketplace deployed at:", address(jobMarketplace));
         
-        // Connect to existing PaymentEscrow or deploy new one
-        if (EXISTING_PAYMENT_ESCROW != address(0)) {
-            jobMarketplace.setPaymentEscrow(EXISTING_PAYMENT_ESCROW);
-            console.log("Connected to existing PaymentEscrow at:", EXISTING_PAYMENT_ESCROW);
-            
-            // Update PaymentEscrow to allow JobMarketplace
-            PaymentEscrow existingEscrow = PaymentEscrow(payable(EXISTING_PAYMENT_ESCROW));
-            existingEscrow.setJobMarketplace(address(jobMarketplace));
-        } else {
-            // Deploy new PaymentEscrow
-            PaymentEscrow paymentEscrow = new PaymentEscrow(deployer, 100); // 1% fee
-            jobMarketplace.setPaymentEscrow(address(paymentEscrow));
-            paymentEscrow.setJobMarketplace(address(jobMarketplace));
-            console.log("Deployed new PaymentEscrow at:", address(paymentEscrow));
-        }
+        // Set USDC address on marketplace
+        console.log("\nConfiguring USDC address...");
+        jobMarketplace.setUsdcAddress(USDC_ADDRESS);
+        console.log("[OK] USDC address set to:", USDC_ADDRESS);
         
-        // Set USDC address (already set in constructor, but can be updated if needed)
-        // Note: In production, you might want to remove the setter and use only the constant
-        console.log("USDC address configured:", jobMarketplace.usdcAddress());
+        // Connect to existing PaymentEscrow
+        console.log("\nConnecting to PaymentEscrow...");
+        jobMarketplace.setPaymentEscrow(EXISTING_PAYMENT_ESCROW);
+        console.log("[OK] Connected to PaymentEscrow at:", EXISTING_PAYMENT_ESCROW);
         
-        // Verify integration
-        console.log("Verifying integration...");
-        console.log("- NodeRegistry connected:", address(jobMarketplace.nodeRegistry()));
-        console.log("- USDC address set:", jobMarketplace.usdcAddress());
-        console.log("- Existing PaymentEscrow (not integrated):", EXISTING_PAYMENT_ESCROW);
+        // IMPORTANT: Update PaymentEscrow to allow new JobMarketplace
+        console.log("\nUpdating PaymentEscrow permissions...");
+        PaymentEscrow existingEscrow = PaymentEscrow(payable(EXISTING_PAYMENT_ESCROW));
+        existingEscrow.setJobMarketplace(address(jobMarketplace));
+        console.log("[OK] PaymentEscrow updated to allow new JobMarketplace");
         
         vm.stopBroadcast();
         
+        // Verify integration
+        console.log("\n========================================");
+        console.log("Verification");
+        console.log("========================================");
+        console.log("NodeRegistry connected:", address(jobMarketplace.nodeRegistry()));
+        console.log("PaymentEscrow connected:", address(jobMarketplace.paymentEscrow()));
+        console.log("USDC address configured:", jobMarketplace.usdcAddress());
+        
+        // Note: File write disabled for broadcast mode
+        // Deployment info will be saved to broadcast/ directory
+        
         // Output deployment summary
-        console.log("\n=== Deployment Summary ===");
-        console.log("JobMarketplace with USDC:", address(jobMarketplace));
-        console.log("NodeRegistry:", nodeRegistryAddress);
-        console.log("USDC Token:", USDC_ADDRESS);
-        console.log("\n=== Integration Instructions ===");
-        console.log("1. For ETH payments: Use postJob() function with msg.value");
-        console.log("2. For USDC payments: Use postJobWithToken() function");
-        console.log("   - First approve USDC: USDC.approve(marketplace, amount)");
-        console.log("   - Then call: postJobWithToken(details, requirements, USDC_ADDRESS, amount)");
-        console.log("\n=== SDK Update Required ===");
-        console.log("Update your SDK/frontend to:");
-        console.log("- Use new JobMarketplace address:", address(jobMarketplace));
-        console.log("- Call postJobWithToken for USDC payments");
-        console.log("- Approve USDC before calling postJobWithToken");
+        console.log("\n========================================");
+        console.log("Deployment Complete!");
+        console.log("========================================");
+        console.log("\nContract Addresses:");
+        console.log("  JobMarketplace:", address(jobMarketplace));
+        console.log("  PaymentEscrow:", EXISTING_PAYMENT_ESCROW);
+        console.log("  NodeRegistry:", nodeRegistryAddress);
+        console.log("  USDC:", USDC_ADDRESS);
         
-        // Write deployment info to file
-        string memory deploymentInfo = string(abi.encodePacked(
-            "USDC-Enabled JobMarketplace Deployment\n",
-            "=====================================\n",
-            "Network: Base Sepolia\n",
-            "JobMarketplace: ", vm.toString(address(jobMarketplace)), "\n",
-            "NodeRegistry: ", vm.toString(nodeRegistryAddress), "\n",
-            "USDC Token: ", vm.toString(USDC_ADDRESS), "\n",
-            "Deployed by: ", vm.toString(deployer), "\n",
-            "Timestamp: ", vm.toString(block.timestamp), "\n"
-        ));
+        console.log("\nFrontend Integration:");
+        console.log("  1. Update JobMarketplace address to:", address(jobMarketplace));
+        console.log("  2. For USDC payments:");
+        console.log("     - Approve USDC: USDC.approve(marketplace, amount)");
+        console.log("     - Call: postJobWithToken(details, requirements, USDC, amount)");
+        console.log("  3. For ETH payments: Use existing postJob() with msg.value");
         
-        vm.writeFile("./usdc-marketplace-deployment.txt", deploymentInfo);
-        console.log("\nDeployment info saved to: usdc-marketplace-deployment.txt");
+        console.log("\nVerify on Basescan:");
+        console.log("  https://sepolia.basescan.io/address/", vm.toString(address(jobMarketplace)));
     }
     
     // Verification script to test the deployment
