@@ -4,64 +4,68 @@ pragma solidity ^0.8.19;
 import "forge-std/Script.sol";
 import "../src/JobMarketplace.sol";
 import "../src/PaymentEscrow.sol";
-import "../src/ReputationSystem.sol";
-import "../src/NodeRegistry.sol";
-import "../src/ProofSystem.sol";
-import "../src/Governance.sol";
 
 contract ConfigureContracts is Script {
+    // Deployed contract addresses on Base Sepolia
+    address constant JOB_MARKETPLACE = 0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6;
+    address constant PAYMENT_ESCROW = 0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894;
+    address constant USDC_ADDRESS = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+    
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(deployerPrivateKey);
         
-        // Load deployed addresses from environment
-        // These should be set after deployment
-        address nodeRegistry = vm.envAddress("NODE_REGISTRY_ADDRESS");
-        address jobMarketplace = vm.envAddress("JOB_MARKETPLACE_ADDRESS");
-        address paymentEscrow = vm.envAddress("PAYMENT_ESCROW_ADDRESS");
-        address reputationSystem = vm.envAddress("REPUTATION_SYSTEM_ADDRESS");
-        address proofSystem = vm.envAddress("PROOF_SYSTEM_ADDRESS");
-        address governance = vm.envAddress("GOVERNANCE_ADDRESS");
-        
-        console.log("Configuring contract connections...");
-        console.log("NodeRegistry:", nodeRegistry);
-        console.log("JobMarketplace:", jobMarketplace);
-        console.log("PaymentEscrow:", paymentEscrow);
-        console.log("ReputationSystem:", reputationSystem);
-        console.log("ProofSystem:", proofSystem);
-        console.log("Governance:", governance);
+        console.log("========================================");
+        console.log("CRITICAL: Configuring USDC Contracts");
+        console.log("========================================");
+        console.log("Deployer:", deployer);
         
         vm.startBroadcast(deployerPrivateKey);
         
-        // 1. Connect JobMarketplace to ReputationSystem
-        console.log("\n1. Connecting JobMarketplace to ReputationSystem...");
-        JobMarketplace(jobMarketplace).setReputationSystem(reputationSystem);
-        console.log("   Connected!");
+        // Get contract instances
+        JobMarketplace marketplace = JobMarketplace(JOB_MARKETPLACE);
+        PaymentEscrow escrow = PaymentEscrow(payable(PAYMENT_ESCROW));
         
-        // 2. Set Governance for JobMarketplace
-        console.log("\n2. Setting Governance for JobMarketplace...");
-        JobMarketplace(jobMarketplace).setGovernance(governance);
-        console.log("   Connected!");
+        console.log("\nCurrent Configuration:");
+        console.log("JobMarketplace.paymentEscrow:", address(marketplace.paymentEscrow()));
+        console.log("JobMarketplace.usdcAddress:", marketplace.usdcAddress());
+        console.log("PaymentEscrow.jobMarketplace:", escrow.jobMarketplace());
         
-        // 3. Set Governance for NodeRegistry
-        console.log("\n3. Setting Governance for NodeRegistry...");
-        NodeRegistry(nodeRegistry).setGovernance(governance);
-        console.log("   Connected!");
+        // 1. Set PaymentEscrow in JobMarketplace
+        if (address(marketplace.paymentEscrow()) != PAYMENT_ESCROW) {
+            console.log("\n[1/3] Setting PaymentEscrow in JobMarketplace...");
+            marketplace.setPaymentEscrow(PAYMENT_ESCROW);
+            console.log("[OK] PaymentEscrow set!");
+        }
         
-        // 4. Authorize JobMarketplace in ReputationSystem
-        console.log("\n4. Authorizing JobMarketplace in ReputationSystem...");
-        ReputationSystem(reputationSystem).addAuthorizedContract(jobMarketplace);
-        console.log("   Authorized!");
+        // 2. Set USDC address in JobMarketplace
+        if (marketplace.usdcAddress() != USDC_ADDRESS) {
+            console.log("\n[2/3] Setting USDC address in JobMarketplace...");
+            marketplace.setUsdcAddress(USDC_ADDRESS);
+            console.log("[OK] USDC address set!");
+        }
         
-        // 5. Grant verifier role to JobMarketplace in ProofSystem
-        console.log("\n5. Granting verifier role to JobMarketplace in ProofSystem...");
-        bytes32 VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
-        ProofSystem(proofSystem).grantRole(VERIFIER_ROLE, jobMarketplace);
-        console.log("   Role granted!");
+        // 3. Set JobMarketplace in PaymentEscrow
+        if (escrow.jobMarketplace() != JOB_MARKETPLACE) {
+            console.log("\n[3/3] Setting JobMarketplace in PaymentEscrow...");
+            escrow.setJobMarketplace(JOB_MARKETPLACE);
+            console.log("[OK] JobMarketplace set!");
+        }
         
         vm.stopBroadcast();
         
+        // Verify configuration
         console.log("\n========================================");
-        console.log("Configuration Complete!");
+        console.log("Verification");
         console.log("========================================");
+        
+        require(address(marketplace.paymentEscrow()) == PAYMENT_ESCROW, "PaymentEscrow not set!");
+        require(marketplace.usdcAddress() == USDC_ADDRESS, "USDC not set!");
+        require(escrow.jobMarketplace() == JOB_MARKETPLACE, "JobMarketplace not set!");
+        
+        console.log("[OK] JobMarketplace.paymentEscrow:", PAYMENT_ESCROW);
+        console.log("[OK] JobMarketplace.usdcAddress:", USDC_ADDRESS);
+        console.log("[OK] PaymentEscrow.jobMarketplace:", JOB_MARKETPLACE);
+        console.log("\nSUCCESS: USDC payments now enabled!");
     }
 }
