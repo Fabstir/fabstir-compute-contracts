@@ -13,4 +13,11 @@ interface IPaymentEscrow {
     ) external payable;
     
     function releaseEscrow(bytes32 _jobId) external;
+    
+    function releasePaymentFor(
+        bytes32 _jobId,
+        address _host,
+        uint256 _amount,
+        address _token
+    ) external;
 }

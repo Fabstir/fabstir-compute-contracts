@@ -197,6 +197,40 @@ contract PaymentEscrow is ReentrancyGuard, Ownable {
         return escrows[_jobId];
     }
     
+    // Function for JobMarketplace to release payment directly when funds already in escrow
+    function releasePaymentFor(
+        bytes32 _jobId,
+        address _host,
+        uint256 _amount,
+        address _token
+    ) external onlyMarketplace nonReentrant {
+        require(_host != address(0), "Invalid host address");
+        require(_amount > 0, "Invalid amount");
+        
+        uint256 fee = (_amount * feeBasisPoints) / 10000;
+        uint256 payment = _amount - fee;
+        
+        if (_token == address(0)) {
+            // ETH payment
+            feeBalance += fee;
+            (bool success, ) = payable(_host).call{value: payment}("");
+            require(success, "ETH transfer failed");
+            if (arbiter != address(0) && fee > 0) {
+                (bool feeSuccess, ) = payable(arbiter).call{value: fee}("");
+                require(feeSuccess, "Fee transfer failed");
+            }
+        } else {
+            // ERC20 payment - funds should already be in this contract
+            tokenFeeBalances[_token] += fee;
+            IERC20(_token).transfer(_host, payment);
+            if (arbiter != address(0) && fee > 0) {
+                IERC20(_token).transfer(arbiter, fee);
+            }
+        }
+        
+        emit EscrowReleased(_jobId, payment, fee);
+    }
+    
     // ========== Migration Functions ==========
     
     address public migrationHelper;

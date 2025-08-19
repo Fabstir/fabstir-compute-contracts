@@ -603,6 +603,416 @@ contract JobMarketplaceUSDCTest is Test {
         vm.stopPrank();
     }
     
+    function test_CompleteJob_ReleasesUSDCToHost() public {
+        vm.startPrank(RENTER);
+        
+        // Approve and post job with USDC
+        usdc.approve(address(jobMarketplace), JOB_PRICE_USDC);
+        
+        IJobMarketplace.JobDetails memory details = IJobMarketplace.JobDetails({
+            modelId: MODEL_ID,
+            prompt: "Test prompt",
+            maxTokens: 1000,
+            temperature: 7,
+            seed: 12345,
+            resultFormat: "json"
+        });
+        
+        IJobMarketplace.JobRequirements memory requirements = IJobMarketplace.JobRequirements({
+            minGPUMemory: 16,
+            minReputationScore: 0,
+            maxTimeToComplete: 3600,
+            requiresProof: false
+        });
+        
+        // Capture the JobCreated event to get internal job ID
+        vm.recordLogs();
+        
+        // Post job with USDC
+        bytes32 escrowId = jobMarketplace.postJobWithToken(
+            details,
+            requirements,
+            address(usdc),
+            JOB_PRICE_USDC
+        );
+        
+        // Get the internal job ID from events
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 internalJobId;
+        for (uint i = 0; i < entries.length; i++) {
+            if (entries[i].topics[0] == keccak256("JobCreated(uint256,address,string,uint256)")) {
+                internalJobId = uint256(entries[i].topics[1]);
+                break;
+            }
+        }
+        
+        vm.stopPrank();
+        
+        // Host claims the job
+        vm.prank(HOST);
+        jobMarketplace.claimJob(internalJobId);
+        
+        // Track balances before completion
+        uint256 hostBalanceBefore = usdc.balanceOf(HOST);
+        uint256 escrowBalanceBefore = usdc.balanceOf(address(paymentEscrow));
+        
+        // Host completes the job
+        vm.prank(HOST);
+        jobMarketplace.completeJob(
+            internalJobId,
+            "QmResultHash123",
+            bytes("proof")
+        );
+        
+        // Verify USDC was released from escrow to host
+        assertGt(usdc.balanceOf(HOST), hostBalanceBefore, "Host should receive USDC");
+        assertLt(usdc.balanceOf(address(paymentEscrow)), escrowBalanceBefore, "Escrow should release USDC");
+    }
+    
+    function test_CompleteJob_HostReceivesCorrectUSDCAmount() public {
+        vm.startPrank(RENTER);
+        
+        // Approve and post job with USDC
+        usdc.approve(address(jobMarketplace), JOB_PRICE_USDC);
+        
+        IJobMarketplace.JobDetails memory details = IJobMarketplace.JobDetails({
+            modelId: MODEL_ID,
+            prompt: "Test prompt",
+            maxTokens: 1000,
+            temperature: 7,
+            seed: 12345,
+            resultFormat: "json"
+        });
+        
+        IJobMarketplace.JobRequirements memory requirements = IJobMarketplace.JobRequirements({
+            minGPUMemory: 16,
+            minReputationScore: 0,
+            maxTimeToComplete: 3600,
+            requiresProof: false
+        });
+        
+        // Capture the JobCreated event to get internal job ID
+        vm.recordLogs();
+        
+        // Post job with USDC
+        bytes32 escrowId = jobMarketplace.postJobWithToken(
+            details,
+            requirements,
+            address(usdc),
+            JOB_PRICE_USDC
+        );
+        
+        // Get the internal job ID from events
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 internalJobId;
+        for (uint i = 0; i < entries.length; i++) {
+            if (entries[i].topics[0] == keccak256("JobCreated(uint256,address,string,uint256)")) {
+                internalJobId = uint256(entries[i].topics[1]);
+                break;
+            }
+        }
+        
+        vm.stopPrank();
+        
+        // Host claims the job
+        vm.prank(HOST);
+        jobMarketplace.claimJob(internalJobId);
+        
+        // Track host balance before completion
+        uint256 hostBalanceBefore = usdc.balanceOf(HOST);
+        
+        // Host completes the job
+        vm.prank(HOST);
+        jobMarketplace.completeJob(
+            internalJobId,
+            "QmResultHash123",
+            bytes("proof")
+        );
+        
+        // Calculate expected amount (considering 1% fee from PaymentEscrow)
+        uint256 expectedAmount = (JOB_PRICE_USDC * 99) / 100; // 99% goes to host
+        
+        // Verify host received correct amount
+        assertEq(
+            usdc.balanceOf(HOST) - hostBalanceBefore,
+            expectedAmount,
+            "Host should receive payment minus escrow fee"
+        );
+    }
+    
+    function test_CompleteJob_HandlesETHAndUSDCJobs() public {
+        // First, post an ETH job
+        vm.startPrank(RENTER);
+        
+        IJobMarketplace.JobDetails memory details = IJobMarketplace.JobDetails({
+            modelId: MODEL_ID,
+            prompt: "Test prompt",
+            maxTokens: 1000,
+            temperature: 7,
+            seed: 12345,
+            resultFormat: "json"
+        });
+        
+        IJobMarketplace.JobRequirements memory requirements = IJobMarketplace.JobRequirements({
+            minGPUMemory: 16,
+            minReputationScore: 0,
+            maxTimeToComplete: 3600,
+            requiresProof: false
+        });
+        
+        // Post ETH job
+        uint256 ethJobId = jobMarketplace.postJob{value: 1 ether}(
+            details,
+            requirements,
+            1 ether
+        );
+        
+        // Capture the JobCreated event to get internal job ID for USDC job
+        vm.recordLogs();
+        
+        // Post USDC job
+        usdc.approve(address(jobMarketplace), JOB_PRICE_USDC);
+        bytes32 escrowId = jobMarketplace.postJobWithToken(
+            details,
+            requirements,
+            address(usdc),
+            JOB_PRICE_USDC
+        );
+        
+        // Get the internal job ID from events
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 usdcJobId;
+        for (uint i = 0; i < entries.length; i++) {
+            if (entries[i].topics[0] == keccak256("JobCreated(uint256,address,string,uint256)")) {
+                usdcJobId = uint256(entries[i].topics[1]);
+                break;
+            }
+        }
+        
+        vm.stopPrank();
+        
+        // HOST claims and completes ETH job
+        vm.prank(HOST);
+        jobMarketplace.claimJob(ethJobId);
+        
+        uint256 hostETHBefore = HOST.balance;
+        
+        vm.prank(HOST);
+        jobMarketplace.completeJob(
+            ethJobId,
+            "QmResultHashETH",
+            bytes("proof")
+        );
+        
+        // Verify ETH payment
+        assertGt(HOST.balance, hostETHBefore, "Host should receive ETH payment");
+        
+        // HOST2 claims and completes USDC job
+        vm.prank(HOST2);
+        jobMarketplace.claimJob(usdcJobId);
+        
+        uint256 host2USDCBefore = usdc.balanceOf(HOST2);
+        
+        vm.prank(HOST2);
+        jobMarketplace.completeJob(
+            usdcJobId,
+            "QmResultHashUSDC",
+            bytes("proof")
+        );
+        
+        // Verify USDC payment
+        assertGt(usdc.balanceOf(HOST2), host2USDCBefore, "Host2 should receive USDC payment");
+    }
+    
+    function test_CompleteJob_FeesDeductedFromUSDCPayment() public {
+        vm.startPrank(RENTER);
+        
+        // Approve and post job with USDC
+        usdc.approve(address(jobMarketplace), JOB_PRICE_USDC);
+        
+        IJobMarketplace.JobDetails memory details = IJobMarketplace.JobDetails({
+            modelId: MODEL_ID,
+            prompt: "Test prompt",
+            maxTokens: 1000,
+            temperature: 7,
+            seed: 12345,
+            resultFormat: "json"
+        });
+        
+        IJobMarketplace.JobRequirements memory requirements = IJobMarketplace.JobRequirements({
+            minGPUMemory: 16,
+            minReputationScore: 0,
+            maxTimeToComplete: 3600,
+            requiresProof: false
+        });
+        
+        // Capture the JobCreated event to get internal job ID
+        vm.recordLogs();
+        
+        // Post job with USDC
+        bytes32 escrowId = jobMarketplace.postJobWithToken(
+            details,
+            requirements,
+            address(usdc),
+            JOB_PRICE_USDC
+        );
+        
+        // Get the internal job ID from events
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 internalJobId;
+        for (uint i = 0; i < entries.length; i++) {
+            if (entries[i].topics[0] == keccak256("JobCreated(uint256,address,string,uint256)")) {
+                internalJobId = uint256(entries[i].topics[1]);
+                break;
+            }
+        }
+        
+        vm.stopPrank();
+        
+        // Host claims the job
+        vm.prank(HOST);
+        jobMarketplace.claimJob(internalJobId);
+        
+        // Track balances before completion
+        uint256 hostBalanceBefore = usdc.balanceOf(HOST);
+        uint256 arbiterBalanceBefore = usdc.balanceOf(address(this)); // test contract is arbiter
+        
+        // Host completes the job
+        vm.prank(HOST);
+        jobMarketplace.completeJob(
+            internalJobId,
+            "QmResultHash123",
+            bytes("proof")
+        );
+        
+        // Calculate fees (1% as per PaymentEscrow constructor)
+        uint256 fee = (JOB_PRICE_USDC * 100) / 10000; // 1% fee
+        uint256 hostPayment = JOB_PRICE_USDC - fee;
+        
+        // Verify fee was deducted and sent to arbiter
+        assertEq(
+            usdc.balanceOf(HOST) - hostBalanceBefore,
+            hostPayment,
+            "Host should receive payment minus fee"
+        );
+        
+        assertEq(
+            usdc.balanceOf(address(this)) - arbiterBalanceBefore,
+            fee,
+            "Arbiter should receive fee"
+        );
+    }
+    
+    function test_EndToEnd_USDCPaymentFlow() public {
+        // Complete end-to-end test of USDC payment flow: User → Marketplace → Escrow → Host
+        
+        vm.startPrank(RENTER);
+        
+        // Step 1: User approves and posts job with USDC
+        uint256 initialRenterBalance = usdc.balanceOf(RENTER);
+        uint256 initialHostBalance = usdc.balanceOf(HOST);
+        uint256 initialEscrowBalance = usdc.balanceOf(address(paymentEscrow));
+        uint256 initialMarketplaceBalance = usdc.balanceOf(address(jobMarketplace));
+        uint256 initialArbiterBalance = usdc.balanceOf(address(this));
+        
+        usdc.approve(address(jobMarketplace), JOB_PRICE_USDC);
+        
+        IJobMarketplace.JobDetails memory details = IJobMarketplace.JobDetails({
+            modelId: MODEL_ID,
+            prompt: "Generate a summary of quantum computing",
+            maxTokens: 1000,
+            temperature: 7,
+            seed: 12345,
+            resultFormat: "json"
+        });
+        
+        IJobMarketplace.JobRequirements memory requirements = IJobMarketplace.JobRequirements({
+            minGPUMemory: 16,
+            minReputationScore: 0,
+            maxTimeToComplete: 3600,
+            requiresProof: false
+        });
+        
+        // Capture the JobCreated event to get internal job ID
+        vm.recordLogs();
+        
+        // Post job with USDC
+        bytes32 escrowId = jobMarketplace.postJobWithToken(
+            details,
+            requirements,
+            address(usdc),
+            JOB_PRICE_USDC
+        );
+        
+        // Get the internal job ID from events
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 internalJobId;
+        for (uint i = 0; i < entries.length; i++) {
+            if (entries[i].topics[0] == keccak256("JobCreated(uint256,address,string,uint256)")) {
+                internalJobId = uint256(entries[i].topics[1]);
+                break;
+            }
+        }
+        
+        // Step 2: Verify USDC moved from user to escrow (not trapped in marketplace)
+        assertEq(usdc.balanceOf(RENTER), initialRenterBalance - JOB_PRICE_USDC, "USDC deducted from renter");
+        assertEq(usdc.balanceOf(address(paymentEscrow)), initialEscrowBalance + JOB_PRICE_USDC, "USDC in escrow");
+        assertEq(usdc.balanceOf(address(jobMarketplace)), initialMarketplaceBalance, "No USDC trapped in marketplace");
+        
+        vm.stopPrank();
+        
+        // Step 3: Host claims the job
+        vm.prank(HOST);
+        jobMarketplace.claimJob(internalJobId);
+        
+        // Step 4: Host completes the job
+        vm.prank(HOST);
+        jobMarketplace.completeJob(
+            internalJobId,
+            "QmSummaryHash789",
+            bytes("proof")
+        );
+        
+        // Step 5: Verify host received USDC (minus fees)
+        uint256 expectedFee = (JOB_PRICE_USDC * 100) / 10000; // 1% fee
+        uint256 expectedHostPayment = JOB_PRICE_USDC - expectedFee;
+        
+        assertEq(
+            usdc.balanceOf(HOST),
+            initialHostBalance + expectedHostPayment,
+            "Host received payment minus fee"
+        );
+        
+        // Verify escrow released all funds (fee went to arbiter)
+        assertEq(
+            usdc.balanceOf(address(paymentEscrow)),
+            initialEscrowBalance, // All funds released
+            "Escrow released all funds"
+        );
+        
+        // Verify arbiter received the fee
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialArbiterBalance + expectedFee,
+            "Arbiter received fee"
+        );
+        
+        // Verify no tokens trapped anywhere
+        uint256 totalAfter = usdc.balanceOf(RENTER) + 
+                            usdc.balanceOf(HOST) + 
+                            usdc.balanceOf(address(paymentEscrow)) +
+                            usdc.balanceOf(address(jobMarketplace)) +
+                            usdc.balanceOf(address(this)); // arbiter gets fee
+                            
+        uint256 totalBefore = initialRenterBalance + 
+                             initialHostBalance + 
+                             initialEscrowBalance +
+                             initialMarketplaceBalance +
+                             initialArbiterBalance;
+                             
+        assertEq(totalAfter, totalBefore, "No tokens lost - total conservation");
+    }
+    
     function _createModels() private pure returns (string[] memory) {
         string[] memory models = new string[](2);
         models[0] = "llama3-70b";

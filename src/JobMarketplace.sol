@@ -310,9 +310,21 @@ contract JobMarketplace is ReentrancyGuard {
         job.status = JobStatus.Completed;
         job.completedAt = block.timestamp;
         
-        // Transfer payment to host
-        (bool success, ) = payable(msg.sender).call{value: job.maxPrice}("");
-        require(success, "ETH transfer failed");
+        // Handle payment based on token type
+        if (job.paymentToken != address(0)) {
+            // USDC job - release payment from escrow
+            // PaymentEscrow handles fee deduction and transfer to host
+            paymentEscrow.releasePaymentFor(
+                job.escrowId,
+                msg.sender,  // host
+                job.maxPrice,
+                job.paymentToken
+            );
+        } else {
+            // ETH job - existing logic
+            (bool success, ) = payable(msg.sender).call{value: job.maxPrice}("");
+            require(success, "ETH transfer failed");
+        }
         
         // Update reputation if system is set
         if (address(reputationSystem) != address(0)) {

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "../../src/interfaces/IPaymentEscrow.sol";
+import "../../src/interfaces/IERC20.sol";
 
 contract PaymentEscrowMock is IPaymentEscrow {
     bytes32 public constant PROOF_SYSTEM_ROLE = keccak256("PROOF_SYSTEM_ROLE");
@@ -37,5 +38,29 @@ contract PaymentEscrowMock is IPaymentEscrow {
     
     function releaseEscrow(bytes32 _jobId) external {
         // Mock implementation - does nothing
+    }
+    
+    function releasePaymentFor(
+        bytes32 _jobId,
+        address _host,
+        uint256 _amount,
+        address _token
+    ) external {
+        // Mock implementation - actually transfer tokens
+        require(_host != address(0), "Invalid host");
+        require(_amount > 0, "Invalid amount");
+        
+        // Calculate fee (1% = 100 basis points)
+        uint256 fee = (_amount * 100) / 10000;
+        uint256 payment = _amount - fee;
+        
+        if (_token != address(0)) {
+            // Transfer ERC20 tokens from this contract to host
+            IERC20(_token).transfer(_host, payment);
+            // Transfer fee to arbiter (msg.sender in tests is arbiter)
+            if (fee > 0) {
+                IERC20(_token).transfer(tx.origin, fee);
+            }
+        }
     }
 }
