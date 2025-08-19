@@ -154,4 +154,15 @@ contract JobMarketplaceMock is IJobMarketplace {
         if (!success) return false;
         return abi.decode(result, (bool));
     }
+    
+    function postJobWithToken(
+        JobDetails memory details,
+        JobRequirements memory requirements,
+        address paymentToken,
+        uint256 paymentAmount
+    ) external returns (bytes32) {
+        // Mock implementation - just return a dummy job ID
+        bytes32 jobId = keccak256(abi.encodePacked(msg.sender, block.timestamp, details.modelId));
+        return jobId;
+    }
 }

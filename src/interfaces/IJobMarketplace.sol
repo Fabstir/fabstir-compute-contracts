@@ -52,4 +52,11 @@ interface IJobMarketplace {
     function grantRole(bytes32 role, address account) external;
     
     function PROOF_SYSTEM_ROLE() external view returns (bytes32);
+    
+    function postJobWithToken(
+        JobDetails memory details,
+        JobRequirements memory requirements,
+        address paymentToken,
+        uint256 paymentAmount
+    ) external returns (bytes32);
 }

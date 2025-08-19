@@ -5,6 +5,7 @@ import "./NodeRegistry.sol";
 import "./interfaces/INodeRegistry.sol";
 import "./ReputationSystem.sol";
 import "./interfaces/IJobMarketplace.sol";
+import "./interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract JobMarketplace is ReentrancyGuard {
@@ -15,6 +16,7 @@ contract JobMarketplace is ReentrancyGuard {
     }
     
     uint256 public constant MAX_PAYMENT = 1000 ether;
+    address public usdcAddress = 0x036CbD53842c5426634e7929541eC2318f3dCF7e; // Base Sepolia USDC
     
     struct Job {
         address renter;        // 20 bytes
@@ -83,6 +85,7 @@ contract JobMarketplace is ReentrancyGuard {
     
     event JobCreated(uint256 indexed jobId, address indexed renter, string modelId, uint256 maxPrice);
     event JobPosted(uint256 indexed jobId, address indexed client, uint256 payment);
+    event JobCreatedWithToken(bytes32 indexed jobId, address indexed renter, address paymentToken, uint256 paymentAmount);
     event JobClaimed(uint256 indexed jobId, address indexed host);
     event JobCompleted(uint256 indexed jobId, string resultCID);
     event PaymentReleased(uint256 indexed jobId, address indexed node, uint256 amount);
@@ -96,6 +99,12 @@ contract JobMarketplace is ReentrancyGuard {
     constructor(address _nodeRegistry) {
         nodeRegistry = NodeRegistry(_nodeRegistry);
         owner = msg.sender;
+    }
+    
+    // For testing purposes - in production, would use fixed constant
+    function setUsdcAddress(address _usdcAddress) external {
+        require(msg.sender == owner, "Only owner");
+        usdcAddress = _usdcAddress;
     }
     
     modifier onlyOwner() {
@@ -163,6 +172,49 @@ contract JobMarketplace is ReentrancyGuard {
         require(!pausedFunctions["postJob"], "Function is paused");
         require(msg.value == payment, "Payment mismatch");
         return _postJobInternal(details, requirements, payment, msg.sender);
+    }
+    
+    function postJobWithToken(
+        IJobMarketplace.JobDetails memory details,
+        IJobMarketplace.JobRequirements memory requirements,
+        address paymentToken,
+        uint256 paymentAmount
+    ) external nonReentrant returns (bytes32) {
+        // Validate token is USDC
+        require(paymentToken == usdcAddress, "Only USDC accepted");
+        require(paymentAmount > 0, "Payment must be positive");
+        
+        // Check auto-recovery first
+        checkAutoRecovery();
+        
+        require(!paused, "Contract is paused");
+        require(!degradedMode, "Degraded mode: new jobs disabled");
+        require(!pausedFunctions["postJob"], "Function is paused");
+        
+        // Transfer USDC from renter to this contract
+        IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
+        
+        // Generate job ID as bytes32 (include nextJobId for uniqueness)
+        bytes32 jobId = keccak256(abi.encodePacked(msg.sender, block.timestamp, nextJobId, details.modelId));
+        
+        // Store job (simplified - using uint256 jobId internally)
+        uint256 internalJobId = nextJobId++;
+        jobs[internalJobId] = Job({
+            renter: msg.sender,
+            status: JobStatus.Posted,
+            assignedHost: address(0),
+            maxPrice: paymentAmount,
+            deadline: block.timestamp + requirements.maxTimeToComplete,
+            completedAt: 0,
+            modelId: details.modelId,
+            inputHash: details.prompt,
+            resultHash: ""
+        });
+        
+        emit JobCreatedWithToken(jobId, msg.sender, paymentToken, paymentAmount);
+        emit JobCreated(internalJobId, msg.sender, details.modelId, paymentAmount);
+        
+        return jobId;
     }
     
     function claimJob(uint256 _jobId) external {
