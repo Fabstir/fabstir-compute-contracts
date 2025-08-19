@@ -233,6 +233,71 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 - Production-ready best practices
 - Copy-paste ready code examples
 
+### Sub-phase 3.5: USDC Payment Integration ⚠️ IN PROGRESS
+
+Enable USDC token payments for proper account abstraction UX (users shouldn't need ETH).
+
+#### Task 3.5.1: Basic USDC Support ✅ PARTIAL
+- [x] Add postJobWithToken function to IJobMarketplace interface
+- [x] Implement basic postJobWithToken in JobMarketplace
+- [x] Add USDC transfer from user to JobMarketplace
+- [x] Create initial USDC payment tests (9 tests)
+- [ ] ❌ **CRITICAL: Forward USDC to PaymentEscrow** (tokens currently trapped!)
+- [ ] ❌ **CRITICAL: Release USDC to hosts on completion** (only ETH supported!)
+
+**Test Files:**
+- `test/JobMarketplace/test_usdc_payments.t.sol` (9 tests ✅, 4 more needed)
+
+**Issues Identified:**
+- USDC gets stuck in JobMarketplace contract
+- No PaymentEscrow integration for token forwarding
+- completeJob only handles ETH transfers, not USDC
+
+#### Task 3.5.2: PaymentEscrow Integration 🔴 TODO
+- [ ] Add PaymentEscrow state variable to JobMarketplace
+- [ ] Update JobMarketplace constructor to accept escrow address
+- [ ] Modify Job struct to track payment token type
+- [ ] Add escrowId field to link jobs with escrows
+- [ ] Implement USDC approval to PaymentEscrow
+- [ ] Call createEscrow with token address for USDC jobs
+
+**Test Requirements:**
+- [ ] Test USDC transfer to PaymentEscrow
+- [ ] Test escrow creation with USDC
+- [ ] Test no tokens trapped in marketplace
+- [ ] Test complete USDC flow end-to-end
+
+#### Task 3.5.3: Complete Payment Flow 🔴 TODO
+- [ ] Update completeJob to handle USDC payments
+- [ ] Implement escrow release for USDC jobs
+- [ ] Ensure hosts receive USDC (minus fees)
+- [ ] Maintain backward compatibility for ETH jobs
+- [ ] Add payment token tracking in job storage
+
+**Test Requirements:**
+- [ ] Test host receives USDC on completion
+- [ ] Test fee deduction for USDC payments
+- [ ] Test ETH jobs still work correctly
+- [ ] Test mixed ETH/USDC job handling
+
+#### Task 3.5.4: Deployment & Integration 🔴 TODO
+- [ ] Deploy updated JobMarketplace to Base Sepolia
+- [ ] Verify PaymentEscrow linkage
+- [ ] Update frontend SDK with new contract address
+- [ ] Update SDK to use postJobWithToken for USDC
+- [ ] Remove ETH payment requirements from UI
+- [ ] Test complete user flow with MetaMask
+
+**Deployment Script:**
+- `script/DeployUSDCMarketplace.s.sol` ✅ (needs update for escrow)
+
+**Critical Path for MVP:**
+1. Fix PaymentEscrow integration (Task 3.5.2)
+2. Fix completeJob for USDC (Task 3.5.3)
+3. Deploy and test (Task 3.5.4)
+
+**Status: BLOCKED - USDC payments broken without Tasks 3.5.2 and 3.5.3**
+
 ## Progress Summary
 
 ### Phase Completion Status:
