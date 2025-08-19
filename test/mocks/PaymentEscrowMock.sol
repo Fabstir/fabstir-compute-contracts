@@ -25,4 +25,17 @@ contract PaymentEscrowMock is IPaymentEscrow {
         require(_roles[GOVERNANCE_ROLE][msg.sender], "Not governance");
         feePercentage = _feePercentage;
     }
+    
+    function createEscrow(
+        bytes32 _jobId,
+        address _host,
+        uint256 _amount,
+        address _token
+    ) external payable {
+        // Mock implementation - does nothing
+    }
+    
+    function releaseEscrow(bytes32 _jobId) external {
+        // Mock implementation - does nothing
+    }
 }

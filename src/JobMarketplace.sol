@@ -6,6 +6,7 @@ import "./interfaces/INodeRegistry.sol";
 import "./ReputationSystem.sol";
 import "./interfaces/IJobMarketplace.sol";
 import "./interfaces/IERC20.sol";
+import "./interfaces/IPaymentEscrow.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract JobMarketplace is ReentrancyGuard {
@@ -25,6 +26,8 @@ contract JobMarketplace is ReentrancyGuard {
         uint256 maxPrice;      // 32 bytes
         uint256 deadline;      // 32 bytes
         uint256 completedAt;   // 32 bytes
+        address paymentToken;  // 20 bytes - address(0) for ETH, token address for ERC20
+        bytes32 escrowId;      // 32 bytes - links to PaymentEscrow
         string modelId;        // dynamic
         string inputHash;      // dynamic
         string resultHash;     // dynamic
@@ -32,6 +35,7 @@ contract JobMarketplace is ReentrancyGuard {
     
     NodeRegistry public nodeRegistry;
     ReputationSystem public reputationSystem;
+    IPaymentEscrow public paymentEscrow;
     mapping(uint256 => Job) private jobs;
     uint256 private nextJobId = 1;
     
@@ -97,8 +101,17 @@ contract JobMarketplace is ReentrancyGuard {
     event CircuitBreakerTriggered(string reason, uint256 level);
     
     constructor(address _nodeRegistry) {
+        require(_nodeRegistry != address(0), "Invalid node registry");
         nodeRegistry = NodeRegistry(_nodeRegistry);
         owner = msg.sender;
+    }
+    
+    // Set payment escrow after deployment (for testing compatibility)
+    function setPaymentEscrow(address _paymentEscrow) external {
+        require(address(paymentEscrow) == address(0), "PaymentEscrow already set");
+        require(_paymentEscrow != address(0), "Invalid escrow");
+        require(msg.sender == owner, "Only owner");
+        paymentEscrow = IPaymentEscrow(_paymentEscrow);
     }
     
     // For testing purposes - in production, would use fixed constant
@@ -149,6 +162,8 @@ contract JobMarketplace is ReentrancyGuard {
             maxPrice: _maxPrice,
             deadline: _deadline,
             completedAt: 0,
+            paymentToken: address(0),  // ETH
+            escrowId: bytes32(0),
             modelId: _modelId,
             inputHash: _inputHash,
             resultHash: ""
@@ -183,6 +198,7 @@ contract JobMarketplace is ReentrancyGuard {
         // Validate token is USDC
         require(paymentToken == usdcAddress, "Only USDC accepted");
         require(paymentAmount > 0, "Payment must be positive");
+        require(address(paymentEscrow) != address(0), "PaymentEscrow not set");
         
         // Check auto-recovery first
         checkAutoRecovery();
@@ -191,13 +207,17 @@ contract JobMarketplace is ReentrancyGuard {
         require(!degradedMode, "Degraded mode: new jobs disabled");
         require(!pausedFunctions["postJob"], "Function is paused");
         
-        // Transfer USDC from renter to this contract
-        IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
-        
         // Generate job ID as bytes32 (include nextJobId for uniqueness)
         bytes32 jobId = keccak256(abi.encodePacked(msg.sender, block.timestamp, nextJobId, details.modelId));
         
-        // Store job (simplified - using uint256 jobId internally)
+        // Transfer USDC from renter to PaymentEscrow via this contract
+        // First, transfer from renter to this contract
+        IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
+        
+        // Then transfer to PaymentEscrow
+        IERC20(paymentToken).transfer(address(paymentEscrow), paymentAmount);
+        
+        // Store job with token info and escrow link
         uint256 internalJobId = nextJobId++;
         jobs[internalJobId] = Job({
             renter: msg.sender,
@@ -206,6 +226,8 @@ contract JobMarketplace is ReentrancyGuard {
             maxPrice: paymentAmount,
             deadline: block.timestamp + requirements.maxTimeToComplete,
             completedAt: 0,
+            paymentToken: paymentToken,  // Store token address
+            escrowId: jobId,              // Link to escrow for future use
             modelId: details.modelId,
             inputHash: details.prompt,
             resultHash: ""
@@ -357,6 +379,8 @@ contract JobMarketplace is ReentrancyGuard {
             maxPrice: _maxPrice,
             deadline: _deadline,
             completedAt: 0,
+            paymentToken: address(0),  // ETH
+            escrowId: bytes32(0),
             modelId: _modelId,
             inputHash: _inputHash,
             resultHash: ""
@@ -479,6 +503,8 @@ contract JobMarketplace is ReentrancyGuard {
                 maxPrice: payments[i],
                 deadline: block.timestamp + requirementsList[i].maxTimeToComplete,
                 completedAt: 0,
+                paymentToken: address(0),  // ETH
+                escrowId: bytes32(0),
                 modelId: detailsList[i].modelId,
                 inputHash: detailsList[i].prompt,
                 resultHash: ""
@@ -544,6 +570,8 @@ contract JobMarketplace is ReentrancyGuard {
             maxPrice: payment,
             deadline: block.timestamp + requirements.maxTimeToComplete,
             completedAt: 0,
+            paymentToken: address(0),  // ETH
+            escrowId: bytes32(0),
             modelId: details.modelId,
             inputHash: details.prompt,
             resultHash: ""
@@ -811,6 +839,8 @@ contract JobMarketplace is ReentrancyGuard {
             maxPrice: payment,
             deadline: deadline,
             completedAt: 0,
+            paymentToken: paymentToken,  // Preserve token from migration
+            escrowId: bytes32(0),
             modelId: modelId,
             inputHash: inputHash,
             resultHash: resultCID

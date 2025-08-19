@@ -36,6 +36,22 @@ contract DeployUSDCMarketplace is Script {
         JobMarketplace jobMarketplace = new JobMarketplace(nodeRegistryAddress);
         console.log("Deployed JobMarketplace with USDC support at:", address(jobMarketplace));
         
+        // Connect to existing PaymentEscrow or deploy new one
+        if (EXISTING_PAYMENT_ESCROW != address(0)) {
+            jobMarketplace.setPaymentEscrow(EXISTING_PAYMENT_ESCROW);
+            console.log("Connected to existing PaymentEscrow at:", EXISTING_PAYMENT_ESCROW);
+            
+            // Update PaymentEscrow to allow JobMarketplace
+            PaymentEscrow existingEscrow = PaymentEscrow(payable(EXISTING_PAYMENT_ESCROW));
+            existingEscrow.setJobMarketplace(address(jobMarketplace));
+        } else {
+            // Deploy new PaymentEscrow
+            PaymentEscrow paymentEscrow = new PaymentEscrow(deployer, 100); // 1% fee
+            jobMarketplace.setPaymentEscrow(address(paymentEscrow));
+            paymentEscrow.setJobMarketplace(address(jobMarketplace));
+            console.log("Deployed new PaymentEscrow at:", address(paymentEscrow));
+        }
+        
         // Set USDC address (already set in constructor, but can be updated if needed)
         // Note: In production, you might want to remove the setter and use only the constant
         console.log("USDC address configured:", jobMarketplace.usdcAddress());
