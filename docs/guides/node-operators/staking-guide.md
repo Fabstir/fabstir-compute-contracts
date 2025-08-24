@@ -2,72 +2,112 @@
 
 This guide covers everything about staking for Fabstir compute nodes, including requirements, strategies, and risk management.
 
+## Staking Mechanism
+
+Fabstir uses FAB token staking for node registration:
+- **FAB Token Staking**: 1000 FAB tokens via NodeRegistryFAB
+- **No ETH staking**: FAB is the exclusive staking token
+
 ## Prerequisites
 
-- Base wallet with sufficient ETH
+- Base wallet with FAB tokens (1000 FAB minimum)
+- Small amount of ETH for gas fees (~0.01 ETH)
 - Understanding of [Running a Node](running-a-node.md)
 - Hardware wallet (recommended for mainnet)
 
-## Staking Overview
+## FAB Token Staking
+
+### Why FAB Staking?
+- **Low Barrier**: 1000 FAB (~$1,000) entry cost
+- **Platform Native**: Uses Fabstir's native token
+- **Full Access**: Complete access to job marketplace
+- **Easy Entry/Exit**: Unstake anytime when not processing jobs
 
 ### Requirements
-- **Minimum Stake**: 100 ETH (mainnet) / 0.1 ETH (testnet)
+- **Minimum Stake**: 1000 FAB tokens
 - **Lock Period**: None (but active jobs prevent withdrawal)
-- **Slashing Risk**: Yes (for malicious behavior)
-- **Rewards**: Earned through job completion, not staking
+- **Slashing Risk**: No (tokens returned on unregistration)
+- **Rewards**: Earned through job completion in USDC
 
 ### Economic Model
 ```
-Stake (100 ETH) → Node Registration → Claim Jobs → Complete Jobs → Earn Fees
+Stake (1000 FAB) → Node Registration → Claim Jobs → Complete Jobs → Earn USDC
                                            ↓
-                                    Risk: Slashing
+                                    No Slashing Risk
 ```
+
 
 ## Step 1: Prepare Your Stake
 
-### Calculate Required ETH
+#### Calculate Required FAB
 ```javascript
-const calculateStakeRequirement = () => {
-    const minimumStake = 100; // ETH
-    const gasBuffer = 0.5;    // ETH for operations
-    const emergencyFund = 1;  // ETH for unexpected costs
+const calculateFABStakeRequirement = () => {
+    const minimumStake = 1000; // FAB tokens
+    const gasETH = 0.01;       // ETH for gas fees
     
-    const total = minimumStake + gasBuffer + emergencyFund;
+    console.log("FAB Stake Breakdown:");
+    console.log(`Minimum Stake: ${minimumStake} FAB`);
+    console.log(`Gas Fees: ${gasETH} ETH`);
+    console.log(`Estimated Value: ~$1,000 USD`);
     
-    console.log("Stake Breakdown:");
-    console.log(`Minimum Stake: ${minimumStake} ETH`);
-    console.log(`Gas Buffer: ${gasBuffer} ETH`);
-    console.log(`Emergency Fund: ${emergencyFund} ETH`);
-    console.log(`Total Required: ${total} ETH`);
-    
-    return total;
+    return { fab: minimumStake, eth: gasETH };
 };
 ```
 
-### Acquire ETH on Base
-Options for getting ETH on Base:
+#### Acquire FAB Tokens
+- **FAB Token Address**: `0xC78949004B4EB6dEf2D66e49Cd81231472612D62` (Base Sepolia)
+- **Options**:
+  1. Purchase from DEX (when available)
+  2. Request from faucet (testnet)
+  3. OTC purchase from community
 
-1. **Bridge from Ethereum**
-```bash
-# Using Base Bridge
-# Visit: https://bridge.base.org
-# Connect wallet → Select amount → Bridge ETH
-```
-
-2. **Direct Purchase**
-- Buy on Coinbase → Withdraw to Base
-- Use other CEXs supporting Base
-
-3. **Cross-chain Swap**
+#### Register with FAB Tokens
 ```javascript
-// Example using a DEX aggregator
-const swapToBase = async () => {
-    // Use services like:
-    // - Stargate Finance
-    // - Across Protocol
-    // - Synapse Protocol
-};
+const { ethers } = require("ethers");
+
+async function registerWithFAB() {
+    const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    
+    // Contract addresses on Base Sepolia
+    const FAB_TOKEN = "0xC78949004B4EB6dEf2D66e49Cd81231472612D62";
+    const NODE_REGISTRY_FAB = "0x87516C13Ea2f99de598665e14cab64E191A0f8c4";
+    
+    // 1. Approve FAB tokens
+    const fabToken = new ethers.Contract(FAB_TOKEN, [
+        "function approve(address spender, uint256 amount) returns (bool)",
+        "function balanceOf(address) view returns (uint256)"
+    ], wallet);
+    
+    const stakeAmount = ethers.parseEther("1000"); // 1000 FAB
+    
+    // Check balance
+    const balance = await fabToken.balanceOf(wallet.address);
+    console.log("FAB Balance:", ethers.formatEther(balance));
+    
+    if (balance < stakeAmount) {
+        console.log("Insufficient FAB tokens!");
+        return;
+    }
+    
+    // Approve
+    const approveTx = await fabToken.approve(NODE_REGISTRY_FAB, stakeAmount);
+    await approveTx.wait();
+    console.log("FAB tokens approved");
+    
+    // 2. Register node
+    const nodeRegistry = new ethers.Contract(NODE_REGISTRY_FAB, [
+        "function registerNode(string memory metadata)"
+    ], wallet);
+    
+    const metadata = "gpu:rtx4090,model:llama2,region:us-west";
+    const registerTx = await nodeRegistry.registerNode(metadata);
+    await registerTx.wait();
+    
+    console.log("Node registered with FAB stake!");
+}
 ```
+
 
 ### Security Setup
 ```javascript
@@ -85,172 +125,35 @@ const setupStakingWallet = () => {
 ```
 
 ## Step 2: Check Staking Requirements
-
-### Verify Current Stake Amount
 ```javascript
-const { ethers } = require("ethers");
-require("dotenv").config();
-
-async function checkStakeRequirements() {
+async function checkFABStakeRequirements() {
     const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
     
-    const nodeRegistryABI = [
-        "function requiredStake() view returns (uint256)",
-        "function MIN_STAKE() view returns (uint256)"
-    ];
-    
-    const nodeRegistry = new ethers.Contract(
-        process.env.NODE_REGISTRY_ADDRESS,
-        nodeRegistryABI,
+    const fabToken = new ethers.Contract(
+        "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
+        ["function balanceOf(address) view returns (uint256)"],
         provider
     );
     
-    try {
-        // Try both function names (contract might use either)
-        const stake = await nodeRegistry.requiredStake()
-            .catch(() => nodeRegistry.MIN_STAKE());
-        
-        console.log("Current stake requirement:", ethers.formatEther(stake), "ETH");
-        
-        // Check your balance
-        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-        const balance = await provider.getBalance(wallet.address);
-        
-        console.log("Your balance:", ethers.formatEther(balance), "ETH");
-        console.log("Can stake:", balance >= stake ? "✓ Yes" : "✗ No");
-        
-        if (balance < stake) {
-            const needed = stake - balance;
-            console.log("Need", ethers.formatEther(needed), "more ETH");
-        }
-        
-    } catch (error) {
-        console.error("Error checking requirements:", error);
-    }
-}
-
-checkStakeRequirements();
-```
-
-## Step 3: Stake Your ETH
-
-### Simple Registration
-```javascript
-async function stakeAndRegister() {
-    const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
-    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    const balance = await fabToken.balanceOf(wallet.address);
+    const required = ethers.parseEther("1000");
     
-    const nodeRegistryABI = [
-        "function registerNode(string _peerId, string[] _models, string _region) payable",
-        "event NodeRegistered(address indexed node, string metadata)"
-    ];
-    
-    const nodeRegistry = new ethers.Contract(
-        process.env.NODE_REGISTRY_ADDRESS,
-        nodeRegistryABI,
-        wallet
-    );
-    
-    // Registration parameters
-    const peerId = "QmYourIPFSPeerIdHere";
-    const models = ["gpt-4", "llama-2-70b"];
-    const region = "us-east-1";
-    const stakeAmount = ethers.parseEther("100");
-    
-    console.log("Registering node with stake...");
-    console.log("Amount:", ethers.formatEther(stakeAmount), "ETH");
-    
-    // Estimate gas
-    const gasEstimate = await nodeRegistry.registerNode.estimateGas(
-        peerId,
-        models,
-        region,
-        { value: stakeAmount }
-    );
-    
-    console.log("Estimated gas:", gasEstimate.toString());
-    
-    // Send transaction
-    const tx = await nodeRegistry.registerNode(
-        peerId,
-        models,
-        region,
-        { 
-            value: stakeAmount,
-            gasLimit: gasEstimate * 110n / 100n // 10% buffer
-        }
-    );
-    
-    console.log("Transaction sent:", tx.hash);
-    const receipt = await tx.wait();
-    console.log("Node registered! Gas used:", receipt.gasUsed.toString());
-}
-```
-
-### Advanced Registration with Checks
-```javascript
-async function safeStakeAndRegister() {
-    const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
-    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-    
-    // Pre-flight checks
-    const checks = await performPreflightChecks(wallet.address);
-    if (!checks.passed) {
-        console.error("Pre-flight checks failed:", checks.errors);
-        return;
-    }
-    
-    // Use flashloan for registration if needed
-    if (checks.needsFlashLoan) {
-        await registerWithFlashLoan(wallet);
-        return;
-    }
-    
-    // Normal registration
-    await stakeAndRegister();
-}
-
-async function performPreflightChecks(address) {
-    const checks = {
-        passed: true,
-        errors: [],
-        needsFlashLoan: false
-    };
-    
-    // Check 1: Not already registered
-    const node = await nodeRegistry.getNode(address);
-    if (node.operator !== ethers.ZeroAddress) {
-        checks.passed = false;
-        checks.errors.push("Already registered");
-    }
-    
-    // Check 2: Sufficient balance
-    const balance = await provider.getBalance(address);
-    const required = ethers.parseEther("100.1"); // Stake + gas
+    console.log("FAB Balance:", ethers.formatEther(balance));
+    console.log("Required:", "1000 FAB");
+    console.log("Can stake:", balance >= required ? "✓ Yes" : "✗ No");
     
     if (balance < required) {
-        checks.passed = false;
-        checks.errors.push("Insufficient balance");
-        
-        // Check if close enough for flash loan
-        if (balance > ethers.parseEther("99")) {
-            checks.needsFlashLoan = true;
-        }
+        const needed = required - balance;
+        console.log("Need", ethers.formatEther(needed), "more FAB");
     }
-    
-    // Check 3: Gas price reasonable
-    const feeData = await provider.getFeeData();
-    const gasPrice = feeData.gasPrice;
-    const maxGasPrice = ethers.parseUnits("50", "gwei");
-    
-    if (gasPrice > maxGasPrice) {
-        checks.passed = false;
-        checks.errors.push("Gas price too high");
-    }
-    
-    return checks;
 }
 ```
+
+
+## Step 3: Register with FAB Stake
+
+Use the FAB-based registration example from `/workspace/docs/examples/basic/register-node-fab.js`
 
 ## Step 4: Manage Your Stake
 
@@ -259,162 +162,79 @@ async function performPreflightChecks(address) {
 async function monitorStake() {
     const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
     
-    const nodeRegistryABI = [
-        "function getNode(address) view returns (tuple(address operator, string peerId, uint256 stake, bool active, string[] models, string region))",
-        "function getNodeStake(address) view returns (uint256)"
+    const nodeRegistryFABABI = [
+        "function nodes(address) view returns (address operator, uint256 stakedAmount, bool active, string metadata)"
     ];
     
     const nodeRegistry = new ethers.Contract(
-        process.env.NODE_REGISTRY_ADDRESS,
-        nodeRegistryABI,
+        "0x87516C13Ea2f99de598665e14cab64E191A0f8c4", // NodeRegistryFAB
+        nodeRegistryFABABI,
         provider
     );
     
     const address = process.env.NODE_ADDRESS;
     
-    // Get current stake
-    const stake = await nodeRegistry.getNodeStake(address);
-    console.log("Current stake:", ethers.formatEther(stake), "ETH");
+    // Get node info
+    const [operator, stakedAmount, active, metadata] = await nodeRegistry.nodes(address);
     
-    // Get full node info
-    const node = await nodeRegistry.getNode(address);
+    console.log("Current stake:", ethers.formatEther(stakedAmount), "FAB");
     console.log("Node status:", {
-        active: node.active,
-        models: node.models,
-        region: node.region
+        active: active,
+        metadata: metadata
     });
     
-    // Calculate stake value
-    const ethPrice = await getETHPrice(); // Implement price fetching
-    const stakeValue = parseFloat(ethers.formatEther(stake)) * ethPrice;
+    // Calculate stake value (assuming $1 per FAB)
+    const fabPrice = 1; // $1 per FAB
+    const stakeValue = parseFloat(ethers.formatEther(stakedAmount)) * fabPrice;
     console.log("Stake value: $", stakeValue.toFixed(2));
 }
 ```
 
-### Add Additional Stake
+### Withdraw FAB Stake
 ```javascript
-async function addStake(additionalETH) {
+async function withdrawStake() {
     const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
     
-    const nodeRegistryABI = [
-        "function restoreStake() payable",
-        "event StakeRestored(address indexed node, uint256 amount)"
+    const nodeRegistryFABABI = [
+        "function unregisterNode()",
+        "event NodeUnregistered(address indexed operator, uint256 returnedAmount)"
     ];
     
     const nodeRegistry = new ethers.Contract(
-        process.env.NODE_REGISTRY_ADDRESS,
-        nodeRegistryABI,
+        "0x87516C13Ea2f99de598665e14cab64E191A0f8c4", // NodeRegistryFAB
+        nodeRegistryFABABI,
         wallet
     );
     
-    const amount = ethers.parseEther(additionalETH.toString());
+    console.log("Unregistering node and withdrawing FAB stake...");
     
-    console.log("Adding stake:", additionalETH, "ETH");
-    
-    const tx = await nodeRegistry.restoreStake({ value: amount });
+    const tx = await nodeRegistry.unregisterNode();
     console.log("Transaction:", tx.hash);
     
     const receipt = await tx.wait();
-    console.log("Stake added successfully!");
+    console.log("FAB stake withdrawn successfully!");
 }
 ```
 
 ## Step 5: Risk Management
 
-### Slashing Protection
-```javascript
-// Monitor for potential slashing events
-async function setupSlashingMonitor() {
-    const nodeRegistryABI = [
-        "event NodeSlashed(address indexed node, uint256 amount, string reason)"
-    ];
-    
-    const nodeRegistry = new ethers.Contract(
-        process.env.NODE_REGISTRY_ADDRESS,
-        nodeRegistryABI,
-        provider
-    );
-    
-    // Listen for slashing events
-    nodeRegistry.on("NodeSlashed", (node, amount, reason) => {
-        if (node === process.env.NODE_ADDRESS) {
-            console.error("⚠️ YOUR NODE WAS SLASHED!");
-            console.error("Amount:", ethers.formatEther(amount), "ETH");
-            console.error("Reason:", reason);
-            
-            // Send alerts
-            sendDiscordAlert(`Node slashed: ${reason}`);
-            sendEmailAlert(`Slashing event: ${amount} ETH`);
-            
-            // Check if need to restore stake
-            checkAndRestoreStake();
-        }
-    });
-}
+### No Slashing Risk
+With FAB staking, there is no slashing mechanism. Your staked FAB tokens are:
+- Safe from slashing
+- Returned in full when unregistering
+- Only locked while actively processing jobs
 
-// Automatic stake restoration
-async function checkAndRestoreStake() {
-    const currentStake = await nodeRegistry.getNodeStake(address);
-    const requiredStake = await nodeRegistry.requiredStake();
-    
-    if (currentStake < requiredStake) {
-        const needed = requiredStake - currentStake;
-        console.log("Need to restore:", ethers.formatEther(needed), "ETH");
-        
-        // Check reserve wallet
-        const reserveBalance = await provider.getBalance(RESERVE_WALLET);
-        if (reserveBalance >= needed) {
-            await addStake(ethers.formatEther(needed));
-        } else {
-            console.error("Insufficient reserve funds!");
-        }
-    }
-}
-```
-
-### Stake Insurance Strategies
-
-#### 1. Reserve Fund
-```javascript
-const RESERVE_RATIO = 0.1; // Keep 10% in reserve
-
-function calculateReserve(stakeAmount) {
-    return stakeAmount * RESERVE_RATIO;
-}
-```
-
-#### 2. Stake Pooling
-```javascript
-// Join a staking pool to share risks
-const joinStakePool = async (poolAddress) => {
-    // Pools can provide:
-    // - Shared slashing risk
-    // - Lower individual stake requirements
-    // - Professional node operation
-};
-```
-
-#### 3. Hedging Strategies
-```javascript
-// Use DeFi to hedge stake value
-const hedgeStakeValue = async () => {
-    // Options:
-    // 1. Buy ETH put options
-    // 2. Stake stablecoins as collateral
-    // 3. Use perpetual futures for hedging
-};
-```
 
 ## Staking ROI Calculator
 
 ```javascript
 class StakingCalculator {
     constructor(stakeAmount, avgJobsPerDay, avgPaymentPerJob) {
-        this.stakeAmount = stakeAmount;
+        this.stakeAmount = stakeAmount; // in FAB
         this.avgJobsPerDay = avgJobsPerDay;
-        this.avgPaymentPerJob = avgPaymentPerJob;
-        this.platformFee = 0.025; // 2.5%
+        this.avgPaymentPerJob = avgPaymentPerJob; // in USDC
+        this.platformFee = 0.01; // 1%
     }
     
     calculateDailyEarnings() {
@@ -435,14 +255,14 @@ class StakingCalculator {
     
     projectReturns() {
         console.log("Staking Projections:");
-        console.log("Stake:", this.stakeAmount, "ETH");
-        console.log("Daily earnings:", this.calculateDailyEarnings().toFixed(4), "ETH");
+        console.log("Stake:", this.stakeAmount, "FAB");
+        console.log("Daily earnings:", this.calculateDailyEarnings().toFixed(2), "USDC");
         
         const periods = [30, 90, 180, 365];
         periods.forEach(days => {
             const projection = this.calculateROI(days);
             console.log(`\n${days} days:`);
-            console.log("- Earnings:", projection.earnings.toFixed(4), "ETH");
+            console.log("- Earnings:", projection.earnings.toFixed(2), "USDC");
             console.log("- ROI:", projection.roi);
         });
         
@@ -452,23 +272,24 @@ class StakingCalculator {
 
 // Example usage
 const calculator = new StakingCalculator(
-    100,    // 100 ETH stake
+    1000,   // 1000 FAB stake
     50,     // 50 jobs per day
-    0.01    // 0.01 ETH average per job
+    10      // 10 USDC average per job
 );
 calculator.projectReturns();
 ```
 
 ## Common Issues & Solutions
 
-### Issue: Transaction Fails with "Insufficient stake"
+### Issue: Transaction Fails with "Insufficient FAB"
 ```javascript
-// Solution: Check exact requirement
-const exactStake = await nodeRegistry.MIN_STAKE();
-console.log("Exact stake needed:", exactStake.toString());
+// Solution: Check FAB balance and requirement
+const fabToken = new ethers.Contract(FAB_ADDRESS, FAB_ABI, provider);
+const balance = await fabToken.balanceOf(wallet.address);
+const required = ethers.parseEther("1000");
 
-// Add small buffer for gas
-const stakeWithBuffer = exactStake + ethers.parseEther("0.001");
+console.log("FAB balance:", ethers.formatEther(balance));
+console.log("Required:", "1000 FAB");
 ```
 
 ### Issue: Can't Withdraw Stake
@@ -487,41 +308,30 @@ async function checkActiveJobs(nodeAddress) {
 }
 ```
 
-### Issue: Slashing Due to Downtime
-```javascript
-// Prevention: Implement redundancy
-const setupRedundancy = () => {
-    // 1. Use monitoring with auto-restart
-    // 2. Have backup nodes ready
-    // 3. Use cloud providers with SLA
-    // 4. Implement graceful shutdown
-};
-```
 
 ## Best Practices
 
 ### 1. Stake Management
-- Keep 10-20% reserve for emergencies
-- Monitor stake value and health
-- Set up automated top-ups
-- Use hardware wallets for large stakes
+- Ensure you have 1000 FAB tokens before registering
+- Monitor your node's active status
+- Keep some ETH for gas fees
+- Use hardware wallets for secure FAB storage
 
 ### 2. Risk Mitigation
-- Understand slashing conditions
-- Maintain high uptime (>99.9%)
-- Complete jobs reliably
-- Monitor reputation score
+- No slashing risk with FAB staking
+- Maintain high uptime for more jobs
+- Complete jobs reliably for reputation
+- Monitor your node performance
 
 ### 3. Tax Considerations
 ```javascript
 // Track all staking events for tax
 const trackStakingEvents = () => {
     // Log:
-    // - Initial stake date and amount
-    // - Additional stakes
-    // - Slashing events
+    // - Initial FAB stake date and amount
+    // - USDC earnings from jobs
     // - Withdrawal dates
-    // - ETH price at each event
+    // - FAB/USDC prices at each event
 };
 ```
 

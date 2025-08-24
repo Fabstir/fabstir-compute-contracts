@@ -1,10 +1,10 @@
 /**
- * Example: Complete Job
- * Purpose: Demonstrates how to submit job results and receive payment
+ * Example: Complete Job (FAB System)
+ * Purpose: Demonstrates how to submit job results and receive USDC payment in the FAB-based system
  * Prerequisites:
+ *   - Host must be registered with 1000 FAB staked
  *   - Job must be claimed by your node
  *   - Results must be ready before deadline
- *   - Optional: proof of computation
  */
 
 const { ethers } = require('ethers');
@@ -12,137 +12,103 @@ const fs = require('fs').promises;
 const readline = require('readline');
 require('dotenv').config({ path: '../.env' });
 
-// Contract ABIs
-const JOB_MARKETPLACE_ABI = [
-    'function completeJob(uint256 jobId, bytes outputData)',
-    'function completeJobWithProof(uint256 jobId, bytes outputData, bytes proof)',
-    'function getJob(uint256 jobId) view returns (tuple(uint256 id, address poster, string modelId, uint256 payment, uint256 maxTokens, uint256 deadline, address assignedHost, uint8 status, bytes inputData, bytes outputData, uint256 postedAt, uint256 completedAt))',
-    'event JobCompleted(uint256 indexed jobId, address indexed host, uint256 payment)'
+// Contract ABIs - Updated for JobMarketplaceFAB
+const JOB_MARKETPLACE_FAB_ABI = [
+    'function completeJob(uint256 jobId, string memory resultHash, bytes memory proof)',
+    'function getJob(uint256 jobId) view returns (address renter, uint256 payment, uint8 status, address assignedHost, string memory resultHash, uint256 deadline)',
+    'event JobCompleted(uint256 indexed jobId, string resultHash)'
 ];
 
-const PAYMENT_ESCROW_ABI = [
-    'function getBalance(address account) view returns (uint256)'
+const USDC_ABI = [
+    'function balanceOf(address account) view returns (uint256)',
+    'function decimals() view returns (uint8)'
 ];
 
-const REPUTATION_SYSTEM_ABI = [
-    'function getNodeStats(address node) view returns (tuple(uint256 jobsCompleted, uint256 jobsFailed, uint256 totalEarned, uint256 avgCompletionTime, uint256 lastJobTimestamp, uint256 reputationScore))'
-];
-
-const PROOF_SYSTEM_ABI = [
-    'function verifyProof(bytes proof, bytes publicInputs) view returns (bool)'
-];
-
-// Configuration
+// Configuration - FAB system on Base Sepolia
 const config = {
-    rpcUrl: process.env.RPC_URL || 'https://base-mainnet.g.alchemy.com/v2/YOUR_KEY',
-    chainId: parseInt(process.env.CHAIN_ID || '8453'),
-    jobMarketplace: process.env.JOB_MARKETPLACE || '0x...',
-    paymentEscrow: process.env.PAYMENT_ESCROW || '0x...',
-    reputationSystem: process.env.REPUTATION_SYSTEM || '0x...',
-    proofSystem: process.env.PROOF_SYSTEM || '0x...',
+    rpcUrl: process.env.RPC_URL || 'https://sepolia.base.org',
+    chainId: parseInt(process.env.CHAIN_ID || '84532'), // Base Sepolia
+    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65',
+    paymentEscrow: process.env.PAYMENT_ESCROW || '0x240258A70E1DBAC442202a74739F0e6dC16ef558',
+    usdc: process.env.USDC || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
     
     // Gas settings
     gasLimit: 300000,
     maxFeePerGas: ethers.parseUnits('50', 'gwei'),
-    maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'),
-    
-    // Completion settings
-    includeProof: false, // Set to true if proof system is available
-    outputFormat: 'v1'
+    maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei')
 };
 
-// Job statuses
+// Job status enum
 const JobStatus = {
     Posted: 0,
     Claimed: 1,
-    Completed: 2,
-    Cancelled: 3
+    Completed: 2
 };
 
 // Parse command line arguments
 function parseArgs() {
     const args = process.argv.slice(2);
-    const params = {
-        jobId: null,
-        output: null,
-        outputFile: null,
-        proof: null
-    };
+    const params = {};
     
-    for (let i = 0; i < args.length; i += 2) {
-        const key = args[i].replace('--', '');
-        const value = args[i + 1];
-        
-        switch (key) {
-            case 'id':
-                params.jobId = value;
+    for (let i = 0; i < args.length; i++) {
+        switch(args[i]) {
+            case '--id':
+            case '-i':
+                params.jobId = parseInt(args[++i]);
                 break;
-            case 'output':
-                params.output = value;
+            case '--result':
+            case '-r':
+                params.resultHash = args[++i];
                 break;
-            case 'file':
-                params.outputFile = value;
+            case '--file':
+            case '-f':
+                params.resultFile = args[++i];
                 break;
-            case 'proof':
-                params.proof = value;
+            case '--ipfs':
+                params.useIPFS = true;
+                params.resultHash = args[++i];
                 break;
+            case '--help':
+            case '-h':
+                console.log(`
+Usage: node complete-job-fab.js [options]
+
+Options:
+  --id, -i <jobId>        Job ID to complete (required)
+  --result, -r <hash>     Result hash or reference
+  --file, -f <file>       Read result from file and hash it
+  --ipfs <hash>          IPFS hash of the result
+  --help, -h             Show this help message
+
+Examples:
+  node complete-job-fab.js --id 1 --result "QmResultHash123"
+  node complete-job-fab.js --id 1 --file ./output.json
+  node complete-job-fab.js --id 1 --ipfs QmXxx...
+                `);
+                process.exit(0);
         }
     }
     
     return params;
 }
 
-// Get output from user
-async function getOutput() {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-    
-    return new Promise(resolve => {
-        console.log('Enter the job output (press Enter twice when done):');
-        let lines = [];
-        let emptyLineCount = 0;
-        
-        rl.on('line', line => {
-            if (line === '') {
-                emptyLineCount++;
-                if (emptyLineCount >= 2) {
-                    rl.close();
-                    resolve(lines.join('\n'));
-                }
-            } else {
-                emptyLineCount = 0;
-                lines.push(line);
-            }
-        });
-    });
+// Hash file content for result reference
+async function hashFileContent(filePath) {
+    const content = await fs.readFile(filePath, 'utf8');
+    return ethers.keccak256(ethers.toUtf8Bytes(content));
 }
 
-// Generate mock proof (for demonstration)
-function generateMockProof(jobId, output) {
-    // In production, this would use actual EZKL or similar proof system
-    return ethers.hexlify(ethers.toUtf8Bytes(
-        JSON.stringify({
-            jobId,
-            outputHash: ethers.keccak256(ethers.toUtf8Bytes(output)),
-            timestamp: Date.now(),
-            version: '1.0.0'
-        })
-    ));
-}
-
-// Calculate token usage (mock implementation)
-function calculateTokenUsage(prompt, output) {
-    // Simplified token counting - in production use proper tokenizer
-    const promptTokens = Math.ceil(prompt.split(' ').length * 1.3);
-    const outputTokens = Math.ceil(output.split(' ').length * 1.3);
-    return promptTokens + outputTokens;
+// Upload to IPFS (mock - replace with actual IPFS implementation)
+async function uploadToIPFS(content) {
+    // In production, use actual IPFS client like ipfs-http-client
+    console.log('   📤 Uploading to IPFS (simulated)...');
+    const hash = ethers.keccak256(ethers.toUtf8Bytes(content));
+    return `Qm${hash.slice(2, 48)}`; // Mock IPFS hash
 }
 
 async function main() {
     try {
-        console.log('✅ Fabstir Job Completion Example\n');
+        console.log('✅ Fabstir Job Completion (FAB System)\n');
         
         // 1. Parse arguments
         const params = parseArgs();
@@ -156,56 +122,48 @@ async function main() {
         const provider = new ethers.JsonRpcProvider(config.rpcUrl);
         const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
         
-        console.log(`   Node address: ${wallet.address}`);
-        console.log(`   Network: ${config.chainId === 8453 ? 'Base Mainnet' : 'Base Sepolia'}`);
+        console.log(`   Host address: ${wallet.address}`);
+        console.log(`   Network: Base Sepolia`);
         
         // 3. Initialize contracts
         console.log('\n2️⃣ Connecting to contracts...');
         const jobMarketplace = new ethers.Contract(
-            config.jobMarketplace,
-            JOB_MARKETPLACE_ABI,
+            config.jobMarketplaceFAB,
+            JOB_MARKETPLACE_FAB_ABI,
             wallet
         );
         
-        const paymentEscrow = new ethers.Contract(
-            config.paymentEscrow,
-            PAYMENT_ESCROW_ABI,
-            provider
-        );
-        
-        const reputationSystem = new ethers.Contract(
-            config.reputationSystem,
-            REPUTATION_SYSTEM_ABI,
+        const usdc = new ethers.Contract(
+            config.usdc,
+            USDC_ABI,
             provider
         );
         
         // 4. Get job details
         console.log(`\n3️⃣ Fetching job #${params.jobId} details...`);
-        const job = await jobMarketplace.getJob(params.jobId);
+        const [renter, payment, status, assignedHost, existingResultHash, deadline] = 
+            await jobMarketplace.getJob(params.jobId);
         
         // Verify job status
-        if (job.status === JobStatus.Completed) {
+        if (status === JobStatus.Completed) {
             throw new Error('Job is already completed');
-        } else if (job.status === JobStatus.Cancelled) {
-            throw new Error('Job has been cancelled');
-        } else if (job.status === JobStatus.Posted) {
+        } else if (status === JobStatus.Posted) {
             throw new Error('Job has not been claimed yet');
         }
         
         // Verify we are the assigned host
-        if (job.assignedHost.toLowerCase() !== wallet.address.toLowerCase()) {
-            throw new Error(`Job is assigned to ${job.assignedHost}, not ${wallet.address}`);
+        if (assignedHost.toLowerCase() !== wallet.address.toLowerCase()) {
+            throw new Error(`Job is assigned to ${assignedHost}, not ${wallet.address}`);
         }
         
         console.log(`   ✅ Job is claimed by your node`);
-        console.log(`   Model: ${job.modelId}`);
-        console.log(`   Payment: ${ethers.formatEther(job.payment)} ETH`);
-        console.log(`   Max tokens: ${job.maxTokens}`);
+        console.log(`   Renter: ${renter}`);
+        console.log(`   Payment: ${ethers.formatUnits(payment, 6)} USDC`);
+        console.log(`   Status: Claimed`);
         
         // Check deadline
         const now = Math.floor(Date.now() / 1000);
-        const deadline = Number(job.postedAt) + Number(job.deadline);
-        const timeRemaining = deadline - now;
+        const timeRemaining = Number(deadline) - now;
         
         if (timeRemaining <= 0) {
             throw new Error('Job deadline has passed');
@@ -213,93 +171,59 @@ async function main() {
         
         console.log(`   Time remaining: ${Math.floor(timeRemaining / 60)} minutes`);
         
-        // 5. Get output data
-        console.log('\n4️⃣ Preparing output data...');
-        let output;
+        // 5. Prepare result hash
+        console.log('\n4️⃣ Preparing result hash...');
+        let resultHash;
         
-        if (params.output) {
-            output = params.output;
-        } else if (params.outputFile) {
-            output = await fs.readFile(params.outputFile, 'utf8');
-        } else {
-            output = await getOutput();
-        }
-        
-        console.log(`   Output length: ${output.length} characters`);
-        
-        // Decode input to calculate token usage
-        let tokenUsage;
-        try {
-            const [prompt] = ethers.AbiCoder.defaultAbiCoder().decode(
-                ['string', 'uint256', 'string'],
-                job.inputData
-            );
-            tokenUsage = calculateTokenUsage(prompt, output);
-            console.log(`   Estimated token usage: ${tokenUsage}`);
-            
-            if (tokenUsage > job.maxTokens) {
-                console.log(`   ⚠️  Warning: Token usage (${tokenUsage}) exceeds limit (${job.maxTokens})`);
+        if (params.resultHash) {
+            resultHash = params.resultHash;
+            console.log(`   Using provided hash: ${resultHash}`);
+        } else if (params.resultFile) {
+            // Read file and create hash or upload to IPFS
+            const content = await fs.readFile(params.resultFile, 'utf8');
+            if (params.useIPFS) {
+                resultHash = await uploadToIPFS(content);
+                console.log(`   IPFS hash: ${resultHash}`);
+            } else {
+                resultHash = await hashFileContent(params.resultFile);
+                console.log(`   File hash: ${resultHash}`);
             }
-        } catch {
-            tokenUsage = 0;
-        }
-        
-        // 6. Encode output data
-        const outputData = ethers.AbiCoder.defaultAbiCoder().encode(
-            ['string', 'uint256', 'uint256', 'string'],
-            [output, tokenUsage, Date.now(), config.outputFormat]
-        );
-        
-        // 7. Generate proof if required
-        let proof = null;
-        if (config.includeProof || params.proof) {
-            console.log('\n5️⃣ Generating proof of computation...');
-            proof = params.proof || generateMockProof(params.jobId, output);
-            console.log(`   Proof generated (${proof.length} bytes)`);
-        }
-        
-        // 8. Check balances before
-        console.log('\n6️⃣ Checking balances...');
-        const balanceBefore = await provider.getBalance(wallet.address);
-        const escrowBefore = await paymentEscrow.getBalance(wallet.address);
-        console.log(`   ETH balance: ${ethers.formatEther(balanceBefore)} ETH`);
-        console.log(`   Escrow balance: ${ethers.formatEther(escrowBefore)} ETH`);
-        
-        // 9. Submit completion
-        console.log('\n7️⃣ Submitting job completion...');
-        let tx;
-        
-        if (proof) {
-            tx = await jobMarketplace.completeJobWithProof(
-                params.jobId,
-                outputData,
-                proof,
-                {
-                    gasLimit: config.gasLimit,
-                    maxFeePerGas: config.maxFeePerGas,
-                    maxPriorityFeePerGas: config.maxPriorityFeePerGas
-                }
-            );
         } else {
-            tx = await jobMarketplace.completeJob(
-                params.jobId,
-                outputData,
-                {
-                    gasLimit: config.gasLimit,
-                    maxFeePerGas: config.maxFeePerGas,
-                    maxPriorityFeePerGas: config.maxPriorityFeePerGas
-                }
-            );
+            // Generate a simple result hash for demo
+            resultHash = `result-${params.jobId}-${Date.now()}`;
+            console.log(`   Generated hash: ${resultHash}`);
         }
+        
+        // 6. Check USDC balance before
+        console.log('\n5️⃣ Checking balances...');
+        const usdcBalanceBefore = await usdc.balanceOf(wallet.address);
+        const ethBalance = await provider.getBalance(wallet.address);
+        console.log(`   USDC balance: ${ethers.formatUnits(usdcBalanceBefore, 6)} USDC`);
+        console.log(`   ETH balance: ${ethers.formatEther(ethBalance)} ETH (for gas)`);
+        
+        // 7. Submit completion
+        console.log('\n6️⃣ Submitting job completion...');
+        console.log(`   Result hash: ${resultHash}`);
+        
+        const tx = await jobMarketplace.completeJob(
+            params.jobId,
+            resultHash,
+            '0x', // Empty proof - can be added if needed
+            {
+                gasLimit: config.gasLimit,
+                maxFeePerGas: config.maxFeePerGas,
+                maxPriorityFeePerGas: config.maxPriorityFeePerGas
+            }
+        );
         
         console.log(`   Transaction hash: ${tx.hash}`);
         console.log('   Waiting for confirmation...');
         
-        // 10. Wait for confirmation
+        // 8. Wait for confirmation
         const receipt = await tx.wait();
         console.log(`   ✅ Transaction confirmed in block ${receipt.blockNumber}`);
         
-        // 11. Parse completion event
+        // 9. Parse completion event
         const event = receipt.logs
             .map(log => {
                 try {
@@ -313,52 +237,59 @@ async function main() {
         if (event) {
             console.log(`\n✅ Job Completed Successfully!`);
             console.log(`   Job ID: ${event.args[0]}`);
-            console.log(`   Payment: ${ethers.formatEther(event.args[2])} ETH`);
+            console.log(`   Result Hash: ${event.args[1]}`);
         }
         
-        // 12. Check balances after
-        console.log('\n8️⃣ Verifying payment...');
-        const balanceAfter = await provider.getBalance(wallet.address);
-        const escrowAfter = await paymentEscrow.getBalance(wallet.address);
+        // 10. Check USDC payment
+        console.log('\n7️⃣ Verifying USDC payment...');
+        const usdcBalanceAfter = await usdc.balanceOf(wallet.address);
+        const usdcReceived = usdcBalanceAfter - usdcBalanceBefore;
         
-        const gasUsed = receipt.gasUsed * receipt.gasPrice;
-        const netPayment = balanceAfter - balanceBefore + gasUsed;
+        if (usdcReceived > 0) {
+            const expectedPayment = (payment * 99n) / 100n; // 99% after 1% fee
+            console.log(`   Payment received: ${ethers.formatUnits(usdcReceived, 6)} USDC`);
+            console.log(`   Expected (99% of ${ethers.formatUnits(payment, 6)}): ${ethers.formatUnits(expectedPayment, 6)} USDC`);
+            console.log(`   Platform fee (1%): ${ethers.formatUnits(payment - expectedPayment, 6)} USDC`);
+        } else {
+            console.log('   ⚠️  Payment not yet received - may need to check escrow');
+        }
         
-        console.log(`   Payment received: ${ethers.formatEther(job.payment)} ETH`);
-        console.log(`   Gas spent: ${ethers.formatEther(gasUsed)} ETH`);
-        console.log(`   Net earnings: ${ethers.formatEther(netPayment)} ETH`);
+        // 11. Calculate gas costs
+        const gasUsed = receipt.gasUsed;
+        const gasPrice = receipt.gasPrice || tx.gasPrice;
+        const gasCost = gasUsed * gasPrice;
+        console.log(`   Gas used: ${gasUsed.toString()}`);
+        console.log(`   Gas cost: ${ethers.formatEther(gasCost)} ETH`);
         
-        // 13. Check reputation update
-        console.log('\n9️⃣ Checking reputation update...');
-        const reputation = await reputationSystem.getNodeStats(wallet.address);
-        console.log(`   Jobs completed: ${reputation.jobsCompleted}`);
-        console.log(`   Total earned: ${ethers.formatEther(reputation.totalEarned)} ETH`);
-        console.log(`   Reputation score: ${reputation.reputationScore}/1000`);
-        
-        // 14. Summary
+        // 12. Summary
         console.log('\n📊 Completion Summary:');
         console.log(`   Job ID: ${params.jobId}`);
-        console.log(`   Model: ${job.modelId}`);
-        console.log(`   Completion time: ${Math.floor((now - Number(job.postedAt)) / 60)} minutes`);
-        console.log(`   Token usage: ${tokenUsage}/${job.maxTokens}`);
-        console.log(`   Payment: ${ethers.formatEther(job.payment)} ETH`);
+        console.log(`   Result Hash: ${resultHash}`);
+        console.log(`   Payment: ${ethers.formatUnits(usdcReceived, 6)} USDC received`);
+        console.log(`   Gas Cost: ${ethers.formatEther(gasCost)} ETH`);
         console.log(`   Status: ✅ Completed`);
         
-        console.log('\n🎉 Congratulations! Job completed and payment received.');
-        console.log('💡 Keep your reputation high by completing jobs on time with quality results!');
+        console.log('\n🎉 Congratulations! Job completed and USDC payment received.');
+        console.log('💡 With FAB staking, you have lower entry barriers while earning in USDC!');
+        
+        // Show BaseScan link
+        console.log(`\n🔗 View on BaseScan:`);
+        console.log(`   https://sepolia.basescan.org/tx/${tx.hash}`);
         
     } catch (error) {
         console.error('\n❌ Error:', error.message);
         
         // Helpful error messages
         if (error.message.includes('not been claimed')) {
-            console.error('💡 You need to claim the job first: node claim-job.js --id <jobId>');
+            console.error('💡 You need to claim the job first using the claim-job script');
         } else if (error.message.includes('already completed')) {
             console.error('💡 This job has already been completed');
         } else if (error.message.includes('deadline has passed')) {
             console.error('💡 The job deadline has expired');
         } else if (error.message.includes('assigned to')) {
             console.error('💡 Only the assigned host can complete this job');
+        } else if (error.message.includes('insufficient funds')) {
+            console.error('💡 You need ETH for gas fees');
         }
         
         process.exit(1);
@@ -376,76 +307,47 @@ module.exports = { main, config };
 /**
  * Usage Examples:
  * 
- * # Complete with inline output
- * node complete-job.js --id 42 --output "Blockchain is a distributed ledger technology..."
+ * # Complete with result hash
+ * node complete-job-fab.js --id 1 --result "QmResultHash123"
  * 
- * # Complete with output from file
- * node complete-job.js --id 42 --file output.txt
+ * # Complete with file content (creates hash)
+ * node complete-job-fab.js --id 1 --file ./output.json
  * 
- * # Complete with interactive input
- * node complete-job.js --id 42
+ * # Complete with IPFS upload
+ * node complete-job-fab.js --id 1 --file ./output.json --ipfs
  * 
- * # Complete with proof
- * node complete-job.js --id 42 --output "Result" --proof 0x123abc...
+ * # View help
+ * node complete-job-fab.js --help
  * 
  * Expected Output:
  * 
- * ✅ Fabstir Job Completion Example
+ * ✅ Fabstir Job Completion (FAB System)
  * 
  * 1️⃣ Setting up connection...
- *    Node address: 0x742d35Cc6634C0532925a3b844Bc9e7595f6789
- *    Network: Base Mainnet
+ *    Host address: 0x4594F755F593B517Bb3194F4DeC20C48a3f04504
+ *    Network: Base Sepolia
  * 
  * 2️⃣ Connecting to contracts...
  * 
- * 3️⃣ Fetching job #42 details...
+ * 3️⃣ Fetching job #1 details...
  *    ✅ Job is claimed by your node
- *    Model: gpt-4
- *    Payment: 0.2 ETH
- *    Max tokens: 2000
- *    Time remaining: 35 minutes
+ *    Payment: 10.00 USDC
+ *    Time remaining: 45 minutes
  * 
- * 4️⃣ Preparing output data...
- * Enter the job output (press Enter twice when done):
- * Blockchain is a distributed ledger technology that maintains a continuously growing list of records, called blocks. Each block contains a cryptographic hash of the previous block, a timestamp, and transaction data. This structure makes it extremely difficult to alter historical records, providing security and transparency.
+ * 4️⃣ Preparing result hash...
+ *    Generated hash: result-1-1703123456789
  * 
- *    Output length: 287 characters
- *    Estimated token usage: 65
+ * 5️⃣ Checking balances...
+ *    USDC balance: 0.00 USDC
+ *    ETH balance: 0.01 ETH (for gas)
  * 
- * 5️⃣ Generating proof of computation...
- *    Proof generated (256 bytes)
+ * 6️⃣ Submitting job completion...
+ *    Transaction hash: 0x123...
+ *    ✅ Transaction confirmed
  * 
- * 6️⃣ Checking balances...
- *    ETH balance: 5.25 ETH
- *    Escrow balance: 0.0 ETH
+ * 7️⃣ Verifying USDC payment...
+ *    Payment received: 9.90 USDC
+ *    Platform fee (1%): 0.10 USDC
  * 
- * 7️⃣ Submitting job completion...
- *    Transaction hash: 0x789def...
- *    Waiting for confirmation...
- *    ✅ Transaction confirmed in block 12345681
- * 
- * ✅ Job Completed Successfully!
- *    Job ID: 42
- *    Payment: 0.2 ETH
- * 
- * 8️⃣ Verifying payment...
- *    Payment received: 0.2 ETH
- *    Gas spent: 0.0087 ETH
- *    Net earnings: 0.1913 ETH
- * 
- * 9️⃣ Checking reputation update...
- *    Jobs completed: 157
- *    Total earned: 28.45 ETH
- *    Reputation score: 952/1000
- * 
- * 📊 Completion Summary:
- *    Job ID: 42
- *    Model: gpt-4
- *    Completion time: 10 minutes
- *    Token usage: 65/2000
- *    Payment: 0.2 ETH
- *    Status: ✅ Completed
- * 
- * 🎉 Congratulations! Job completed and payment received.
- * 💡 Keep your reputation high by completing jobs on time with quality results!
+ * 🎉 Job completed and USDC payment received!
  */

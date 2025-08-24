@@ -1,108 +1,208 @@
-# USDC-Enabled Marketplace Deployment
+# Fabstir Marketplace Deployment
 
-## Base Sepolia Contracts (Deployed 2025-08-19)
+## Current Production Deployment (2025-08-24)
 
-### Active Contracts
-- **JobMarketplace**: `0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6`
-  - USDC payments enabled ✅
-  - PaymentEscrow integrated ✅
-  - Backward compatible with ETH ✅
+### 🚀 Active Contracts (Base Sepolia)
 
-- **PaymentEscrow**: `0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894`
-  - Multi-token support ✅
-  - Fee handling (1% = 100 basis points) ✅
-  - Direct release functionality ✅
+- **JobMarketplaceFAB**: `0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65` ✅
+  - FAB token staking integration
+  - USDC payments enabled
+  - 1% platform fee
+  
+- **NodeRegistryFAB**: `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` ✅
+  - 1000 FAB minimum stake
+  - ~$1,000 entry cost
+  - Non-custodial staking
 
-- **NodeRegistry**: `0xF6420Cc8d44Ac92a6eE29A5E8D12D00aE91a73B3`
-  - ETH-based staking
-  - 100 ETH minimum stake
+- **PaymentEscrow**: `0x240258A70E1DBAC442202a74739F0e6dC16ef558` ✅
+  - Multi-token support (primarily USDC)
+  - 1% fee handling (100 basis points)
+  - Direct release functionality
+
+- **FAB Token**: `0xC78949004B4EB6dEf2D66e49Cd81231472612D62`
+  - Platform native token
+  - Used for host staking
+  - 18 decimals
 
 - **USDC**: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
   - Base Sepolia USDC
   - 6 decimals
+  - Used for job payments
 
-### SDK Integration
+### Token Addresses
 
-Update the fabstir-llm-ui SDK with new addresses:
+- **FAB Token**: `0xC78949004B4EB6dEf2D66e49Cd81231472612D62`
+  - Platform native token
+  - Used for host staking
+  - 18 decimals
+
+- **USDC**: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+  - Base Sepolia USDC
+  - 6 decimals
+  - Used for job payments
+
+## SDK Integration
+
 ```javascript
+// Production contracts configuration
 const CONTRACTS = {
-  JOB_MARKETPLACE: "0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6",  // NEW!
-  PAYMENT_ESCROW: "0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894",
-  NODE_REGISTRY: "0xF6420Cc8d44Ac92a6eE29A5E8D12D00aE91a73B3",
+  // Core contracts
+  JOB_MARKETPLACE: "0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65",
+  NODE_REGISTRY: "0x87516C13Ea2f99de598665e14cab64E191A0f8c4",
+  PAYMENT_ESCROW: "0x240258A70E1DBAC442202a74739F0e6dC16ef558",
+  
+  // Tokens
+  FAB_TOKEN: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
   USDC: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+};
+
+// Network configuration
+const NETWORK = {
+  chainId: 84532, // Base Sepolia
+  rpcUrl: "https://sepolia.base.org"
 };
 ```
 
-### Frontend Usage
+## Complete Flow Example
 
-#### ETH Payments (unchanged)
+### 1. Host Registration (FAB Staking)
 ```javascript
-await jobMarketplace.postJob(details, requirements, { value: ethAmount });
+// Approve FAB tokens
+await fabToken.approve(NODE_REGISTRY, ethers.parseEther("1000"));
+
+// Register as host
+await nodeRegistry.registerNode("gpu:rtx4090,region:us-west");
 ```
 
-#### USDC Payments (new)
+### 2. Job Posting (USDC Payment)
 ```javascript
-// 1. Approve USDC spending
-await usdc.approve(JOB_MARKETPLACE, usdcAmount);
+// Approve USDC
+await usdc.approve(JOB_MARKETPLACE, ethers.parseUnits("10", 6));
 
-// 2. Post job with USDC
+// Post job
+const details = {
+  modelId: "gpt-4",
+  prompt: "Process this request",
+  maxTokens: 1000,
+  temperature: 70,
+  seed: 42,
+  resultFormat: "json"
+};
+
+const requirements = {
+  minGPUMemory: 16,
+  minReputationScore: 0,
+  maxTimeToComplete: 3600,
+  requiresProof: false
+};
+
 await jobMarketplace.postJobWithToken(
-  details, 
-  requirements, 
-  USDC_ADDRESS, 
-  usdcAmount
+  details,
+  requirements,
+  USDC,
+  ethers.parseUnits("10", 6) // 10 USDC
 );
 ```
 
-### Testing Commands
+### 3. Job Claiming & Completion
+```javascript
+// Host claims job
+await jobMarketplaceFAB.claimJob(jobId);
 
+// Host completes job
+await jobMarketplaceFAB.completeJob(jobId, "result-hash", "0x");
+
+// Payment automatically released:
+// - Host receives 9.9 USDC (99%)
+// - Platform retains 0.1 USDC (1% fee)
+```
+
+## Verified Transaction Flow
+
+Complete working flow on Base Sepolia:
+
+1. **FAB Transfer**: [0xdf21f074635f5b03a78d3acd7ea90056779759b0b14feba0c042e9d3224a9067](https://sepolia.basescan.org/tx/0xdf21f074635f5b03a78d3acd7ea90056779759b0b14feba0c042e9d3224a9067)
+2. **Host Registration**: [0xa193198058e70343105b8e8306fa8600421c77417658ad5780b03a202b3666dc](https://sepolia.basescan.org/tx/0xa193198058e70343105b8e8306fa8600421c77417658ad5780b03a202b3666dc)
+3. **Job Posted**: [0xd186457017d07e7ee5e858c9ca3862bac964624629a8581a77e8ba9a9acd6d8f](https://sepolia.basescan.org/tx/0xd186457017d07e7ee5e858c9ca3862bac964624629a8581a77e8ba9a9acd6d8f)
+4. **Job Claimed**: [0xb6995908db02db9620631e15641f3e643f826858cb06c2f955fe2feb0b5fc375](https://sepolia.basescan.org/tx/0xb6995908db02db9620631e15641f3e643f826858cb06c2f955fe2feb0b5fc375)
+5. **Payment Released**: [0x049085aab9e89b8425fd5010c8721a8acb409b952aa9034158b52d0e08062406](https://sepolia.basescan.org/tx/0x049085aab9e89b8425fd5010c8721a8acb409b952aa9034158b52d0e08062406)
+
+## Testing Commands
+
+### Verify FAB System
 ```bash
-# Verify contracts are linked
-cast call 0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6 "paymentEscrow()" --rpc-url base-sepolia
-# Expected: 0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894
+# Check NodeRegistryFAB
+cast call 0x87516C13Ea2f99de598665e14cab64E191A0f8c4 "MIN_STAKE()" --rpc-url https://sepolia.base.org
+# Expected: 1000000000000000000000 (1000 FAB)
 
-# Check USDC configured
-cast call 0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6 "usdcAddress()" --rpc-url base-sepolia
+# Check JobMarketplaceFAB connections
+cast call 0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65 "nodeRegistry()" --rpc-url https://sepolia.base.org
+# Expected: 0x87516C13Ea2f99de598665e14cab64E191A0f8c4
+
+cast call 0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65 "paymentEscrow()" --rpc-url https://sepolia.base.org
+# Expected: 0x240258A70E1DBAC442202a74739F0e6dC16ef558
+
+# Check USDC configuration
+cast call 0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65 "usdcAddress()" --rpc-url https://sepolia.base.org
 # Expected: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
-
-# Check NodeRegistry
-cast call 0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6 "nodeRegistry()" --rpc-url base-sepolia
-# Expected: 0xF6420Cc8d44Ac92a6eE29A5E8D12D00aE91a73B3
 ```
 
-### Contract Verification
-
-JobMarketplace verified on Basescan:
-https://sepolia.basescan.io/address/0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6
-
-### Deployment Script
-
-To redeploy if needed:
+### Check Balances
 ```bash
-forge script script/DeployUSDCMarketplace.s.sol:DeployUSDCMarketplace \
-  --rpc-url base-sepolia \
-  --broadcast \
-  --verify
+# Check FAB balance
+cast call 0xC78949004B4EB6dEf2D66e49Cd81231472612D62 "balanceOf(address)" <ADDRESS> --rpc-url https://sepolia.base.org | cast to-dec
+
+# Check USDC balance
+cast call 0x036CbD53842c5426634e7929541eC2318f3dCF7e "balanceOf(address)" <ADDRESS> --rpc-url https://sepolia.base.org | cast to-dec
 ```
 
-### Key Changes from Previous Version
+## Deployment Scripts
 
-1. **New JobMarketplace Functions**:
-   - `postJobWithToken()` - Create jobs with USDC payment
-   - `completeJob()` - Now handles USDC release via PaymentEscrow
+### Deploy FAB System
+```bash
+# Deploy NodeRegistryFAB
+forge script script/DeployNodeRegistryFAB.s.sol --rpc-url https://sepolia.base.org --broadcast
 
-2. **PaymentEscrow Integration**:
-   - `releasePaymentFor()` - Direct payment release with fee deduction
-   - Automatic fee transfer to arbiter
+# Deploy JobMarketplaceFAB
+forge script script/DeployFinalJobMarketplaceFAB.s.sol --rpc-url https://sepolia.base.org --broadcast
 
-3. **USDC Flow**:
-   - User approves USDC → JobMarketplace
-   - JobMarketplace transfers USDC → PaymentEscrow
-   - On completion: PaymentEscrow → Host (minus fees)
+# Deploy PaymentEscrow
+forge script script/DeployNewPaymentEscrow.s.sol --rpc-url https://sepolia.base.org --broadcast
+```
 
-### Migration Notes
+## System Features
 
-- Old JobMarketplace: `0x66E590bfc36cf751E640F09Bbf778AaB542752D5` (deprecated)
-- New JobMarketplace: `0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6` (use this)
+### FAB Token Staking
+- **Minimum Stake**: 1000 FAB tokens
+- **USD Value**: ~$1,000
+- **Entry Barrier**: Significantly lower than traditional staking
+- **Slashing Risk**: None
+- **Unstaking**: Anytime when not processing jobs
 
-All existing ETH jobs remain functional. New USDC functionality is additive.
+### USDC Payment System
+- **Payment Token**: USDC (6 decimals)
+- **Platform Fee**: 1% (100 basis points)
+- **Payment Flow**: Automatic release on job completion
+- **Host Earnings**: 99% of job payment
+- **Fee Collection**: Retained in PaymentEscrow
+
+### Payment Flow
+1. Renter posts job with USDC
+2. USDC held in PaymentEscrow
+3. Host completes job
+4. Payment released with 1% fee:
+   - 99% to host
+   - 1% to platform
+
+## Support & Resources
+
+- **Documentation**: [Technical Docs](./technical/contracts/)
+- **GitHub**: [fabstir-compute-contracts](https://github.com/Fabstir/fabstir-compute-contracts)
+- **Support**: Discord/Telegram (TBD)
+
+## Contract Verification
+
+All contracts are verified on BaseScan:
+- [JobMarketplaceFAB](https://sepolia.basescan.org/address/0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65)
+- [NodeRegistryFAB](https://sepolia.basescan.org/address/0x87516C13Ea2f99de598665e14cab64E191A0f8c4)
+- [PaymentEscrow](https://sepolia.basescan.org/address/0x240258A70E1DBAC442202a74739F0e6dC16ef558)

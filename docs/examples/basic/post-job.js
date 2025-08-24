@@ -46,7 +46,7 @@ const config = {
 const MODELS = {
     'gpt-3.5-turbo': {
         id: 'gpt-3.5-turbo',
-        costPerToken: ethers.parseEther('0.00001'),
+        costPerToken: ethers.parseUnits('0.01', 6), // 0.01 USDC per token
         maxTokens: 4096,
         description: 'Fast, efficient general-purpose model'
     },
@@ -64,7 +64,7 @@ const MODELS = {
     },
     'llama-2-70b': {
         id: 'llama-2-70b',
-        costPerToken: ethers.parseEther('0.00001'),
+        costPerToken: ethers.parseUnits('0.01', 6), // 0.01 USDC per token
         maxTokens: 4096,
         description: 'Open-source large language model'
     },

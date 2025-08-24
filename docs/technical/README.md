@@ -62,7 +62,7 @@ See **[interfaces/README.md](interfaces/README.md)** for all contract interfaces
 ## Key Features
 
 ### For Hosts
-- Minimum 100 ETH stake requirement
+- Minimum 1000 FAB token stake requirement
 - Support for multiple AI models and regions
 - Reputation-based job assignment
 - Slashing for malicious behavior
@@ -90,8 +90,9 @@ See **[interfaces/README.md](interfaces/README.md)** for all contract interfaces
 
 ### Quick Start
 ```solidity
-// 1. Register as a host
-nodeRegistry.registerNode{value: 100 ether}(peerId, models, region);
+// 1. Register as a host with FAB tokens
+fabToken.approve(nodeRegistryFAB, 1000 ether);
+nodeRegistryFAB.registerNode(metadata);
 
 // 2. Post a job
 uint256 jobId = jobMarketplace.createJob{value: payment}(
@@ -110,7 +111,7 @@ jobMarketplace.completeJob(jobId, resultHash, proof);
 ### Network Information
 - **Target Network**: Base L2 Mainnet
 - **Testnet**: Base Sepolia
-- **Required ETH for Hosting**: 100 ETH minimum stake
+- **Required FAB for Hosting**: 1000 FAB minimum stake
 
 ## Development
 

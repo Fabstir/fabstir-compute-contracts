@@ -44,16 +44,15 @@ const JOB_MARKETPLACE_ABI = [
 
 // Configuration
 const config = {
-    rpcUrl: process.env.RPC_URL || 'https://base-mainnet.g.alchemy.com/v2/YOUR_KEY',
-    chainId: parseInt(process.env.CHAIN_ID || '8453'),
-    paymentEscrow: process.env.PAYMENT_ESCROW || '0x...',
-    jobMarketplace: process.env.JOB_MARKETPLACE || '0x...',
+    rpcUrl: process.env.RPC_URL || 'https://sepolia.base.org',
+    chainId: parseInt(process.env.CHAIN_ID || '84532'), // Base Sepolia
+    paymentEscrow: process.env.PAYMENT_ESCROW || '0x240258A70E1DBAC442202a74739F0e6dC16ef558',
+    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65',
     
-    // Token addresses (Base mainnet)
+    // Token addresses for Base Sepolia
     tokens: {
-        ETH: ethers.ZeroAddress, // Native ETH
-        USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-        DAI: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb'
+        USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // Base Sepolia USDC
+        FAB: '0xC78949004B4EB6dEf2D66e49Cd81231472612D62' // FAB token for reference
     },
     
     // Gas settings
@@ -71,9 +70,6 @@ class EscrowManager {
     }
     
     async getTokenInfo(tokenAddress) {
-        if (tokenAddress === ethers.ZeroAddress) {
-            return { symbol: 'ETH', decimals: 18 };
-        }
         
         if (!this.tokenCache.has(tokenAddress)) {
             const token = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
@@ -97,16 +93,6 @@ class EscrowManager {
         
         const supportedTokens = await this.escrow.getSupportedTokens();
         const balances = [];
-        
-        // Check ETH balance
-        const ethBalance = await this.escrow.getBalance(account, ethers.ZeroAddress);
-        if (ethBalance > 0n) {
-            balances.push({
-                token: ethers.ZeroAddress,
-                balance: ethBalance,
-                formatted: await this.formatBalance(ethBalance, ethers.ZeroAddress)
-            });
-        }
         
         // Check token balances
         for (const token of supportedTokens) {
@@ -138,16 +124,23 @@ class EscrowManager {
     }
 }
 
-// Example: Deposit funds to escrow
+// Example: Deposit USDC to escrow
 async function depositExample(escrow, wallet) {
-    console.log('\n📥 Deposit Example');
+    console.log('\n📥 USDC Deposit Example');
     
-    // Deposit ETH
-    const ethAmount = ethers.parseEther('0.5');
-    console.log(`   Depositing ${ethers.formatEther(ethAmount)} ETH...`);
+    const usdcAddress = config.tokens.USDC;
+    const usdc = new ethers.Contract(usdcAddress, ERC20_ABI, wallet);
+    const amount = ethers.parseUnits('10', 6); // 10 USDC
     
-    const tx = await escrow.deposit(ethers.ZeroAddress, 0, {
-        value: ethAmount,
+    console.log(`   Depositing 10 USDC...`);
+    
+    // Approve escrow to spend USDC
+    console.log('   Approving USDC transfer...');
+    const approveTx = await usdc.approve(escrow.target, amount);
+    await approveTx.wait();
+    
+    // Deposit USDC
+    const tx = await escrow.deposit(usdcAddress, amount, {
         gasLimit: config.gasLimit,
         maxFeePerGas: config.maxFeePerGas,
         maxPriorityFeePerGas: config.maxPriorityFeePerGas
@@ -155,11 +148,11 @@ async function depositExample(escrow, wallet) {
     
     console.log(`   Transaction: ${tx.hash}`);
     const receipt = await tx.wait();
-    console.log(`   ✅ Deposit successful!`);
+    console.log(`   ✅ USDC deposit successful!`);
     
     // Check new balance
-    const newBalance = await escrow.getBalance(wallet.address, ethers.ZeroAddress);
-    console.log(`   New escrow balance: ${ethers.formatEther(newBalance)} ETH`);
+    const newBalance = await escrow.getBalance(wallet.address, usdcAddress);
+    console.log(`   New escrow balance: ${ethers.formatUnits(newBalance, 6)} USDC`);
     
     return receipt;
 }
@@ -243,7 +236,7 @@ async function jobPaymentFlow(contracts, jobId) {
     console.log('   Job Details:');
     console.log(`   • Poster: ${job.poster}`);
     console.log(`   • Host: ${job.assignedHost || 'Not assigned'}`);
-    console.log(`   • Payment: ${ethers.formatEther(job.payment)} ETH`);
+    console.log(`   • Payment: ${ethers.formatUnits(job.payment, 6)} USDC`);
     console.log(`   • Status: ${['Posted', 'Claimed', 'Completed', 'Cancelled'][job.status]}`);
     
     // Check locked funds
@@ -269,11 +262,11 @@ async function jobPaymentFlow(contracts, jobId) {
 async function multiTokenJobExample(contracts, wallet) {
     console.log('\n🌈 Multi-Token Payment Example');
     
-    // Simulate a job that accepts multiple payment tokens
+    // Simulate a job that accepts USDC payment
     const paymentOptions = [
-        { token: ethers.ZeroAddress, amount: ethers.parseEther('0.1') },
-        { token: config.tokens.USDC, amount: ethers.parseUnits('100', 6) }, // 100 USDC
-        { token: config.tokens.DAI, amount: ethers.parseUnits('100', 18) } // 100 DAI
+        { token: config.tokens.USDC, amount: ethers.parseUnits('10', 6) }, // 10 USDC
+        { token: config.tokens.USDC, amount: ethers.parseUnits('25', 6) }, // 25 USDC
+        { token: config.tokens.USDC, amount: ethers.parseUnits('50', 6) } // 50 USDC
     ];
     
     console.log('   Payment options for job:');
@@ -387,8 +380,8 @@ async function main() {
         await depositExample(escrow, wallet);
         
         // 5. Demonstrate withdrawal
-        const withdrawAmount = ethers.parseEther('0.1');
-        await withdrawExample(escrow, wallet, ethers.ZeroAddress, withdrawAmount);
+        const withdrawAmount = ethers.parseUnits('5', 6); // 5 USDC
+        await withdrawExample(escrow, wallet, config.tokens.USDC, withdrawAmount);
         
         // 6. Check job payments (example job ID)
         const exampleJobId = 42;
@@ -477,50 +470,47 @@ module.exports = {
  * 3️⃣ Checking escrow balances...
  * 
  * 💰 Escrow Balances for 0x742d35Cc6634C0532925a3b844Bc9e7595f6789:
- *    • 2.35 ETH
  *    • 500.00 USDC
- *    • 250.50 DAI
- *    🔒 Total locked: 0.15 ETH equivalent
+ *    🔒 Total locked: 10 USDC
  * 
- * 📥 Deposit Example
- *    Depositing 0.5 ETH...
+ * 📥 USDC Deposit Example
+ *    Depositing 10 USDC...
+ *    Approving USDC transfer...
  *    Transaction: 0xabc123...
- *    ✅ Deposit successful!
- *    New escrow balance: 2.85 ETH
+ *    ✅ USDC deposit successful!
+ *    New escrow balance: 510.00 USDC
  * 
  * 📤 Withdraw Example
- *    Withdrawing 0.1 ETH...
+ *    Withdrawing 5.0 USDC...
  *    Transaction: 0xdef456...
  *    ✅ Withdrawal successful!
- *    Remaining escrow balance: 2.75 ETH
+ *    Remaining escrow balance: 505.00 USDC
  * 
  * 💼 Job Payment Flow for Job #42
  *    Job Details:
  *    • Poster: 0x1234...5678
  *    • Host: 0x742d35Cc6634C0532925a3b844Bc9e7595f6789
- *    • Payment: 0.15 ETH
+ *    • Payment: 15.00 USDC
  *    • Status: Claimed
  * 
  *    Locked Funds:
- *    • Amount: 0.15 ETH
+ *    • Amount: 15.00 USDC
  *    • From: 0x1234...5678
  *    • To: 0x742d35Cc6634C0532925a3b844Bc9e7595f6789
  *    • Released: No
  * 
  * 🌈 Multi-Token Payment Example
  *    Payment options for job:
- *    • 0.1 ETH
- *    • 100.0 USDC
- *    • 100.0 DAI
+ *    • 10.0 USDC
+ *    • 25.0 USDC
+ *    • 50.0 USDC
  * 
  *    Checking available balances...
  * 
  * 💰 Escrow Balances for 0x742d35Cc6634C0532925a3b844Bc9e7595f6789:
- *    • 2.75 ETH
- *    • 500.00 USDC
- *    • 250.50 DAI
+ *    • 505.00 USDC
  * 
- *    ✅ Can pay with 0.1 ETH
+ *    ✅ Can pay with 10.0 USDC
  * 
  * 📡 Setting up event monitoring...
  * 
@@ -539,5 +529,5 @@ module.exports = {
  * 
  * 👂 Listening for escrow events... (Press Ctrl+C to exit)
  * 
- * 🔔 Payment Received for Job #42: 0.15 ETH
+ * 🔔 Payment Received for Job #42: 15.00 USDC
  */

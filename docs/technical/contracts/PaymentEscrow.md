@@ -2,15 +2,17 @@
 
 ## Overview
 
-The PaymentEscrow contract provides a secure multi-token escrow system for the Fabstir marketplace. It holds payments during job execution and handles release, refunds, and dispute resolution with support for both ETH and ERC20 tokens.
+The PaymentEscrow contract provides a secure multi-token escrow system for the Fabstir marketplace. It holds payments during job execution and handles release, refunds, and dispute resolution with support for both ETH and ERC20 tokens (primarily USDC).
 
-**Contract Address**: To be deployed  
+**Contract Address (Base Sepolia)**: `0x240258A70E1DBAC442202a74739F0e6dC16ef558`  
+**Previous Version**: `0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894`  
 **Source**: [`src/PaymentEscrow.sol`](../../../src/PaymentEscrow.sol)
 
 ### Key Features
-- Multi-token support (ETH and ERC20)
-- Fee collection mechanism
-- Dispute resolution with arbiter
+- Multi-token support (ETH and ERC20, especially USDC)
+- Fee collection mechanism (currently 1% = 100 basis points)
+- Direct payment release from JobMarketplaceFAB
+- Dispute resolution with arbiter (optional)
 - Refund request workflow
 - Migration support
 - Reentrancy protection
@@ -34,8 +36,11 @@ constructor(address _arbiter, uint256 _feeBasisPoints) Ownable(msg.sender)
 
 ### Example Deployment
 ```solidity
-// Deploy with 2.5% fee
-PaymentEscrow escrow = new PaymentEscrow(arbiterAddress, 250);
+// Deploy with 1% fee (100 basis points), no arbiter
+PaymentEscrow escrow = new PaymentEscrow(address(0), 100);
+
+// Set JobMarketplaceFAB as authorized marketplace
+escrow.setJobMarketplace(JOB_MARKETPLACE_FAB_ADDRESS);
 ```
 
 ## State Variables
@@ -367,6 +372,44 @@ function getActiveEscrowIds() external view returns (bytes32[] memory)
 
 #### Note
 Currently returns empty array - proper tracking needed in production.
+
+## Integration with JobMarketplaceFAB
+
+The PaymentEscrow contract is tightly integrated with JobMarketplaceFAB for USDC payment handling:
+
+### Payment Flow
+1. **Job Posting**: JobMarketplaceFAB transfers USDC from renter to PaymentEscrow
+2. **Job Completion**: JobMarketplaceFAB calls `releasePaymentFor()` to trigger payment
+3. **Fee Distribution**: 1% fee retained, 99% sent to host
+
+### Key Integration Function
+
+```solidity
+function releasePaymentFor(
+    bytes32 _jobId,
+    address _host,
+    uint256 _amount,
+    address _token
+) external onlyMarketplace nonReentrant
+```
+
+This function is called by JobMarketplaceFAB when a job is completed:
+- **Access**: Only callable by authorized JobMarketplace
+- **Fee**: Automatically deducts 1% platform fee
+- **Payment**: Sends 99% to host immediately
+- **Token**: Supports USDC and other ERC20 tokens
+
+### Configuration for JobMarketplaceFAB
+
+```javascript
+// Current production configuration on Base Sepolia
+const PAYMENT_ESCROW = "0x240258A70E1DBAC442202a74739F0e6dC16ef558";
+const JOB_MARKETPLACE_FAB = "0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65";
+const USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+// Fee configuration
+const FEE_BASIS_POINTS = 100; // 1% fee
+```
 
 ## Events
 

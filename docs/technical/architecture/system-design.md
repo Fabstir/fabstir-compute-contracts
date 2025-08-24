@@ -13,7 +13,7 @@ The Fabstir compute contracts implement a decentralized P2P marketplace for AI m
 - Off-chain data referenced by content hashes
 
 ### 2. Economic Security
-- 100 ETH minimum stake aligns host incentives
+- 1000 FAB minimum stake aligns host incentives
 - Escrow-based payments protect renters
 - Reputation system enables quality differentiation
 - Fee mechanism sustains protocol development
@@ -188,8 +188,12 @@ Bridge: IPFS, Arweave, or similar for content addressing
 ### Direct Integration
 ```solidity
 // Simple direct calls
-nodeRegistry.registerNode{value: 100 ether}(...);
-jobMarketplace.createJob{value: payment}(...);
+// First approve FAB tokens, then register
+fabToken.approve(nodeRegistryFAB, 1000 ether);
+nodeRegistryFAB.registerNode(metadata);
+// Post job with USDC
+usdc.approve(jobMarketplaceFAB, payment);
+jobMarketplaceFAB.postJobWithToken(details, requirements, usdc, payment);
 ```
 
 ### Smart Wallet Integration

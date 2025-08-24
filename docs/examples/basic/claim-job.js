@@ -10,16 +10,16 @@
 const { ethers } = require('ethers');
 require('dotenv').config({ path: '../.env' });
 
-// Contract ABIs
-const JOB_MARKETPLACE_ABI = [
+// Contract ABIs - Updated for JobMarketplaceFAB
+const JOB_MARKETPLACE_FAB_ABI = [
     'function claimJob(uint256 jobId)',
     'function getJob(uint256 jobId) view returns (tuple(uint256 id, address poster, string modelId, uint256 payment, uint256 maxTokens, uint256 deadline, address assignedHost, uint8 status, bytes inputData, bytes outputData, uint256 postedAt, uint256 completedAt))',
     'function getActiveJobs() view returns (uint256[])',
     'event JobClaimed(uint256 indexed jobId, address indexed host)'
 ];
 
-const NODE_REGISTRY_ABI = [
-    'function getNode(address nodeAddress) view returns (tuple(address owner, uint256 stake, string[] supportedModels, string[] regions, bool isActive, uint256 registeredAt))'
+const NODE_REGISTRY_FAB_ABI = [
+    'function nodes(address) view returns (address operator, uint256 stakedAmount, bool active, string metadata)'
 ];
 
 const REPUTATION_SYSTEM_ABI = [
@@ -30,8 +30,8 @@ const REPUTATION_SYSTEM_ABI = [
 const config = {
     rpcUrl: process.env.RPC_URL || 'https://base-mainnet.g.alchemy.com/v2/YOUR_KEY',
     chainId: parseInt(process.env.CHAIN_ID || '8453'),
-    jobMarketplace: process.env.JOB_MARKETPLACE || '0x...',
-    nodeRegistry: process.env.NODE_REGISTRY || '0x...',
+    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65',
+    nodeRegistryFAB: process.env.NODE_REGISTRY_FAB || '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
     reputationSystem: process.env.REPUTATION_SYSTEM || '0x...',
     
     // Gas settings
@@ -41,7 +41,7 @@ const config = {
     
     // Node settings
     autoSelectJob: true, // Automatically select best job
-    minPayment: ethers.parseEther('0.05'), // Minimum acceptable payment
+    minPayment: ethers.parseUnits('50', 6), // Minimum acceptable payment in USDC (50 USDC)
     preferredModels: ['gpt-4', 'claude-2'], // Preferred models to work on
 };
 
@@ -84,13 +84,13 @@ function decodeInputData(inputData) {
 async function findBestJob(jobMarketplace, nodeCapabilities) {
     console.log('\n🔍 Searching for suitable jobs...');
     
-    const activeJobs = await jobMarketplace.getActiveJobs();
+    const activeJobs = await jobMarketplaceFAB.getActiveJobs();
     console.log(`   Found ${activeJobs.length} active jobs`);
     
     const suitableJobs = [];
     
     for (const jobId of activeJobs) {
-        const job = await jobMarketplace.getJob(jobId);
+        const job = await jobMarketplaceFAB.getJob(jobId);
         
         // Check if job is posted (not claimed)
         if (job.status !== JobStatus.Posted) continue;
@@ -130,9 +130,9 @@ async function findBestJob(jobMarketplace, nodeCapabilities) {
     suitableJobs.slice(0, 5).forEach((job, index) => {
         console.log(`   ${index + 1}. Job #${job.id}`);
         console.log(`      Model: ${job.modelId}`);
-        console.log(`      Payment: ${ethers.formatEther(job.payment)} ETH`);
+        console.log(`      Payment: ${ethers.formatUnits(job.payment, 6)} USDC`);
         console.log(`      Tokens: ${job.maxTokens}`);
-        console.log(`      Rate: ${ethers.formatEther(job.paymentPerToken)} ETH/token`);
+        console.log(`      Rate: ${ethers.formatUnits(job.paymentPerToken, 6)} USDC/token`);
         console.log(`      Time remaining: ${Math.floor(job.timeRemaining / 60)} minutes`);
     });
     
@@ -176,7 +176,7 @@ async function main() {
         
         // 4. Check node registration
         console.log('\n3️⃣ Verifying node registration...');
-        const nodeInfo = await nodeRegistry.getNode(wallet.address);
+        const [operator, stakedAmount, active, metadata] = await nodeRegistryFAB.nodes(wallet.address);
         
         if (!nodeInfo.isActive) {
             throw new Error('Node is not registered or inactive');
@@ -197,7 +197,7 @@ async function main() {
         if (specificJobId) {
             // Claim specific job
             console.log(`\n4️⃣ Checking job #${specificJobId}...`);
-            const job = await jobMarketplace.getJob(specificJobId);
+            const job = await jobMarketplaceFAB.getJob(specificJobId);
             
             if (job.status !== JobStatus.Posted) {
                 throw new Error(`Job #${specificJobId} is not available (status: ${['Posted', 'Claimed', 'Completed', 'Cancelled'][job.status]})`);
@@ -240,7 +240,7 @@ async function main() {
         
         // 7. Estimate gas
         console.log('\n5️⃣ Estimating transaction cost...');
-        const estimatedGas = await jobMarketplace.claimJob.estimateGas(jobToClaim.id);
+        const estimatedGas = await jobMarketplaceFAB.claimJob.estimateGas(jobToClaim.id);
         
         const gasPrice = (config.maxFeePerGas + config.maxPriorityFeePerGas) / 2n;
         const estimatedCost = estimatedGas * gasPrice;
@@ -250,7 +250,7 @@ async function main() {
         
         // 8. Claim the job
         console.log('\n6️⃣ Claiming job...');
-        const tx = await jobMarketplace.claimJob(
+        const tx = await jobMarketplaceFAB.claimJob(
             jobToClaim.id,
             {
                 gasLimit: config.gasLimit,
@@ -270,7 +270,7 @@ async function main() {
         const event = receipt.logs
             .map(log => {
                 try {
-                    return jobMarketplace.interface.parseLog(log);
+                    return jobMarketplaceFAB.interface.parseLog(log);
                 } catch {
                     return null;
                 }
@@ -285,7 +285,7 @@ async function main() {
         
         // 11. Verify claim
         console.log('\n7️⃣ Verifying claim...');
-        const claimedJob = await jobMarketplace.getJob(jobToClaim.id);
+        const claimedJob = await jobMarketplaceFAB.getJob(jobToClaim.id);
         console.log(`   Status: ${['Posted', 'Claimed', 'Completed', 'Cancelled'][claimedJob.status]}`);
         console.log(`   Assigned to: ${claimedJob.assignedHost}`);
         

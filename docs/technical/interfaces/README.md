@@ -71,13 +71,15 @@ address[] memory targets = new address[](2);
 uint256[] memory values = new uint256[](2);
 bytes[] memory calls = new bytes[](2);
 
-targets[0] = nodeRegistry;
-values[0] = 100 ether;
-calls[0] = abi.encodeWithSelector(NodeRegistry.registerNode.selector, ...);
+// First approve FAB tokens
+targets[0] = fabToken;
+values[0] = 0;
+calls[0] = abi.encodeWithSelector(IERC20.approve.selector, nodeRegistryFAB, 1000 ether);
 
-targets[1] = jobMarketplace;
-values[1] = 1 ether;
-calls[1] = abi.encodeWithSelector(JobMarketplace.createJob.selector, ...);
+// Then register node
+targets[1] = nodeRegistryFAB;
+values[1] = 0;
+calls[1] = abi.encodeWithSelector(NodeRegistryFAB.registerNode.selector, metadata);
 
 account.executeBatch(targets, values, calls);
 ```

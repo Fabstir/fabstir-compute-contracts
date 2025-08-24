@@ -1,485 +1,187 @@
-# NodeRegistry Contract
+# NodeRegistryFAB Contract
 
 ## Overview
 
-The NodeRegistry contract manages GPU host registration and staking for the Fabstir marketplace. It enforces minimum stake requirements, tracks node capabilities, and provides the foundation for decentralized compute provision.
+The NodeRegistryFAB contract manages GPU host registration using FAB token staking instead of ETH. It provides a more accessible entry point for hosts by using the platform's native FAB token for staking requirements.
 
-**Contract Address**: To be deployed  
-**Source**: [`src/NodeRegistry.sol`](../../../src/NodeRegistry.sol)
+**Contract Address (Base Sepolia)**: `0x87516C13Ea2f99de598665e14cab64E191A0f8c4`  
+**Source**: [`src/NodeRegistryFAB.sol`](../../../src/NodeRegistryFAB.sol)
 
 ### Key Features
-- Host registration with minimum 100 ETH stake
-- Support for multiple AI models per node
-- Regional node tracking
-- Sybil attack detection
-- Circuit breaker for registration spam
-- Migration support for contract upgrades
+- Host registration with 1000 FAB token stake (instead of 100 ETH)
+- Non-custodial staking - hosts can withdraw anytime
+- Simplified metadata storage for node information
+- Active nodes tracking for efficient enumeration
+- Integration with JobMarketplaceFAB
 
 ### Dependencies
 - OpenZeppelin Ownable
+- OpenZeppelin ReentrancyGuard
+- IERC20 (FAB Token)
 
 ## Constructor
 
 ```solidity
-constructor(uint256 _minStake) Ownable(msg.sender)
+constructor(address _fabToken) Ownable(msg.sender)
 ```
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
-| `_minStake` | `uint256` | Minimum stake required for node registration (typically 100 ETH) |
+| `_fabToken` | `address` | Address of the FAB token contract |
 
 ### Example Deployment
 ```solidity
-// Deploy with 100 ETH minimum stake
-NodeRegistry registry = new NodeRegistry(100 ether);
+// Deploy with FAB token address
+NodeRegistryFAB registry = new NodeRegistryFAB(0xC78949004B4EB6dEf2D66e49Cd81231472612D62);
 ```
 
 ## State Variables
 
+### Constants
+| Name | Type | Value | Description |
+|------|------|-------|-------------|
+| `MIN_STAKE` | `uint256` | 1000 * 10^18 | Minimum FAB tokens required for registration |
+
 ### Public Variables
 | Name | Type | Description |
 |------|------|-------------|
-| `MIN_STAKE` | `uint256` | Minimum stake required for registration |
-| `migrationHelper` | `address` | Address authorized to add migrated nodes |
+| `fabToken` | `IERC20` | FAB token contract interface |
+| `nodes` | `mapping(address => Node)` | Registered node data by operator address |
+| `activeNodesList` | `address[]` | Array of active node addresses |
+| `activeNodesIndex` | `mapping(address => uint256)` | Index mapping for active nodes list |
 
-### Access Patterns
-- `MIN_STAKE`: Read via `requiredStake()` or `minimumStake()`
-- Node data: Access via `getNode()` for full details
-- Governance: Access via `getGovernance()`
+## Structs
+
+### Node
+```solidity
+struct Node {
+    address operator;      // Node operator address
+    uint256 stakedAmount; // Amount of FAB staked
+    bool active;          // Whether node is active
+    string metadata;      // Node metadata (models, regions, etc.)
+}
+```
 
 ## Functions
 
-### registerNodeSimple
-
-Simplified node registration with automatic validation and rate limiting.
-
-```solidity
-function registerNodeSimple(string memory metadata) external payable
-```
-
-#### Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `metadata` | `string` | Node peer ID or metadata (max 10KB) |
-
-#### Requirements
-- Registration not paused
-- Metadata not empty and ≤ 10KB
-- Valid characters (no control characters)
-- `msg.value` ≥ `MIN_STAKE`
-- Node not already registered
-- Rate limit not exceeded (10 registrations/hour)
-
-#### Emitted Events
-- `NodeRegistered(address indexed node, string metadata)`
-
-#### Reverts
-| Error | Condition |
-|-------|-----------|
-| `"Registration is paused"` | Circuit breaker activated |
-| `"Empty metadata"` | No metadata provided |
-| `"Metadata too long"` | Metadata > 10KB |
-| `"Invalid characters"` | Control characters in metadata |
-| `"Insufficient stake"` | Sent ETH < MIN_STAKE |
-| `"Already registered"` | Node already exists |
-
-#### Gas Considerations
-- ~150,000 gas
-- Refunds excess ETH automatically
-
-#### Example Usage
-```solidity
-// Register with exactly minimum stake
-registry.registerNodeSimple{value: 100 ether}("QmPeerId123");
-
-// Register with excess (auto-refunded)
-registry.registerNodeSimple{value: 150 ether}("QmPeerId123");
-```
-
 ### registerNode
-
-Full node registration with model and region specification.
+Registers a new node by staking FAB tokens.
 
 ```solidity
-function registerNode(
-    string memory _peerId,
-    string[] memory _models,
-    string memory _region
-) external payable
+function registerNode(string memory metadata) external nonReentrant
 ```
 
-#### Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `_peerId` | `string` | IPFS peer ID or unique identifier |
-| `_models` | `string[]` | Array of supported model IDs |
-| `_region` | `string` | Geographic region code |
+**Requirements:**
+- Node must not be already registered
+- Metadata must not be empty
+- Operator must approve MIN_STAKE FAB tokens
+- Transfer of FAB tokens must succeed
 
-#### Requirements
-- `msg.value` ≥ `MIN_STAKE`
-- Node not already registered
-
-#### Example Usage
-```solidity
-string[] memory models = new string[](2);
-models[0] = "llama-2-70b";
-models[1] = "mistral-7b";
-
-registry.registerNode{value: 100 ether}(
-    "QmPeerId123",
-    models,
-    "us-east-1"
-);
+**Example:**
+```javascript
+// First approve FAB tokens
+await fabToken.approve(nodeRegistryFAB.address, "1000000000000000000000");
+// Then register
+await nodeRegistryFAB.registerNode("gpu:rtx4090,region:us-west");
 ```
 
-### registerNodeFor
-
-Register a node on behalf of another address (for ERC-4337 integration).
+### unregisterNode
+Unregisters a node and returns staked FAB tokens.
 
 ```solidity
-function registerNodeFor(
-    address operator,
-    string memory _peerId,
-    string[] memory _models,
-    string memory _region
-) external payable
+function unregisterNode() external nonReentrant
 ```
 
-#### Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `operator` | `address` | Address to register as node operator |
-| `_peerId` | `string` | IPFS peer ID |
-| `_models` | `string[]` | Supported models |
-| `_region` | `string` | Region code |
+**Effects:**
+- Marks node as inactive
+- Returns staked FAB tokens to operator
+- Removes from active nodes list
 
-#### Access Control
-- Can be called by anyone providing stake
-- Typically used by BaseAccountIntegration
-
-### getNode
-
-Retrieve complete node information.
+### addStake
+Adds additional FAB tokens to existing stake.
 
 ```solidity
-function getNode(address _operator) external view returns (Node memory)
+function addStake(uint256 amount) external nonReentrant
 ```
 
-#### Returns
-```solidity
-struct Node {
-    address operator;    // Node operator address
-    string peerId;      // IPFS peer ID
-    uint256 stake;      // Current stake amount
-    bool active;        // Active status
-    string[] models;    // Supported models
-    string region;      // Geographic region
-}
-```
-
-#### Example Usage
-```solidity
-NodeRegistry.Node memory node = registry.getNode(operatorAddress);
-if (node.active && node.stake >= registry.requiredStake()) {
-    // Node is valid for job assignment
-}
-```
-
-### isNodeActive
-
-Quick check if a node is registered and active.
+### updateMetadata
+Updates node metadata (models, capabilities, etc.).
 
 ```solidity
-function isNodeActive(address _operator) external view returns (bool)
-```
-
-#### Returns
-- `true` if node exists and is active
-- `false` otherwise
-
-### isActiveNode
-
-Alternative active check with stake validation.
-
-```solidity
-function isActiveNode(address operator) external view returns (bool)
-```
-
-#### Returns
-- `true` if node is active AND has sufficient stake
-- `false` otherwise
-
-### getNodeStake
-
-Get current stake amount for a node.
-
-```solidity
-function getNodeStake(address _operator) external view returns (uint256)
+function updateMetadata(string memory newMetadata) external
 ```
 
 ### getActiveNodes
-
-Retrieve all currently active nodes.
+Returns list of all active node addresses.
 
 ```solidity
 function getActiveNodes() external view returns (address[] memory)
 ```
 
-#### Returns
-Array of addresses for all active nodes
-
-#### Gas Considerations
-- O(n) complexity where n = total registered nodes
-- Can be expensive with many nodes
-- Consider pagination in production
-
-### slashNode
-
-Slash a portion of node's stake (governance only).
-
-```solidity
-function slashNode(
-    address node,
-    uint256 amount,
-    string memory reason
-) external
-```
-
-#### Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `node` | `address` | Node to slash |
-| `amount` | `uint256` | Amount to slash from stake |
-| `reason` | `string` | Reason for slashing |
-
-#### Access Control
-- Only callable by governance contract
-
-#### Emitted Events
-- `NodeSlashed(address indexed node, uint256 amount, string reason)`
-
-### restoreStake
-
-Add additional stake to an existing node.
-
-```solidity
-function restoreStake() external payable
-```
-
-#### Requirements
-- Sender must be registered node
-- `msg.value` > 0
-
-#### Emitted Events
-- `StakeRestored(address indexed node, uint256 amount)`
-
-### unregisterNode
-
-Attempt to unregister and withdraw stake.
-
-```solidity
-function unregisterNode() external
-```
-
-#### Requirements
-- Node must be registered and active
-- No active jobs (currently always reverts)
-
-#### Note
-Currently not implemented - always reverts with "Node has active jobs"
-
-### updateStakeAmount
-
-Update the minimum stake requirement.
-
-```solidity
-function updateStakeAmount(uint256 newAmount) external onlyOwner
-```
-
-#### Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `newAmount` | `uint256` | New minimum stake amount |
-
-#### Requirements
-- Only owner
-- `newAmount` > 0
-- `newAmount` < 10,000 ETH
-
-### setGovernance
-
-Set the governance contract address (one-time).
-
-```solidity
-function setGovernance(address _governance) external onlyOwner
-```
-
-#### Requirements
-- Only owner
-- Governance not already set
-- Valid address
-
-## Sybil Detection Functions
-
-### registerControlledNode
-
-Register a node controlled by another address.
-
-```solidity
-function registerControlledNode(
-    string memory metadata,
-    address nodeOperator
-) external payable
-```
-
-#### Purpose
-- Track controller-node relationships
-- Detect potential Sybil attacks
-- Flag suspicious controllers
-
-### isSuspiciousController
-
-Check if a controller has registered too many nodes.
-
-```solidity
-function isSuspiciousController(address controller) external view returns (bool)
-```
-
-#### Returns
-- `true` if controller has ≥ 3 nodes (SYBIL_THRESHOLD)
-
-### getNodeController
-
-Get the controller address for a node.
-
-```solidity
-function getNodeController(address node) external view returns (address)
-```
-
-## Circuit Breaker Functions
-
-### isRegistrationPaused
-
-Check if registration is currently paused.
-
-```solidity
-function isRegistrationPaused() external view returns (bool)
-```
-
-#### Automatic Pausing
-- Pauses after 10 registrations within 1 hour
-- Prevents registration spam attacks
-
-## Migration Functions
-
-### setMigrationHelper
-
-Set address authorized to add migrated nodes.
-
-```solidity
-function setMigrationHelper(address _migrationHelper) external onlyOwner
-```
-
-### addMigratedNode
-
-Add a node from previous contract version.
-
-```solidity
-function addMigratedNode(
-    address operator,
-    string memory peerId,
-    string[] memory models,
-    string memory region
-) external payable onlyMigrationHelper
-```
-
-#### Access Control
-- Only migration helper
-- Used during contract upgrades
-
 ## Events
 
-### NodeRegistered
 ```solidity
-event NodeRegistered(address indexed node, string metadata)
+event NodeRegistered(address indexed operator, uint256 stakedAmount, string metadata);
+event NodeUnregistered(address indexed operator, uint256 returnedAmount);
+event StakeAdded(address indexed operator, uint256 additionalAmount);
+event MetadataUpdated(address indexed operator, string newMetadata);
 ```
-Emitted when a new node is registered.
 
-### NodeSlashed
-```solidity
-event NodeSlashed(address indexed node, uint256 amount, string reason)
-```
-Emitted when a node's stake is slashed.
+## Integration with JobMarketplaceFAB
 
-### StakeRestored
-```solidity
-event StakeRestored(address indexed node, uint256 amount)
-```
-Emitted when additional stake is added.
+The NodeRegistryFAB is specifically designed to work with JobMarketplaceFAB:
 
-## Errors
+1. **Host Verification**: JobMarketplaceFAB checks if a host is registered in NodeRegistryFAB before allowing job claims
+2. **Stake Validation**: Ensures hosts have minimum 1000 FAB staked
+3. **Active Status**: Only active nodes can claim jobs
 
-Common revert reasons:
-- `"Insufficient stake"` - Sent ETH below minimum
-- `"Already registered"` - Node exists
-- `"Registration is paused"` - Circuit breaker active
-- `"Not registered"` - Node doesn't exist
-- `"Only governance"` - Unauthorized slashing attempt
+## Comparison with Original NodeRegistry
+
+| Feature | NodeRegistry | NodeRegistryFAB |
+|---------|--------------|-----------------|
+| Staking Token | ETH | FAB |
+| Minimum Stake | 100 ETH | 1000 FAB |
+| Stake Value (USD) | ~$250,000 | ~$1,000 |
+| Accessibility | High barrier | Lower barrier |
+| Token Economics | Uses network token | Uses platform token |
 
 ## Security Considerations
 
-1. **Reentrancy**: Uses checks-effects-interactions pattern
-2. **Stake Validation**: Enforces minimum stake requirements
-3. **Rate Limiting**: Maximum 10 registrations per hour
-4. **Input Validation**: 
-   - Metadata size limits (10KB)
-   - Character validation (no control characters)
-   - Stake amount limits
-5. **Sybil Detection**: Tracks controller relationships
-6. **Access Control**: Owner and governance roles
+1. **Reentrancy Protection**: All state-changing functions use `nonReentrant` modifier
+2. **Token Safety**: Uses SafeERC20 pattern for token transfers
+3. **Access Control**: Owner-only functions for critical operations
+4. **Stake Lock**: Minimum stake cannot be withdrawn while node is active
 
 ## Gas Optimization
 
-1. **Storage Efficiency**:
-   - Packs `operator` and `active` in same slot
-   - Uses memory for temporary operations
+- Efficient active nodes tracking using array + mapping pattern
+- Single storage slot for boolean + address in Node struct
+- Minimal storage writes during registration/unregistration
 
-2. **Batch Operations**:
-   - `getActiveNodes()` for bulk retrieval
-   - Consider off-chain indexing for large datasets
+## Example Usage
 
-3. **Refund Pattern**:
-   - Automatic refund of excess stake
-   - Reduces user gas costs
+### Complete Registration Flow
+```javascript
+// 1. Get FAB tokens (from faucet or purchase)
+const fabToken = await ethers.getContractAt("IERC20", FAB_ADDRESS);
 
-## Integration Examples
+// 2. Approve NodeRegistryFAB to spend FAB
+await fabToken.approve(NODE_REGISTRY_FAB, ethers.parseEther("1000"));
 
-### Basic Host Registration
-```solidity
-// Register as a host
-string[] memory models = new string[](1);
-models[0] = "gpt-3.5-turbo";
+// 3. Register as node operator
+const nodeRegistry = await ethers.getContractAt("NodeRegistryFAB", NODE_REGISTRY_FAB);
+await nodeRegistry.registerNode("gpu:rtx4090,model:llama2,region:us-west");
 
-registry.registerNode{value: 100 ether}(
-    "QmYourPeerId",
-    models,
-    "us-west-2"
-);
+// 4. Check registration
+const node = await nodeRegistry.nodes(operatorAddress);
+console.log("Staked:", node.stakedAmount);
+console.log("Active:", node.active);
 ```
 
-### Check Node Eligibility
-```solidity
-function canAssignJob(address host) public view returns (bool) {
-    NodeRegistry.Node memory node = registry.getNode(host);
-    return node.active && 
-           node.stake >= registry.requiredStake() &&
-           !registry.isSuspiciousController(registry.getNodeController(host));
-}
-```
+## Deployed Addresses
 
-### Integration with JobMarketplace
-```solidity
-// In JobMarketplace.claimJob()
-require(nodeRegistry.isActiveNode(msg.sender), "Not active host");
-```
+| Network | Address | FAB Token |
+|---------|---------|-----------|
+| Base Sepolia | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | `0xC78949004B4EB6dEf2D66e49Cd81231472612D62` |
+| Base Mainnet | TBD | TBD |

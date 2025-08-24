@@ -19,35 +19,30 @@ This document details the interaction patterns between contracts in the Fabstir 
 
 ### Sequence Diagram
 ```
-User → NodeRegistry: registerNode{value: 100 ETH}
+User → FAB Token: approve(NodeRegistryFAB, 1000 FAB)
          │
-         ├─→ Validate stake amount
+         └─→ Set allowance
+
+User → NodeRegistryFAB: registerNode(metadata)
+         │
+         ├─→ Transfer 1000 FAB from user
          ├─→ Check registration limits
          ├─→ Store node data
          ├─→ Add to active nodes list
          └─→ Emit NodeRegistered
-
-Optional:
-NodeRegistry → Governance: Check if governance set
-                   │
-                   └─→ Enable slashing capability
 ```
 
 ### Code Example
 ```solidity
-// Direct registration
-function registerAsHost() external payable {
-    require(msg.value >= 100 ether, "Insufficient stake");
+// FAB-based registration
+function registerAsHost() external {
+    // First approve FAB tokens
+    uint256 stakeAmount = 1000 ether; // 1000 FAB
+    fabToken.approve(address(nodeRegistryFAB), stakeAmount);
     
-    string[] memory models = new string[](2);
-    models[0] = "gpt-4";
-    models[1] = "llama-2-70b";
-    
-    nodeRegistry.registerNode{value: msg.value}(
-        "QmPeerId123",  // IPFS peer ID
-        models,         // Supported models
-        "us-east-1"     // Region
-    );
+    // Register with metadata
+    string memory metadata = "gpu:rtx4090,models:gpt-4;llama2,region:us-west";
+    nodeRegistryFAB.registerNode(metadata);
 }
 
 // Registration with Sybil tracking
