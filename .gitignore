@@ -38,3 +38,5 @@ deployments/hardhat/
 artifacts/
 typechain/
 typechain-types/
+archive/
+.vscode/
