@@ -24,7 +24,7 @@ contract DeployNodeRegistryFAB is Script {
         
         console.log("\n[SUCCESS] NodeRegistryFAB deployed at:", address(registry));
         console.log("FAB token address:", fabToken);
-        console.log("Minimum stake:", registry.minimumStake() / 10**18, "FAB");
+        console.log("Minimum stake:", registry.MIN_STAKE() / 10**18, "FAB");
         
         vm.stopBroadcast();
         

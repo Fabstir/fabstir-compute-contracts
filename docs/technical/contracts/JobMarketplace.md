@@ -8,7 +8,8 @@ The JobMarketplace contract is the core engine of the Fabstir marketplace, manag
 **Source**: [`src/JobMarketplace.sol`](../../../src/JobMarketplace.sol)
 
 ### Key Features
-- Job posting with escrow payment
+- Job posting with escrow payment (ETH and USDC)
+- USDC token support via PaymentEscrow integration
 - Host claiming and assignment
 - Deadline enforcement
 - Circuit breaker system with multiple protection levels
@@ -20,6 +21,7 @@ The JobMarketplace contract is the core engine of the Fabstir marketplace, manag
 ### Dependencies
 - NodeRegistry (host verification)
 - ReputationSystem (quality tracking)
+- PaymentEscrow (USDC token handling)
 - OpenZeppelin ReentrancyGuard
 
 ## Constructor
@@ -44,8 +46,10 @@ JobMarketplace marketplace = new JobMarketplace(nodeRegistryAddress);
 | Name | Type | Description |
 |------|------|-------------|
 | `MAX_PAYMENT` | `uint256` | Maximum allowed payment (1000 ETH) |
+| `usdcAddress` | `address` | USDC token address (Base Sepolia: 0x036CbD53842c5426634e7929541eC2318f3dCF7e) |
 | `nodeRegistry` | `NodeRegistry` | NodeRegistry contract instance |
 | `reputationSystem` | `ReputationSystem` | ReputationSystem contract instance |
+| `paymentEscrow` | `IPaymentEscrow` | PaymentEscrow contract for token handling |
 | `failureThreshold` | `uint256` | Failure count before auto-pause (default: 5) |
 | `migrationHelper` | `address` | Address authorized for migration operations |
 
@@ -117,12 +121,15 @@ struct JobDetails {
     string prompt;
     uint256 maxTokens;
     uint256 temperature;
+    uint32 seed;            // Random seed for reproducibility
+    string resultFormat;    // Expected output format (json, text, markdown)
 }
 
 struct JobRequirements {
-    uint256 maxTimeToComplete;  // in seconds
-    uint256 minGPUMemory;       // in GB
-}
+    uint256 minGPUMemory;        // in GB
+    uint256 minReputationScore;  // Minimum host reputation
+    uint256 maxTimeToComplete;   // in seconds
+    bool requiresProof;           // Whether proof is required
 ```
 
 #### Requirements
@@ -151,6 +158,66 @@ IJobMarketplace.JobRequirements memory requirements = IJobMarketplace.JobRequire
 });
 
 uint256 jobId = marketplace.postJob{value: 2 ether}(details, requirements, 2 ether);
+```
+
+### postJobWithToken
+
+Post a job using USDC token for payment.
+
+```solidity
+function postJobWithToken(
+    IJobMarketplace.JobDetails memory details,
+    IJobMarketplace.JobRequirements memory requirements,
+    address paymentToken,
+    uint256 paymentAmount
+) external returns (bytes32)
+```
+
+#### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `details` | `JobDetails` | Job execution details (see struct above) |
+| `requirements` | `JobRequirements` | Job requirements (see struct above) |
+| `paymentToken` | `address` | Token address (must be USDC) |
+| `paymentAmount` | `uint256` | Payment amount in token units |
+
+#### Requirements
+- Token must be USDC (0x036CbD53842c5426634e7929541eC2318f3dCF7e on Base Sepolia)
+- Payment amount > 0
+- PaymentEscrow must be configured
+- User must have approved token transfer
+- Contract not paused
+
+#### Returns
+- `bytes32` - Unique job ID for escrow tracking
+
+#### Example Usage
+```solidity
+// Approve USDC spending first
+IERC20(usdcAddress).approve(address(marketplace), 10000); // 0.01 USDC
+
+IJobMarketplace.JobDetails memory details = IJobMarketplace.JobDetails({
+    modelId: "gpt-4",
+    prompt: "Analyze this dataset...",
+    maxTokens: 4000,
+    temperature: 700,  // 0.7 * 1000
+    seed: 42,
+    resultFormat: "json"
+});
+
+IJobMarketplace.JobRequirements memory requirements = IJobMarketplace.JobRequirements({
+    minGPUMemory: 16,         // 16GB
+    minReputationScore: 0,    // No minimum
+    maxTimeToComplete: 3600,  // 1 hour
+    requiresProof: false
+});
+
+bytes32 jobId = marketplace.postJobWithToken(
+    details,
+    requirements,
+    usdcAddress,
+    10000  // 0.01 USDC (6 decimals)
+);
 ```
 
 ### claimJob
@@ -280,6 +347,8 @@ struct Job {
     uint256 maxPrice;
     uint256 deadline;
     uint256 completedAt;
+    address paymentToken;   // address(0) for ETH, token address for ERC20
+    bytes32 escrowId;       // Links to PaymentEscrow for token payments
     string modelId;
     string inputHash;
     string resultHash;
@@ -552,6 +621,7 @@ function isMonitoring(address addr) external view returns (bool)
 ### Job Lifecycle
 ```solidity
 event JobCreated(uint256 indexed jobId, address indexed renter, string modelId, uint256 maxPrice)
+event JobCreatedWithToken(bytes32 indexed jobId, address indexed renter, address paymentToken, uint256 amount)
 event JobPosted(uint256 indexed jobId, address indexed client, uint256 payment)
 event JobClaimed(uint256 indexed jobId, address indexed host)
 event JobCompleted(uint256 indexed jobId, string resultCID)

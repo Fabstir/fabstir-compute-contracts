@@ -132,6 +132,59 @@ escrow.createEscrow{value: 1 ether}(jobId, hostAddress, 1 ether, address(0));
 escrow.createEscrow(jobId, hostAddress, 1000e18, tokenAddress);
 ```
 
+### releasePaymentFor
+
+Direct payment release from JobMarketplace for token payments (no escrow creation).
+
+```solidity
+function releasePaymentFor(
+    bytes32 _jobId,
+    address _host,
+    uint256 _amount,
+    address _token
+) external onlyMarketplace nonReentrant
+```
+
+#### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `_jobId` | `bytes32` | Job identifier for tracking |
+| `_host` | `address` | Host address to receive payment |
+| `_amount` | `uint256` | Total payment amount |
+| `_token` | `address` | Token address (typically USDC) |
+
+#### Requirements
+- Only callable by JobMarketplace
+- Valid host address
+- Amount > 0
+- Reentrancy protected
+- Token must have sufficient balance
+
+#### Effects
+- Deducts platform fee (feeBasisPoints)
+- Transfers net amount to host
+- Transfers fee to arbiter
+- No escrow record created (direct transfer)
+
+#### Fee Calculation
+```solidity
+fee = (amount * feeBasisPoints) / 10000
+payment = amount - fee
+```
+
+#### Example Usage
+```solidity
+// Called by JobMarketplace when USDC job completes
+escrow.releasePaymentFor(
+    jobId,
+    hostAddress,
+    10000,  // 0.01 USDC (6 decimals)
+    usdcAddress
+);
+// Host receives: 9900 (with 1% fee = 100 basis points)
+// Arbiter receives: 100
+```
+
 ### releaseEscrow
 
 Release payment to host after job completion.

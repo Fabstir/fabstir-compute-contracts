@@ -234,6 +234,26 @@ function completeJob(uint256 jobId, bytes32 outputHash) external
 
 Submit job completion with output hash.
 
+#### postJobWithToken
+```solidity
+function postJobWithToken(
+    JobDetails memory details,
+    JobRequirements memory requirements,
+    address paymentToken,
+    uint256 paymentAmount
+) external returns (bytes32)
+```
+
+Post a job with ERC20 token payment (currently USDC only).
+
+**Parameters:**
+- `details` - Job execution details (see JobDetails struct)
+- `requirements` - Job requirements (see JobRequirements struct)  
+- `paymentToken` - Token address (must be USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e)
+- `paymentAmount` - Payment amount in token units (6 decimals for USDC)
+
+**Returns**: bytes32 job ID for escrow tracking
+
 #### grantRole
 ```solidity
 function grantRole(bytes32 role, address account) external
@@ -250,7 +270,7 @@ Get the proof system role identifier.
 
 ### Integration Example
 ```solidity
-// Post a job
+// Post a job with ETH
 uint256 jobId = marketplace.postJob(
     "gpt-4",
     1 ether,
@@ -258,6 +278,30 @@ uint256 jobId = marketplace.postJob(
     block.timestamp + 1 hours,
     keccak256("model"),
     keccak256("input")
+);
+
+// Post a job with USDC
+JobDetails memory details = JobDetails({
+    modelId: "gpt-4",
+    prompt: "Your prompt",
+    maxTokens: 2000,
+    temperature: 700,  // 0.7 * 1000
+    seed: 42,
+    resultFormat: "json"
+});
+
+JobRequirements memory requirements = JobRequirements({
+    minGPUMemory: 16,
+    minReputationScore: 0,
+    maxTimeToComplete: 3600,
+    requiresProof: false
+});
+
+bytes32 tokenJobId = marketplace.postJobWithToken(
+    details,
+    requirements,
+    0x036CbD53842c5426634e7929541eC2318f3dCF7e,  // USDC on Base Sepolia
+    10000  // 0.01 USDC
 );
 
 // Claim as host

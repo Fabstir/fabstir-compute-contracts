@@ -4,7 +4,8 @@ This comprehensive guide covers how to post AI inference jobs on the Fabstir mar
 
 ## Prerequisites
 
-- Base wallet with ETH for job payments
+- Base wallet with ETH for gas fees
+- ETH or USDC for job payments (USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e on Base Sepolia)
 - Understanding of AI models and parameters
 - IPFS access (optional, for large inputs)
 - Basic knowledge of Web3 interactions
@@ -25,7 +26,8 @@ const jobStructure = {
     // Core components
     modelId: "gpt-4",              // AI model to use
     inputData: "Your prompt here",  // Input text/data
-    payment: "0.01",               // Payment in ETH
+    payment: "0.01",               // Payment in ETH or USDC
+    paymentToken: "ETH",           // "ETH" or USDC address
     deadline: 3600,                // Time limit in seconds
     
     // Advanced parameters
@@ -217,6 +219,148 @@ async function postAdvancedJob() {
     console.log("Advanced job posted!");
     
     return receipt;
+}
+```
+
+## Step 2.5: Posting Jobs with USDC
+
+### USDC Payment Setup
+```javascript
+async function postJobWithUSDC() {
+    const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    
+    // USDC contract on Base Sepolia
+    const USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+    const usdcABI = [
+        "function approve(address spender, uint256 amount) returns (bool)",
+        "function balanceOf(address account) view returns (uint256)"
+    ];
+    
+    const usdc = new ethers.Contract(USDC_ADDRESS, usdcABI, wallet);
+    
+    const jobMarketplaceABI = [
+        "function postJobWithToken(tuple(string modelId, string prompt, uint256 maxTokens, uint256 temperature, uint32 seed, string resultFormat) details, tuple(uint256 minGPUMemory, uint256 minReputationScore, uint256 maxTimeToComplete, bool requiresProof) requirements, address paymentToken, uint256 paymentAmount) returns (bytes32)",
+        "event JobCreatedWithToken(bytes32 indexed jobId, address indexed renter, address paymentToken, uint256 amount)"
+    ];
+    
+    const marketplace = new ethers.Contract(
+        process.env.JOB_MARKETPLACE_ADDRESS,
+        jobMarketplaceABI,
+        wallet
+    );
+    
+    // Job details - ALL fields required
+    const jobDetails = {
+        modelId: "gpt-4",
+        prompt: "Analyze market trends for DeFi protocols",
+        maxTokens: 2000,
+        temperature: 700,        // 0.7 * 1000
+        seed: 42,               // Random seed for reproducibility
+        resultFormat: "json"    // Output format
+    };
+    
+    // Requirements - ALL fields required
+    const requirements = {
+        minGPUMemory: 16,           // 16GB VRAM
+        minReputationScore: 0,      // No minimum reputation
+        maxTimeToComplete: 3600,    // 1 hour
+        requiresProof: false        // No proof required
+    };
+    
+    // Payment in USDC (6 decimals)
+    const paymentAmount = 10000; // 0.01 USDC
+    
+    // Step 1: Check USDC balance
+    const balance = await usdc.balanceOf(wallet.address);
+    console.log("USDC Balance:", ethers.formatUnits(balance, 6));
+    
+    if (balance < paymentAmount) {
+        throw new Error("Insufficient USDC balance");
+    }
+    
+    // Step 2: Approve USDC spending
+    console.log("Approving USDC...");
+    const approveTx = await usdc.approve(
+        marketplace.address,
+        paymentAmount
+    );
+    await approveTx.wait();
+    console.log("USDC approved");
+    
+    // Step 3: Post job with USDC
+    console.log("Posting job with USDC payment...");
+    const tx = await marketplace.postJobWithToken(
+        jobDetails,
+        requirements,
+        USDC_ADDRESS,
+        paymentAmount,
+        { gasLimit: 500000 }
+    );
+    
+    const receipt = await tx.wait();
+    console.log("Job posted with USDC!");
+    
+    // Get job ID from event
+    const event = receipt.logs.find(log => {
+        try {
+            const parsed = marketplace.interface.parseLog(log);
+            return parsed.name === "JobCreatedWithToken";
+        } catch { return false; }
+    });
+    
+    const jobId = event.args.jobId;
+    console.log("Job ID (bytes32):", jobId);
+    
+    return jobId;
+}
+```
+
+### Important Notes for USDC Jobs
+
+1. **Complete Struct Fields**: All fields in JobDetails and JobRequirements must be provided
+2. **USDC Decimals**: USDC uses 6 decimals (1 USDC = 1000000)
+3. **Temperature**: Use basis points (1000 = 1.0, 500 = 0.5)
+4. **Seed**: Must be uint32 (max 4294967295)
+5. **Result Format**: Common values: "json", "text", "markdown"
+6. **Approval Required**: Must approve USDC transfer before posting job
+
+### Error Handling for USDC Jobs
+```javascript
+async function safePostJobWithUSDC(jobConfig) {
+    try {
+        // Validate all required fields
+        const requiredDetails = ['modelId', 'prompt', 'maxTokens', 'temperature', 'seed', 'resultFormat'];
+        const requiredReqs = ['minGPUMemory', 'minReputationScore', 'maxTimeToComplete', 'requiresProof'];
+        
+        for (const field of requiredDetails) {
+            if (!(field in jobConfig.details)) {
+                throw new Error(`Missing required field: details.${field}`);
+            }
+        }
+        
+        for (const field of requiredReqs) {
+            if (!(field in jobConfig.requirements)) {
+                throw new Error(`Missing required field: requirements.${field}`);
+            }
+        }
+        
+        // Post job
+        return await postJobWithUSDC();
+        
+    } catch (error) {
+        if (error.message.includes("Missing required field")) {
+            console.error("Struct validation failed:", error.message);
+            // Add default values for missing fields
+        } else if (error.message.includes("ERC20: insufficient allowance")) {
+            console.error("Need to approve USDC first");
+        } else if (error.message.includes("Only USDC accepted")) {
+            console.error("Wrong token address provided");
+        } else {
+            console.error("Job posting failed:", error);
+        }
+        throw error;
+    }
 }
 ```
 

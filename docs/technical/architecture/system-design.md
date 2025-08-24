@@ -27,7 +27,7 @@ The Fabstir compute contracts implement a decentralized P2P marketplace for AI m
 ### 4. Composability
 - Clean interface separation
 - ERC-4337 support for account abstraction
-- Standard token support (ETH and ERC20)
+- Multi-token support (ETH and USDC)
 - Batch operations for efficiency
 
 ## System Components
@@ -39,9 +39,9 @@ The Fabstir compute contracts implement a decentralized P2P marketplace for AI m
 │                      Job Lifecycle Layer                      │
 ├─────────────────┬─────────────────┬─────────────────────────┤
 │  JobMarketplace │  PaymentEscrow  │     ProofSystem         │
-│  - Job posting  │  - Hold payment  │  - Verify outputs       │
+│  - Job posting  │  - ETH/USDC hold │  - Verify outputs       │
 │  - Assignment   │  - Fee handling  │  - Challenge mechanism  │
-│  - Completion   │  - Refunds       │  - EZKL integration     │
+│  - Completion   │  - Token refunds │  - EZKL integration     │
 └─────────────────┴─────────────────┴─────────────────────────┘
 ```
 
