@@ -234,7 +234,7 @@ class StakingCalculator {
         this.stakeAmount = stakeAmount; // in FAB
         this.avgJobsPerDay = avgJobsPerDay;
         this.avgPaymentPerJob = avgPaymentPerJob; // in USDC
-        this.platformFee = 0.01; // 1%
+        this.platformFee = 0.10; // 10%
     }
     
     calculateDailyEarnings() {

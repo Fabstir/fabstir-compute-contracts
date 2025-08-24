@@ -4,13 +4,13 @@
 
 The PaymentEscrow contract provides a secure multi-token escrow system for the Fabstir marketplace. It holds payments during job execution and handles release, refunds, and dispute resolution with support for both ETH and ERC20 tokens (primarily USDC).
 
-**Contract Address (Base Sepolia)**: `0x240258A70E1DBAC442202a74739F0e6dC16ef558`  
-**Previous Version**: `0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894`  
+**Contract Address (Base Sepolia)**: `0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3` (NEW - 10% fee)  
+**Previous Version**: `0x240258A70E1DBAC442202a74739F0e6dC16ef558` (1% fee, deprecated)  
 **Source**: [`src/PaymentEscrow.sol`](../../../src/PaymentEscrow.sol)
 
 ### Key Features
 - Multi-token support (ETH and ERC20, especially USDC)
-- Fee collection mechanism (currently 1% = 100 basis points)
+- Fee collection mechanism (10% = 1000 basis points)
 - Direct payment release from JobMarketplaceFAB
 - Dispute resolution with arbiter (optional)
 - Refund request workflow
@@ -32,12 +32,12 @@ constructor(address _arbiter, uint256 _feeBasisPoints) Ownable(msg.sender)
 | Name | Type | Description |
 |------|------|-------------|
 | `_arbiter` | `address` | Address authorized to resolve disputes |
-| `_feeBasisPoints` | `uint256` | Fee percentage in basis points (e.g., 250 = 2.5%) |
+| `_feeBasisPoints` | `uint256` | Fee percentage in basis points (e.g., 1000 = 10%) |
 
 ### Example Deployment
 ```solidity
-// Deploy with 1% fee (100 basis points), no arbiter
-PaymentEscrow escrow = new PaymentEscrow(address(0), 100);
+// Deploy with 10% fee (1000 basis points), TreasuryManager as arbiter
+PaymentEscrow escrow = new PaymentEscrow(TREASURY_MANAGER_ADDRESS, 1000);
 
 // Set JobMarketplaceFAB as authorized marketplace
 escrow.setJobMarketplace(JOB_MARKETPLACE_FAB_ADDRESS);

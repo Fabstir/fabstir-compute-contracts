@@ -28,8 +28,8 @@ const USDC_ABI = [
 const config = {
     rpcUrl: process.env.RPC_URL || 'https://sepolia.base.org',
     chainId: parseInt(process.env.CHAIN_ID || '84532'), // Base Sepolia
-    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65',
-    paymentEscrow: process.env.PAYMENT_ESCROW || '0x240258A70E1DBAC442202a74739F0e6dC16ef558',
+    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0x870E74D1Fe7D9097deC27651f67422B598b689Cd', // NEW 10% fee
+    paymentEscrow: process.env.PAYMENT_ESCROW || '0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3', // NEW 10% fee
     usdc: process.env.USDC || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
     
     // Gas settings

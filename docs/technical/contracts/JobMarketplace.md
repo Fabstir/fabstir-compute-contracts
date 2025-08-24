@@ -4,14 +4,15 @@
 
 The JobMarketplaceFAB contract is a specialized version of JobMarketplace designed to work with FAB token staking through NodeRegistryFAB. It maintains full USDC payment functionality while requiring hosts to stake FAB tokens instead of ETH.
 
-**Contract Address (Base Sepolia)**: `0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65`  
+**Contract Address (Base Sepolia)**: `0x870E74D1Fe7D9097deC27651f67422B598b689Cd` (NEW - 10% fee)  
+**Previous Version**: `0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65` (1% fee, deprecated)  
 **Source**: [`src/JobMarketplaceFAB.sol`](../../../src/JobMarketplaceFAB.sol)
 
 ### Key Features
 - Integration with NodeRegistryFAB for FAB-based host verification
 - USDC payment support through PaymentEscrow
 - Job lifecycle management (Posted → Claimed → Completed)
-- Automatic payment release with 1% platform fee
+- Automatic payment release with 10% platform fee
 - Deadline enforcement for job completion
 
 ### Dependencies

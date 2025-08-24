@@ -4,20 +4,25 @@
 
 ### 🚀 Active Contracts (Base Sepolia)
 
-- **JobMarketplaceFAB**: `0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65` ✅
+- **JobMarketplaceFAB**: `0x870E74D1Fe7D9097deC27651f67422B598b689Cd` ✅ (NEW)
   - FAB token staking integration
   - USDC payments enabled
-  - 1% platform fee
+  - 10% platform fee
   
 - **NodeRegistryFAB**: `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` ✅
   - 1000 FAB minimum stake
   - ~$1,000 entry cost
   - Non-custodial staking
 
-- **PaymentEscrow**: `0x240258A70E1DBAC442202a74739F0e6dC16ef558` ✅
+- **PaymentEscrow**: `0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3` ✅ (NEW)
   - Multi-token support (primarily USDC)
-  - 1% fee handling (100 basis points)
-  - Direct release functionality
+  - 10% fee handling (1000 basis points)
+  - Fees go to TreasuryManager
+
+- **TreasuryManager**: `0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078` ✅ (NEW)
+  - Receives all platform fees
+  - Distributes to 5 sub-funds
+  - Transparent fee allocation
 
 - **FAB Token**: `0xC78949004B4EB6dEf2D66e49Cd81231472612D62`
   - Platform native token
@@ -47,9 +52,10 @@
 // Production contracts configuration
 const CONTRACTS = {
   // Core contracts
-  JOB_MARKETPLACE: "0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65",
+  JOB_MARKETPLACE: "0x870E74D1Fe7D9097deC27651f67422B598b689Cd", // NEW 10% fee version
   NODE_REGISTRY: "0x87516C13Ea2f99de598665e14cab64E191A0f8c4",
-  PAYMENT_ESCROW: "0x240258A70E1DBAC442202a74739F0e6dC16ef558",
+  PAYMENT_ESCROW: "0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3", // NEW 10% fee version
+  TREASURY_MANAGER: "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078", // NEW
   
   // Tokens
   FAB_TOKEN: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
@@ -113,8 +119,8 @@ await jobMarketplaceFAB.claimJob(jobId);
 await jobMarketplaceFAB.completeJob(jobId, "result-hash", "0x");
 
 // Payment automatically released:
-// - Host receives 9.9 USDC (99%)
-// - Platform retains 0.1 USDC (1% fee)
+// - Host receives 9 USDC (90%)
+// - TreasuryManager receives 1 USDC (10% fee)
 ```
 
 ## Verified Transaction Flow
@@ -136,15 +142,22 @@ cast call 0x87516C13Ea2f99de598665e14cab64E191A0f8c4 "MIN_STAKE()" --rpc-url htt
 # Expected: 1000000000000000000000 (1000 FAB)
 
 # Check JobMarketplaceFAB connections
-cast call 0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65 "nodeRegistry()" --rpc-url https://sepolia.base.org
+cast call 0x870E74D1Fe7D9097deC27651f67422B598b689Cd "nodeRegistry()" --rpc-url https://sepolia.base.org
 # Expected: 0x87516C13Ea2f99de598665e14cab64E191A0f8c4
 
-cast call 0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65 "paymentEscrow()" --rpc-url https://sepolia.base.org
-# Expected: 0x240258A70E1DBAC442202a74739F0e6dC16ef558
+cast call 0x870E74D1Fe7D9097deC27651f67422B598b689Cd "paymentEscrow()" --rpc-url https://sepolia.base.org
+# Expected: 0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3
 
 # Check USDC configuration
-cast call 0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65 "usdcAddress()" --rpc-url https://sepolia.base.org
+cast call 0x870E74D1Fe7D9097deC27651f67422B598b689Cd "usdcAddress()" --rpc-url https://sepolia.base.org
 # Expected: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+
+# Check fee configuration
+cast call 0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3 "feeBasisPoints()" --rpc-url https://sepolia.base.org
+# Expected: 1000 (10% fee)
+
+cast call 0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3 "arbiter()" --rpc-url https://sepolia.base.org
+# Expected: 0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078 (TreasuryManager)
 ```
 
 ### Check Balances
@@ -181,18 +194,24 @@ forge script script/DeployNewPaymentEscrow.s.sol --rpc-url https://sepolia.base.
 
 ### USDC Payment System
 - **Payment Token**: USDC (6 decimals)
-- **Platform Fee**: 1% (100 basis points)
+- **Platform Fee**: 10% (1000 basis points)
 - **Payment Flow**: Automatic release on job completion
-- **Host Earnings**: 99% of job payment
-- **Fee Collection**: Retained in PaymentEscrow
+- **Host Earnings**: 90% of job payment
+- **Fee Collection**: Sent to TreasuryManager for distribution
 
 ### Payment Flow
 1. Renter posts job with USDC
 2. USDC held in PaymentEscrow
 3. Host completes job
-4. Payment released with 1% fee:
-   - 99% to host
-   - 1% to platform
+4. Payment released with 10% fee:
+   - 90% to host
+   - 10% to TreasuryManager
+5. TreasuryManager distributes fees:
+   - 3% Development Fund
+   - 2% Ecosystem Growth
+   - 2% Insurance/Security
+   - 2% FAB Buyback/Burn
+   - 1% Future Reserve
 
 ## Support & Resources
 
@@ -203,6 +222,7 @@ forge script script/DeployNewPaymentEscrow.s.sol --rpc-url https://sepolia.base.
 ## Contract Verification
 
 All contracts are verified on BaseScan:
-- [JobMarketplaceFAB](https://sepolia.basescan.org/address/0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65)
+- [JobMarketplaceFAB](https://sepolia.basescan.org/address/0x870E74D1Fe7D9097deC27651f67422B598b689Cd) (NEW)
 - [NodeRegistryFAB](https://sepolia.basescan.org/address/0x87516C13Ea2f99de598665e14cab64E191A0f8c4)
-- [PaymentEscrow](https://sepolia.basescan.org/address/0x240258A70E1DBAC442202a74739F0e6dC16ef558)
+- [PaymentEscrow](https://sepolia.basescan.org/address/0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3) (NEW)
+- [TreasuryManager](https://sepolia.basescan.org/address/0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078) (NEW)
