@@ -4,22 +4,30 @@
 
 ### 🚀 Active Contracts (Base Sepolia)
 
-- **JobMarketplaceFAB**: `0x870E74D1Fe7D9097deC27651f67422B598b689Cd` ✅ (NEW)
+- **JobMarketplaceFABWithEarnings**: `0xEB646BF2323a441698B256623F858c8787d70f9F` ✅ (LATEST)
   - FAB token staking integration
   - USDC payments enabled
   - 10% platform fee
+  - **NEW: Earnings accumulation system**
+  
+- **HostEarnings**: `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` ✅ (NEW)
+  - Accumulates host earnings instead of direct transfers
+  - Batch withdrawal support for gas savings
+  - 40-46% gas reduction for multiple jobs
+  - Transparent balance tracking
   
 - **NodeRegistryFAB**: `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` ✅
   - 1000 FAB minimum stake
   - ~$1,000 entry cost
   - Non-custodial staking
 
-- **PaymentEscrow**: `0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3` ✅ (NEW)
+- **PaymentEscrowWithEarnings**: `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` ✅ (LATEST)
   - Multi-token support (primarily USDC)
   - 10% fee handling (1000 basis points)
   - Fees go to TreasuryManager
+  - **NEW: Routes payments to HostEarnings contract**
 
-- **TreasuryManager**: `0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078` ✅ (NEW)
+- **TreasuryManager**: `0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078` ✅
   - Receives all platform fees
   - Distributes to 5 sub-funds
   - Transparent fee allocation
@@ -52,10 +60,11 @@
 // Production contracts configuration
 const CONTRACTS = {
   // Core contracts
-  JOB_MARKETPLACE: "0x870E74D1Fe7D9097deC27651f67422B598b689Cd", // NEW 10% fee version
+  JOB_MARKETPLACE: "0xEB646BF2323a441698B256623F858c8787d70f9F", // LATEST - with earnings accumulation
+  HOST_EARNINGS: "0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E", // NEW - accumulation system
   NODE_REGISTRY: "0x87516C13Ea2f99de598665e14cab64E191A0f8c4",
-  PAYMENT_ESCROW: "0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3", // NEW 10% fee version
-  TREASURY_MANAGER: "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078", // NEW
+  PAYMENT_ESCROW: "0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C", // LATEST - with earnings routing
+  TREASURY_MANAGER: "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078",
   
   // Tokens
   FAB_TOKEN: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
@@ -118,9 +127,23 @@ await jobMarketplaceFAB.claimJob(jobId);
 // Host completes job
 await jobMarketplaceFAB.completeJob(jobId, "result-hash", "0x");
 
-// Payment automatically released:
-// - Host receives 9 USDC (90%)
-// - TreasuryManager receives 1 USDC (10% fee)
+// NEW: Payment accumulated (not transferred directly):
+// - Host earnings: +9 USDC (90%) credited to HostEarnings contract
+// - TreasuryManager: +1 USDC (10% fee) transferred immediately
+```
+
+### 4. Withdrawing Accumulated Earnings (NEW)
+```javascript
+// Check accumulated earnings
+const balance = await hostEarnings.getBalance(hostAddress, USDC);
+console.log("Accumulated earnings:", balance);
+
+// Withdraw all accumulated earnings
+await hostEarnings.withdrawAll(USDC);
+// Host receives all accumulated USDC in one transaction
+
+// Or withdraw specific amount
+await hostEarnings.withdraw(ethers.parseUnits("50", 6), USDC);
 ```
 
 ## Verified Transaction Flow

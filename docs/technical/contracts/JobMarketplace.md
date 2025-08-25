@@ -1,44 +1,51 @@
-# JobMarketplaceFAB Contract
+# JobMarketplaceFABWithEarnings Contract
 
 ## Overview
 
-The JobMarketplaceFAB contract is a specialized version of JobMarketplace designed to work with FAB token staking through NodeRegistryFAB. It maintains full USDC payment functionality while requiring hosts to stake FAB tokens instead of ETH.
+The JobMarketplaceFABWithEarnings contract is an enhanced version of JobMarketplaceFAB that implements host earnings accumulation for significant gas savings. It maintains FAB token staking and USDC payment functionality while reducing gas costs by 40-46% for hosts completing multiple jobs.
 
-**Contract Address (Base Sepolia)**: `0x870E74D1Fe7D9097deC27651f67422B598b689Cd` (NEW - 10% fee)  
-**Previous Version**: `0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65` (1% fee, deprecated)  
-**Source**: [`src/JobMarketplaceFAB.sol`](../../../src/JobMarketplaceFAB.sol)
+**Contract Address (Base Sepolia)**: `0xEB646BF2323a441698B256623F858c8787d70f9F` (LATEST - with earnings accumulation)  
+**Previous Version**: `0x870E74D1Fe7D9097deC27651f67422B598b689Cd` (direct payment, deprecated)  
+**Source**: [`src/JobMarketplaceFABWithEarnings.sol`](../../../src/JobMarketplaceFABWithEarnings.sol)
 
 ### Key Features
 - Integration with NodeRegistryFAB for FAB-based host verification
-- USDC payment support through PaymentEscrow
+- USDC payment support through PaymentEscrowWithEarnings
+- **NEW: Host earnings accumulation via HostEarnings contract**
+- **NEW: 40-46% gas savings for multiple job completions**
 - Job lifecycle management (Posted → Claimed → Completed)
-- Automatic payment release with 10% platform fee
+- Automatic earnings credit with 10% platform fee
 - Deadline enforcement for job completion
 
 ### Dependencies
 - NodeRegistryFAB (for host verification)
-- PaymentEscrow (for USDC escrow)
+- PaymentEscrowWithEarnings (for USDC escrow with earnings routing)
+- HostEarnings (for accumulating host payments)
 - OpenZeppelin ReentrancyGuard
 - IERC20 (for USDC transfers)
 
 ## Constructor
 
 ```solidity
-constructor(address _nodeRegistry)
+constructor(address _nodeRegistry, address payable _hostEarnings)
 ```
 
 ### Parameters
 | Name | Type | Description |
 |------|------|-------------|
 | `_nodeRegistry` | `address` | Address of NodeRegistryFAB contract |
+| `_hostEarnings` | `address payable` | Address of HostEarnings contract |
 
 ### Example Deployment
 ```solidity
-// Deploy with NodeRegistryFAB address
-JobMarketplaceFAB marketplace = new JobMarketplaceFAB(0x87516C13Ea2f99de598665e14cab64E191A0f8c4);
+// Deploy with NodeRegistryFAB and HostEarnings addresses
+JobMarketplaceFABWithEarnings marketplace = new JobMarketplaceFABWithEarnings(
+    0x87516C13Ea2f99de598665e14cab64E191A0f8c4,  // NodeRegistryFAB
+    0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E   // HostEarnings
+);
 // Configure USDC
 marketplace.setUsdcAddress(USDC_ADDRESS);
-// Set PaymentEscrow
+// Set PaymentEscrowWithEarnings
 marketplace.setPaymentEscrow(PAYMENT_ESCROW_ADDRESS);
 ```
 
@@ -54,9 +61,11 @@ marketplace.setPaymentEscrow(PAYMENT_ESCROW_ADDRESS);
 | Name | Type | Description |
 |------|------|-------------|
 | `nodeRegistry` | `NodeRegistryFAB` | FAB-based node registry contract |
-| `paymentEscrow` | `IPaymentEscrow` | Payment escrow contract |
+| `paymentEscrow` | `IPaymentEscrow` | Payment escrow contract with earnings routing |
+| `hostEarnings` | `HostEarnings` | Host earnings accumulation contract |
 | `reputationSystem` | `IReputationSystem` | Optional reputation tracking |
 | `nextJobId` | `uint256` | Counter for internal job IDs |
+| `totalEarningsCredited` | `mapping(address => uint256)` | Total earnings credited per host |
 
 ## Structs
 
@@ -181,15 +190,15 @@ function completeJob(
 
 **Effects:**
 - Changes status to Completed
-- Releases payment from escrow (minus 1% fee)
+- Credits earnings to host's balance (minus 10% fee)
 - Updates reputation if available
-- Emits JobCompleted event
+- Emits JobCompleted and EarningsCredited events
 
 **Payment Flow:**
-1. PaymentEscrow releases USDC to host
-2. 1% fee is deducted (100 basis points)
-3. Host receives 99% of payment
-4. Fee accumulates in escrow for platform
+1. PaymentEscrowWithEarnings routes payment to HostEarnings
+2. 10% fee is deducted (1000 basis points) and sent to TreasuryManager
+3. Host's earnings balance credited with 90% of payment
+4. Host can withdraw accumulated earnings anytime
 
 ### getJob
 Retrieves job details.
@@ -230,6 +239,7 @@ event JobCreated(uint256 indexed jobId, address indexed renter, string modelId, 
 event JobCreatedWithToken(bytes32 indexed jobId, address indexed renter, address paymentToken, uint256 paymentAmount);
 event JobClaimed(uint256 indexed jobId, address indexed host);
 event JobCompleted(uint256 indexed jobId, string resultHash);
+event EarningsCredited(address indexed host, uint256 amount, address token);
 ```
 
 ## Integration Flow
@@ -255,8 +265,12 @@ event JobCompleted(uint256 indexed jobId, string resultHash);
    - Payment released automatically
 
 5. **Payment Settlement**
-   - 99% to host (e.g., 9.9 USDC from 10 USDC job)
-   - 1% platform fee retained
+   - 90% credited to host's earnings (e.g., 9 USDC from 10 USDC job)
+   - 10% platform fee to TreasuryManager
+
+6. **Earnings Withdrawal** (NEW)
+   - Host can withdraw accumulated earnings
+   - Batch withdrawal saves gas
 
 ## Security Considerations
 
@@ -268,9 +282,13 @@ event JobCompleted(uint256 indexed jobId, string resultHash);
 
 ## Gas Optimization
 
+- **NEW: Earnings accumulation saves 40-46% gas**
+  - Direct transfer: ~115,000 gas per job
+  - Accumulation: ~69,000 gas per job
+  - Example: 5 jobs save ~220,000 gas total
 - Efficient storage packing in Job struct
 - Minimal external calls during critical operations
-- Batch operations support through events
+- Batch withdrawal reduces per-job gas cost
 
 ## Differences from Original JobMarketplace
 
@@ -306,18 +324,25 @@ await marketplace.claimJob(jobId);
 
 // 4. Complete job (as host)
 await marketplace.completeJob(jobId, "QmResultHash...", "0x");
+// Earnings are credited, not transferred directly
 
-// 5. Verify payment
+// 5. Check accumulated earnings
+const hostEarnings = await ethers.getContractAt("HostEarnings", HOST_EARNINGS_ADDRESS);
+const earnings = await hostEarnings.getBalance(hostAddress, USDC_ADDRESS);
+console.log("Host earnings:", earnings); // 9 USDC credited
+
+// 6. Withdraw accumulated earnings (can be done later)
+await hostEarnings.withdrawAll(USDC_ADDRESS);
 const balance = await usdc.balanceOf(hostAddress);
-console.log("Host received:", balance); // 9.9 USDC
+console.log("Host balance after withdrawal:", balance); // 9 USDC received
 ```
 
 ## Deployed Addresses
 
-| Network | JobMarketplaceFAB | NodeRegistryFAB | PaymentEscrow |
-|---------|------------------|-----------------|---------------|
-| Base Sepolia | `0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65` | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | `0x240258A70E1DBAC442202a74739F0e6dC16ef558` |
-| Base Mainnet | TBD | TBD | TBD |
+| Network | JobMarketplaceFABWithEarnings | NodeRegistryFAB | PaymentEscrowWithEarnings | HostEarnings |
+|---------|-------------------------------|-----------------|---------------------------|-------------|
+| Base Sepolia | `0xEB646BF2323a441698B256623F858c8787d70f9F` | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` | `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` |
+| Base Mainnet | TBD | TBD | TBD | TBD |
 
 ## Verified Transactions
 

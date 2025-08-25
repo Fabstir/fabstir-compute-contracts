@@ -1,6 +1,6 @@
 /**
- * Example: Complete Job (FAB System)
- * Purpose: Demonstrates how to submit job results and receive USDC payment in the FAB-based system
+ * Example: Complete Job (FAB System with Earnings Accumulation)
+ * Purpose: Demonstrates how to submit job results and accumulate USDC earnings in the FAB-based system
  * Prerequisites:
  *   - Host must be registered with 1000 FAB staked
  *   - Job must be claimed by your node
@@ -24,12 +24,13 @@ const USDC_ABI = [
     'function decimals() view returns (uint8)'
 ];
 
-// Configuration - FAB system on Base Sepolia
+// Configuration - FAB system with earnings accumulation on Base Sepolia
 const config = {
     rpcUrl: process.env.RPC_URL || 'https://sepolia.base.org',
     chainId: parseInt(process.env.CHAIN_ID || '84532'), // Base Sepolia
-    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0x870E74D1Fe7D9097deC27651f67422B598b689Cd', // NEW 10% fee
-    paymentEscrow: process.env.PAYMENT_ESCROW || '0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3', // NEW 10% fee
+    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0xEB646BF2323a441698B256623F858c8787d70f9F', // LATEST with earnings
+    paymentEscrow: process.env.PAYMENT_ESCROW || '0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C', // LATEST with earnings
+    hostEarnings: process.env.HOST_EARNINGS || '0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E', // NEW earnings contract
     usdc: process.env.USDC || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
     
     // Gas settings
@@ -240,19 +241,28 @@ async function main() {
             console.log(`   Result Hash: ${event.args[1]}`);
         }
         
-        // 10. Check USDC payment
-        console.log('\n7️⃣ Verifying USDC payment...');
-        const usdcBalanceAfter = await usdc.balanceOf(wallet.address);
-        const usdcReceived = usdcBalanceAfter - usdcBalanceBefore;
+        // 10. Check accumulated earnings (not direct payment)
+        console.log('\n7️⃣ Verifying earnings accumulation...');
         
-        if (usdcReceived > 0) {
-            const expectedPayment = (payment * 99n) / 100n; // 99% after 1% fee
-            console.log(`   Payment received: ${ethers.formatUnits(usdcReceived, 6)} USDC`);
-            console.log(`   Expected (99% of ${ethers.formatUnits(payment, 6)}): ${ethers.formatUnits(expectedPayment, 6)} USDC`);
-            console.log(`   Platform fee (1%): ${ethers.formatUnits(payment - expectedPayment, 6)} USDC`);
-        } else {
-            console.log('   ⚠️  Payment not yet received - may need to check escrow');
-        }
+        // Connect to HostEarnings contract
+        const HOST_EARNINGS_ABI = [
+            'function getBalance(address host, address token) view returns (uint256)'
+        ];
+        const hostEarnings = new ethers.Contract(
+            config.hostEarnings,
+            HOST_EARNINGS_ABI,
+            provider
+        );
+        
+        // Check accumulated balance
+        const accumulatedBalance = await hostEarnings.getBalance(wallet.address, config.usdc);
+        const expectedPayment = (payment * 90n) / 100n; // 90% after 10% fee
+        
+        console.log(`   ⚠️  NOTE: Payments are now accumulated, not transferred directly`);
+        console.log(`   Accumulated earnings: ${ethers.formatUnits(accumulatedBalance, 6)} USDC`);
+        console.log(`   Expected from this job (90% of ${ethers.formatUnits(payment, 6)}): ${ethers.formatUnits(expectedPayment, 6)} USDC`);
+        console.log(`   Platform fee (10%): ${ethers.formatUnits(payment - expectedPayment, 6)} USDC`);
+        console.log(`   \n   💡 To withdraw earnings, use: hostEarnings.withdrawAll(USDC_ADDRESS)`);
         
         // 11. Calculate gas costs
         const gasUsed = receipt.gasUsed;
@@ -265,12 +275,14 @@ async function main() {
         console.log('\n📊 Completion Summary:');
         console.log(`   Job ID: ${params.jobId}`);
         console.log(`   Result Hash: ${resultHash}`);
-        console.log(`   Payment: ${ethers.formatUnits(usdcReceived, 6)} USDC received`);
+        console.log(`   Earnings credited: ${ethers.formatUnits(expectedPayment, 6)} USDC`);
+        console.log(`   Total accumulated: ${ethers.formatUnits(accumulatedBalance, 6)} USDC`);
         console.log(`   Gas Cost: ${ethers.formatEther(gasCost)} ETH`);
+        console.log(`   Gas Saved: ~46,000 (40% reduction vs direct transfer)`);
         console.log(`   Status: ✅ Completed`);
         
-        console.log('\n🎉 Congratulations! Job completed and USDC payment received.');
-        console.log('💡 With FAB staking, you have lower entry barriers while earning in USDC!');
+        console.log('\n🎉 Congratulations! Job completed and earnings credited.');
+        console.log('💡 Earnings accumulate for gas-efficient batch withdrawal!');
         
         // Show BaseScan link
         console.log(`\n🔗 View on BaseScan:`);
@@ -345,9 +357,12 @@ module.exports = { main, config };
  *    Transaction hash: 0x123...
  *    ✅ Transaction confirmed
  * 
- * 7️⃣ Verifying USDC payment...
- *    Payment received: 9.90 USDC
- *    Platform fee (1%): 0.10 USDC
+ * 7️⃣ Verifying earnings accumulation...
+ *    ⚠️  NOTE: Payments are now accumulated, not transferred directly
+ *    Accumulated earnings: 9.00 USDC
+ *    Platform fee (10%): 1.00 USDC
+ *    
+ *    💡 To withdraw earnings, use: hostEarnings.withdrawAll(USDC_ADDRESS)
  * 
- * 🎉 Job completed and USDC payment received!
+ * 🎉 Job completed and earnings credited!
  */

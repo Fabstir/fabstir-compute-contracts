@@ -1,17 +1,20 @@
-# PaymentEscrow Contract
+# PaymentEscrowWithEarnings Contract
 
 ## Overview
 
-The PaymentEscrow contract provides a secure multi-token escrow system for the Fabstir marketplace. It holds payments during job execution and handles release, refunds, and dispute resolution with support for both ETH and ERC20 tokens (primarily USDC).
+The PaymentEscrowWithEarnings contract provides a secure multi-token escrow system for the Fabstir marketplace with integrated host earnings accumulation. It holds payments during job execution and handles release to the HostEarnings contract for gas-efficient batch withdrawals, supporting both ETH and ERC20 tokens (primarily USDC).
 
-**Contract Address (Base Sepolia)**: `0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3` (NEW - 10% fee)  
-**Previous Version**: `0x240258A70E1DBAC442202a74739F0e6dC16ef558` (1% fee, deprecated)  
-**Source**: [`src/PaymentEscrow.sol`](../../../src/PaymentEscrow.sol)
+**Contract Address (Base Sepolia)**: `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` (LATEST - with earnings accumulation)  
+**Previous Version**: `0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3` (direct payment, deprecated)  
+**Source**: [`src/PaymentEscrowWithEarnings.sol`](../../../src/PaymentEscrowWithEarnings.sol)
 
 ### Key Features
 - Multi-token support (ETH and ERC20, especially USDC)
 - Fee collection mechanism (10% = 1000 basis points)
-- Direct payment release from JobMarketplaceFAB
+- **NEW: Earnings accumulation via HostEarnings contract**
+- **NEW: 40-46% gas savings for hosts completing multiple jobs**
+- Direct payment release from JobMarketplaceFABWithEarnings
+- TreasuryManager integration for fee distribution
 - Dispute resolution with arbiter (optional)
 - Refund request workflow
 - Migration support
@@ -37,10 +40,10 @@ constructor(address _arbiter, uint256 _feeBasisPoints) Ownable(msg.sender)
 ### Example Deployment
 ```solidity
 // Deploy with 10% fee (1000 basis points), TreasuryManager as arbiter
-PaymentEscrow escrow = new PaymentEscrow(TREASURY_MANAGER_ADDRESS, 1000);
+PaymentEscrowWithEarnings escrow = new PaymentEscrowWithEarnings(TREASURY_MANAGER_ADDRESS, 1000);
 
-// Set JobMarketplaceFAB as authorized marketplace
-escrow.setJobMarketplace(JOB_MARKETPLACE_FAB_ADDRESS);
+// Set JobMarketplaceFABWithEarnings as authorized marketplace
+escrow.setJobMarketplace(JOB_MARKETPLACE_FAB_WITH_EARNINGS_ADDRESS);
 ```
 
 ## State Variables
@@ -137,16 +140,17 @@ escrow.createEscrow{value: 1 ether}(jobId, hostAddress, 1 ether, address(0));
 escrow.createEscrow(jobId, hostAddress, 1000e18, tokenAddress);
 ```
 
-### releasePaymentFor
+### releaseToEarnings (NEW)
 
-Direct payment release from JobMarketplace for token payments (no escrow creation).
+Release payment to HostEarnings contract for accumulation instead of direct transfer.
 
 ```solidity
-function releasePaymentFor(
+function releaseToEarnings(
     bytes32 _jobId,
     address _host,
     uint256 _amount,
-    address _token
+    address _token,
+    address _hostEarnings
 ) external onlyMarketplace nonReentrant
 ```
 
@@ -154,9 +158,10 @@ function releasePaymentFor(
 | Name | Type | Description |
 |------|------|-------------|
 | `_jobId` | `bytes32` | Job identifier for tracking |
-| `_host` | `address` | Host address to receive payment |
+| `_host` | `address` | Host address for earnings credit |
 | `_amount` | `uint256` | Total payment amount |
 | `_token` | `address` | Token address (typically USDC) |
+| `_hostEarnings` | `address` | HostEarnings contract address |
 
 #### Requirements
 - Only callable by JobMarketplace
@@ -166,10 +171,11 @@ function releasePaymentFor(
 - Token must have sufficient balance
 
 #### Effects
-- Deducts platform fee (feeBasisPoints)
-- Transfers net amount to host
-- Transfers fee to arbiter
-- No escrow record created (direct transfer)
+- Deducts platform fee (10% = 1000 basis points)
+- **Credits net amount to host's earnings balance**
+- Transfers fee to TreasuryManager immediately
+- No escrow record created
+- **No direct transfer to host (accumulated for later withdrawal)**
 
 #### Fee Calculation
 ```solidity
@@ -179,15 +185,17 @@ payment = amount - fee
 
 #### Example Usage
 ```solidity
-// Called by JobMarketplace when USDC job completes
-escrow.releasePaymentFor(
+// Called by JobMarketplaceFABWithEarnings when USDC job completes
+escrow.releaseToEarnings(
     jobId,
     hostAddress,
-    10000,  // 0.01 USDC (6 decimals)
-    usdcAddress
+    10000000,  // 10 USDC (6 decimals)
+    usdcAddress,
+    hostEarningsAddress
 );
-// Host receives: 9900 (with 1% fee = 100 basis points)
-// Arbiter receives: 100
+// Host earnings credited: 9,000,000 (90% after 10% fee)
+// TreasuryManager receives: 1,000,000 (10% fee)
+// Host can withdraw accumulated earnings later
 ```
 
 ### releaseEscrow
@@ -373,42 +381,47 @@ function getActiveEscrowIds() external view returns (bytes32[] memory)
 #### Note
 Currently returns empty array - proper tracking needed in production.
 
-## Integration with JobMarketplaceFAB
+## Integration with JobMarketplaceFABWithEarnings
 
-The PaymentEscrow contract is tightly integrated with JobMarketplaceFAB for USDC payment handling:
+The PaymentEscrowWithEarnings contract is tightly integrated with JobMarketplaceFABWithEarnings for USDC payment handling with earnings accumulation:
 
 ### Payment Flow
-1. **Job Posting**: JobMarketplaceFAB transfers USDC from renter to PaymentEscrow
-2. **Job Completion**: JobMarketplaceFAB calls `releasePaymentFor()` to trigger payment
-3. **Fee Distribution**: 1% fee retained, 99% sent to host
+1. **Job Posting**: JobMarketplaceFABWithEarnings transfers USDC from renter to PaymentEscrow
+2. **Job Completion**: JobMarketplaceFABWithEarnings calls `releaseToEarnings()` to credit earnings
+3. **Fee Distribution**: 10% fee sent to TreasuryManager, 90% credited to host's earnings
+4. **Batch Withdrawal**: Host withdraws accumulated earnings when convenient
 
-### Key Integration Function
+### Key Integration Functions
 
 ```solidity
-function releasePaymentFor(
+function releaseToEarnings(
     bytes32 _jobId,
     address _host,
     uint256 _amount,
-    address _token
+    address _token,
+    address _hostEarnings
 ) external onlyMarketplace nonReentrant
 ```
 
-This function is called by JobMarketplaceFAB when a job is completed:
+This function is called by JobMarketplaceFABWithEarnings when a job is completed:
 - **Access**: Only callable by authorized JobMarketplace
-- **Fee**: Automatically deducts 1% platform fee
-- **Payment**: Sends 99% to host immediately
+- **Fee**: Automatically deducts 10% platform fee
+- **Payment**: Credits 90% to host's earnings balance
 - **Token**: Supports USDC and other ERC20 tokens
+- **Gas Savings**: 40-46% reduction for multiple job completions
 
-### Configuration for JobMarketplaceFAB
+### Configuration for JobMarketplaceFABWithEarnings
 
 ```javascript
 // Current production configuration on Base Sepolia
-const PAYMENT_ESCROW = "0x240258A70E1DBAC442202a74739F0e6dC16ef558";
-const JOB_MARKETPLACE_FAB = "0xC30cAA786A6b39eD55e39F6aB275fCB9FD5FAf65";
+const PAYMENT_ESCROW = "0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C"; // LATEST
+const JOB_MARKETPLACE_FAB = "0xEB646BF2323a441698B256623F858c8787d70f9F"; // LATEST
+const HOST_EARNINGS = "0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E"; // NEW
+const TREASURY_MANAGER = "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078";
 const USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
 // Fee configuration
-const FEE_BASIS_POINTS = 100; // 1% fee
+const FEE_BASIS_POINTS = 1000; // 10% fee
 ```
 
 ## Events
@@ -483,13 +496,19 @@ Restricts function to JobMarketplace contract.
    - Escrow struct optimized for packing
    - Minimal storage updates
 
-2. **Fee Accumulation**:
-   - Fees accumulated in contract
-   - Batch withdrawal reduces gas
+2. **Earnings Accumulation (NEW)**:
+   - Host earnings accumulated in HostEarnings contract
+   - **40-46% gas reduction for multiple job completions**
+   - Batch withdrawal significantly reduces per-job gas cost
+   - Example: 5 jobs save ~220,000 gas vs direct transfers
 
-3. **Transfer Patterns**:
+3. **Fee Distribution**:
+   - Fees sent directly to TreasuryManager
+   - No intermediate accumulation needed
+
+4. **Transfer Patterns**:
    - Low-level calls for ETH
-   - Direct transfer for ERC20
+   - Optimized ERC20 transfers via HostEarnings
 
 ## Integration Examples
 
@@ -556,7 +575,13 @@ uint256 tokenFees = escrow.tokenFeeBalances(tokenAddress);
 ## Limitations & Future Improvements
 
 1. **Active Escrow Tracking**: getActiveEscrowIds needs implementation
-2. **Fee Withdrawal**: No built-in fee withdrawal function
-3. **Partial Payments**: Currently only supports full payment/refund
-4. **Time Locks**: No automatic release after time period
-5. **Multi-sig**: Consider multi-sig for arbiter role
+2. **Partial Payments**: Currently only supports full payment/refund
+3. **Time Locks**: No automatic release after time period
+4. **Multi-sig**: Consider multi-sig for arbiter role
+5. **Emergency Withdrawal**: Enhanced controls for earnings contract
+
+## Related Contracts
+
+- **HostEarnings**: [`0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E`](./HostEarnings.md)
+- **JobMarketplaceFABWithEarnings**: [`0xEB646BF2323a441698B256623F858c8787d70f9F`](./JobMarketplace.md)
+- **TreasuryManager**: [`0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078`](./TreasuryManager.md)

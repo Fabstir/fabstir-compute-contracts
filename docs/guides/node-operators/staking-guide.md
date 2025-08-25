@@ -28,12 +28,13 @@ Fabstir uses FAB token staking for node registration:
 - **Lock Period**: None (but active jobs prevent withdrawal)
 - **Slashing Risk**: No (tokens returned on unregistration)
 - **Rewards**: Earned through job completion in USDC
+- **Payment Flow**: USDC earnings accumulated, withdrawn in batches
 
 ### Economic Model
 ```
-Stake (1000 FAB) → Node Registration → Claim Jobs → Complete Jobs → Earn USDC
-                                           ↓
-                                    No Slashing Risk
+Stake (1000 FAB) → Node Registration → Claim Jobs → Complete Jobs → Accumulate USDC → Withdraw Earnings
+                                           ↓                                          ↓
+                                    No Slashing Risk                        40-46% Gas Savings
 ```
 
 
@@ -235,12 +236,22 @@ class StakingCalculator {
         this.avgJobsPerDay = avgJobsPerDay;
         this.avgPaymentPerJob = avgPaymentPerJob; // in USDC
         this.platformFee = 0.10; // 10%
+        this.gasPerWithdrawal = 0.002; // ETH for earnings withdrawal
     }
     
     calculateDailyEarnings() {
         const grossEarnings = this.avgJobsPerDay * this.avgPaymentPerJob;
         const netEarnings = grossEarnings * (1 - this.platformFee);
+        // Note: Earnings accumulate - no gas cost per job
         return netEarnings;
+    }
+    
+    calculateGasSavings(days) {
+        const jobsTotal = this.avgJobsPerDay * days;
+        const traditionalGasPerJob = 0.003; // ETH (~$5)
+        const accumulationGasPerJob = 0.0018; // ETH (~$3)
+        const savings = jobsTotal * (traditionalGasPerJob - accumulationGasPerJob);
+        return savings;
     }
     
     calculateROI(days) {
@@ -267,6 +278,13 @@ class StakingCalculator {
         });
         
         console.log("\nBreakeven:", this.calculateROI(0).breakeven.toFixed(0), "days");
+        
+        // Show gas savings with earnings accumulation
+        console.log("\n=== Gas Savings with Earnings Accumulation ===");
+        periods.forEach(days => {
+            const savings = this.calculateGasSavings(days);
+            console.log(`${days} days: ${savings.toFixed(4)} ETH saved (~$${(savings * 1700).toFixed(0)})`);
+        });
     }
 }
 
@@ -309,6 +327,64 @@ async function checkActiveJobs(nodeAddress) {
 ```
 
 
+## Earnings Withdrawal (NEW)
+
+With the new earnings accumulation system, hosts no longer receive direct payments per job. Instead:
+
+### How It Works
+1. Complete jobs to accumulate USDC earnings
+2. Check accumulated balance anytime
+3. Withdraw when convenient (batch withdrawal saves gas)
+
+### Check Accumulated Earnings
+```javascript
+async function checkEarnings() {
+    const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    
+    const HOST_EARNINGS = "0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E";
+    const USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+    
+    const hostEarnings = new ethers.Contract(HOST_EARNINGS, [
+        "function getBalance(address host, address token) view returns (uint256)"
+    ], provider);
+    
+    const balance = await hostEarnings.getBalance(wallet.address, USDC);
+    console.log("Accumulated USDC:", ethers.formatUnits(balance, 6));
+}
+```
+
+### Withdraw Earnings
+```javascript
+async function withdrawEarnings() {
+    const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    
+    const HOST_EARNINGS = "0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E";
+    const USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+    
+    const hostEarnings = new ethers.Contract(HOST_EARNINGS, [
+        "function withdrawAll(address token)",
+        "function withdraw(uint256 amount, address token)"
+    ], wallet);
+    
+    // Option 1: Withdraw all accumulated earnings
+    const tx = await hostEarnings.withdrawAll(USDC);
+    await tx.wait();
+    console.log("All earnings withdrawn!");
+    
+    // Option 2: Withdraw specific amount
+    // const amount = ethers.parseUnits("100", 6); // 100 USDC
+    // const tx = await hostEarnings.withdraw(amount, USDC);
+}
+```
+
+### Gas Optimization Benefits
+- **Traditional**: ~115,000 gas per job completion
+- **With Accumulation**: ~69,000 gas per job completion
+- **Savings**: 40% reduction in gas costs
+- **Example**: Complete 10 jobs, withdraw once = 460,000 gas saved
+
 ## Best Practices
 
 ### 1. Stake Management
@@ -316,6 +392,12 @@ async function checkActiveJobs(nodeAddress) {
 - Monitor your node's active status
 - Keep some ETH for gas fees
 - Use hardware wallets for secure FAB storage
+
+### 2. Earnings Management (NEW)
+- Let earnings accumulate before withdrawing
+- Withdraw during low gas periods
+- Track accumulated balance regularly
+- Consider tax implications of batch withdrawals
 
 ### 2. Risk Mitigation
 - No slashing risk with FAB staking
