@@ -20,4 +20,12 @@ interface IPaymentEscrow {
         uint256 _amount,
         address _token
     ) external;
+    
+    function releaseToEarnings(
+        bytes32 _jobId,
+        address _host,
+        uint256 _amount,
+        address _token,
+        address _earningsContract
+    ) external;
 }
