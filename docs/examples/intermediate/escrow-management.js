@@ -1,10 +1,10 @@
 /**
- * Example: Escrow Management
- * Purpose: Demonstrates advanced escrow operations including multi-token payments and refunds
+ * Example: Escrow Management with Earnings Accumulation
+ * Purpose: Demonstrates the new earnings accumulation system and escrow operations
  * Prerequisites:
- *   - Understanding of payment escrow system
- *   - ERC20 tokens for testing (optional)
- *   - Active jobs or disputes
+ *   - Understanding of payment escrow system with earnings accumulation
+ *   - ERC20 tokens for testing (USDC)
+ *   - Active jobs to see earnings credit flow
  */
 
 const { ethers } = require('ethers');
@@ -42,12 +42,13 @@ const JOB_MARKETPLACE_ABI = [
     'function disputeJob(uint256 jobId, string reason)'
 ];
 
-// Configuration
+// Configuration - Updated for earnings accumulation system
 const config = {
     rpcUrl: process.env.RPC_URL || 'https://sepolia.base.org',
     chainId: parseInt(process.env.CHAIN_ID || '84532'), // Base Sepolia
-    paymentEscrow: process.env.PAYMENT_ESCROW || '0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3', // NEW 10% fee
-    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0x870E74D1Fe7D9097deC27651f67422B598b689Cd', // NEW 10% fee
+    paymentEscrow: process.env.PAYMENT_ESCROW || '0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C', // LATEST with earnings routing
+    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0xEB646BF2323a441698B256623F858c8787d70f9F', // LATEST with earnings
+    hostEarnings: process.env.HOST_EARNINGS || '0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E', // NEW earnings accumulator
     
     // Token addresses for Base Sepolia
     tokens: {
@@ -415,17 +416,41 @@ async function main() {
             }
         });
         
-        // 9. Summary
+        // 9. Check Host Earnings (NEW)
+        console.log('\n💰 Host Earnings Accumulation (NEW):');
+        const HOST_EARNINGS_ABI = [
+            'function getBalance(address host, address token) view returns (uint256)',
+            'function withdrawAll(address token)',
+            'function withdraw(uint256 amount, address token)'
+        ];
+        
+        const hostEarnings = new ethers.Contract(
+            config.hostEarnings,
+            HOST_EARNINGS_ABI,
+            wallet
+        );
+        
+        const earningsBalance = await hostEarnings.getBalance(wallet.address, config.tokens.USDC);
+        console.log(`   Accumulated USDC earnings: ${ethers.formatUnits(earningsBalance, 6)} USDC`);
+        console.log('   💡 Earnings accumulate from completed jobs (90% after 10% fee)');
+        console.log('   💡 Withdraw anytime with hostEarnings.withdrawAll(USDC)');
+        console.log('   💡 40-46% gas savings vs direct transfers!');
+        
+        // 10. Summary
         console.log('\n📊 Escrow Management Summary:');
         console.log('   ✅ Demonstrated deposits and withdrawals');
         console.log('   ✅ Showed multi-token support');
-        console.log('   ✅ Explained job payment flow');
+        console.log('   ✅ Explained job payment flow with earnings accumulation');
+        console.log('   ✅ Highlighted 40-46% gas savings with new system');
         console.log('   ✅ Set up event monitoring');
         
         console.log('\n💡 Best Practices:');
         console.log('   • Always check balances before operations');
         console.log('   • Use appropriate gas limits for token operations');
         console.log('   • Monitor events for payment notifications');
+        console.log('   • Let earnings accumulate before withdrawing (gas savings)');
+        console.log('   • Withdraw during low gas periods for maximum efficiency');
+        console.log('   • Track accumulated earnings regularly');
         console.log('   • Handle multiple payment tokens for flexibility');
         console.log('   • Implement proper error handling for failed transactions');
         
