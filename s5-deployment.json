@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-08-26T04:05:17.842Z",
+  "network": "Base Sepolia",
+  "contracts": {
+    "JobMarketplaceFABWithS5": "0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304",
+    "HostEarnings": "0xbFfCd6BAaCCa205d471bC52Bd37e1957B1A43d4a",
+    "PaymentEscrowWithEarnings": "0xa4C5599Ea3617060ce86Ff0916409e1fb4a0d2c6",
+    "NodeRegistryFAB": "0x87516C13Ea2f99de598665e14cab64E191A0f8c4",
+    "Treasury": "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078"
+  }
+}
