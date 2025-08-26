@@ -39,4 +39,8 @@ artifacts/
 typechain/
 typechain-types/
 archive/
-.vscode/
+.vscode/deployment.log
+deploy-fresh-NOW.sh
+deploy-direct.sh
+deploy-manual.sh
+force-deploy.sh

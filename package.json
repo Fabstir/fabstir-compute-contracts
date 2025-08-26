@@ -1,0 +1,17 @@
+{
+  "name": "fabstir-contract-deployment",
+  "version": "1.0.0",
+  "description": "Deployment script for Fabstir fresh test environment contracts",
+  "main": "deploy-contracts.js",
+  "scripts": {
+    "deploy": "node deploy-contracts.js",
+    "build": "forge build"
+  },
+  "dependencies": {
+    "ethers": "^6.8.0"
+  },
+  "devDependencies": {},
+  "keywords": ["ethereum", "smart-contracts", "deployment", "base-sepolia"],
+  "author": "Fabstir",
+  "license": "MIT"
+}
