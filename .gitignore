@@ -44,3 +44,5 @@ deploy-fresh-NOW.sh
 deploy-direct.sh
 deploy-manual.sh
 force-deploy.sh
+.claude/
+.vscode/
