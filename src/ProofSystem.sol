@@ -7,8 +7,25 @@ contract ProofSystem is IProofSystem {
     // Track verified proofs to prevent replay
     mapping(bytes32 => bool) public verifiedProofs;
     
+    // Circuit registry state variables
+    mapping(bytes32 => bool) public registeredCircuits;
+    mapping(address => bytes32) public modelCircuits;
+    address public owner;
+    
     // Events
     event ProofVerified(bytes32 indexed proofHash, address indexed prover, uint256 tokens);
+    event CircuitRegistered(bytes32 indexed circuitHash, address indexed model);
+    
+    // Modifiers
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner");
+        _;
+    }
+    
+    // Constructor
+    constructor() {
+        owner = msg.sender;
+    }
     
     // Basic EZKL verification (simplified for now)
     function verifyEKZL(
@@ -39,5 +56,27 @@ contract ProofSystem is IProofSystem {
     function recordVerifiedProof(bytes32 proofHash) external {
         verifiedProofs[proofHash] = true;
         emit ProofVerified(proofHash, msg.sender, 0);
+    }
+    
+    // Circuit registry functions
+    function registerModelCircuit(
+        address model,
+        bytes32 circuitHash
+    ) external onlyOwner {
+        require(model != address(0), "Invalid model");
+        require(circuitHash != bytes32(0), "Invalid circuit");
+        
+        registeredCircuits[circuitHash] = true;
+        modelCircuits[model] = circuitHash;
+        
+        emit CircuitRegistered(circuitHash, model);
+    }
+    
+    function isCircuitRegistered(bytes32 circuitHash) external view returns (bool) {
+        return registeredCircuits[circuitHash];
+    }
+    
+    function getModelCircuit(address model) external view returns (bytes32) {
+        return modelCircuits[model];
     }
 }

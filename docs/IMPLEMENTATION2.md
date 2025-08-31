@@ -329,56 +329,42 @@ The only missing pieces are dispute-specific events (DisputeRaised/Resolved) whi
 
 ## Phase 3: ProofSystem Integration
 
-### Sub-phase 3.1: ProofSystem Contract Updates ⬜
+### Sub-phase 3.1: ProofSystem Contract Updates ⚠️ PARTIAL
 Extend existing ProofSystem for EZKL session proofs.
 
 **Tasks:**
-- [x] Add EZKL circuit verification logic
-- [x] Implement batch proof verification
-- [x] Add proof aggregation support
-- [x] Create proof challenge mechanism
-- [x] Add circuit registry for models
-- [x] Implement proof caching
+- [x] Add EZKL circuit verification logic (basic only, not full EZKL)
+- [ ] Implement batch proof verification (NOT done)
+- [ ] Add proof aggregation support (NOT done)
+- [ ] Create proof challenge mechanism (NOT done)
+- [x] Add circuit registry for models ✅
+- [x] Implement proof caching (basic - replay prevention only)
 
-**Updates to `contracts/ProofSystem.sol`**:
-```solidity
-mapping(bytes32 => bool) public verifiedProofs;
-mapping(address => bytes32) public modelCircuits;
+**Test Files Created:**
+- `test/ProofSystem/test_basic_verification.t.sol` ✅ (instead of test_ezkl_verification)
+- `test/ProofSystem/test_proof_replay.t.sol` ✅ (partial caching tests)
+- `test/ProofSystem/test_circuit_registry.t.sol` ✅
+- `test/ProofSystem/test_model_mapping.t.sol` ✅ (additional)
 
-function registerModelCircuit(
-    address model,
-    bytes32 circuitHash
-) external
-
-function verifySessionProof(
-    bytes calldata proof,
-    address host,
-    uint256 tokens,
-    bytes32 modelCircuit
-) external returns (bool)
-```
-
-**Test Files**:
-- [ ] `test/ProofSystem/test_ezkl_verification.t.sol`
-- [ ] `test/ProofSystem/test_batch_verification.t.sol`
-- [ ] `test/ProofSystem/test_circuit_registry.t.sol`
-- [ ] `test/ProofSystem/test_proof_caching.t.sol`
+**NOT Created:**
+- `test/ProofSystem/test_batch_verification.t.sol` ❌
+- Full proof caching tests ❌
 
 ### Sub-phase 3.2: Cross-Contract Integration ⬜
 Wire ProofSystem with JobMarketplace for seamless verification.
 
 **Tasks:**
-- [ ] Add ProofSystem address to JobMarketplace
-- [ ] Implement delegated verification calls
-- [ ] Handle verification failures gracefully
-- [ ] Add circuit validation for sessions
-- [ ] Test cross-contract gas usage
-- [ ] Optimize for L2 gas costs
+- [x] Add ProofSystem address to JobMarketplace
+- [x] Implement delegated verification calls
+- [x] Handle verification failures gracefully
+- [x] Add circuit validation for sessions
+- [x] Test cross-contract gas usage
+- [x] Optimize for L2 gas costs
 
 **Test Files**:
-- [ ] `test/Integration/test_proof_job_integration.t.sol`
-- [ ] `test/Integration/test_verification_flow.t.sol`
-- [ ] `test/Integration/test_gas_optimization.t.sol`
+- [x] `test/Integration/test_proof_job_integration.t.sol`
+- [x] `test/Integration/test_verification_flow.t.sol`
+- [x] `test/Integration/test_gas_optimization.t.sol`
 
 ---
 
