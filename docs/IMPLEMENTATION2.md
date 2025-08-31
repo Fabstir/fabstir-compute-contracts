@@ -1,353 +1,513 @@
-## IMPLEMENTATION2.md - Session-Based Jobs for fabstir-compute-contracts
+## IMPLEMENTATION2.md - Session-Based Jobs with EZKL Proof Verification
 
 ### Overview
-Extend JobMarketplaceFABWithS5.sol to support session-based jobs with upfront deposits. Users make all blockchain transactions while hosts operate read-only.
+Extend JobMarketplaceFABWithS5.sol to support session-based jobs with EZKL cryptographic proofs. This trustless architecture ensures hosts get paid for proven work even if users abandon sessions.
 
 ### Repository
 fabstir-compute-contracts
 
 ### Goals
-- Add session job type with escrow deposits
-- Enable conversational AI without per-prompt gas
-- Hosts require no wallet or gas fees
-- Usage-based settlement at session end
-- Leverage existing contract infrastructure
+- Session-based conversational AI with escrow deposits
+- EZKL proof verification for trustless token counting
+- Host protection against user abandonment via proof-based claims
+- Incremental proof submission with optional checkpoints
+- No per-prompt gas fees (only session start/end)
+- Leverage existing ProofSystem contract from Phase 2.3
 
 ---
 
-## Phase 1: Core Session Functionality
+## Phase 1: Core Session Functionality with EZKL
 
-### Sub-phase 1.1: Extend Job Structure
-Add session support to existing JobMarketplaceFAB contract.
+### Sub-phase 1.1: Extend Job Structure ⬜
+Add session support with proof tracking to existing JobMarketplaceFAB contract.
+
+**Tasks:**
+- [ ] Add `JobType` enum (SinglePrompt, Session)
+- [ ] Create `SessionDetails` struct with proof fields
+- [ ] Add `ProofSubmission` struct for EZKL data
+- [ ] Extend existing `Job` struct for sessions
+- [ ] Add session tracking mappings
+- [ ] Add proof tracking mappings
 
 **Updates to `contracts/JobMarketplaceFABWithS5.sol`**:
-- Add `JobType` enum (SinglePrompt, Session)
-- Add `SessionDetails` struct
-- Extend existing `Job` struct
-- Add session tracking mappings
+```solidity
+enum JobType { SinglePrompt, Session }
+enum SessionStatus { Active, Completed, TimedOut, Disputed, Abandoned }
 
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_job_types.t.sol`
-- `test/JobMarketplace/SessionJobs/test_session_struct.t.sol`
-- `test/JobMarketplace/SessionJobs/test_storage_layout.t.sol`
+struct ProofSubmission {
+    bytes32 proofHash;
+    uint256 tokensClaimed;
+    uint256 timestamp;
+    bool verified;
+}
 
-### Sub-phase 1.2: Session Creation
-Implement session job creation with deposit locking.
-
-**New Functions**:
-- `createSessionJob()` - Create with host assignment
-- `_lockSessionDeposit()` - Internal deposit handler
-- `getSessionRequirements()` - Validation helper
-
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_create_session.t.sol`
-- `test/JobMarketplace/SessionJobs/test_deposit_lock.t.sol`
-- `test/JobMarketplace/SessionJobs/test_host_assignment.t.sol`
-- `test/JobMarketplace/SessionJobs/test_validation.t.sol`
-
-### Sub-phase 1.3: Session Completion
-Implement user-controlled completion and payment.
-
-**New Functions**:
-- `completeSession()` - User completes with usage
-- `_calculateSessionPayment()` - Token-based pricing
-- `_processSessionRefund()` - Return unused deposit
-
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_completion.t.sol`
-- `test/JobMarketplace/SessionJobs/test_payment_calc.t.sol`
-- `test/JobMarketplace/SessionJobs/test_refunds.t.sol`
-- `test/JobMarketplace/SessionJobs/test_user_only.t.sol`
-
-### Sub-phase 1.4: Timeout Mechanism
-Protect both parties with automatic timeout.
-
-**New Functions**:
-- `triggerSessionTimeout()` - Public timeout function
-- `_isSessionExpired()` - Check expiry
-- `_releaseTimeoutPayment()` - Pay host on timeout
-
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_timeout.t.sol`
-- `test/JobMarketplace/SessionJobs/test_timeout_payment.t.sol`
-- `test/JobMarketplace/SessionJobs/test_timeout_edge_cases.t.sol`
-
----
-
-## Phase 2: Host Read Interface
-
-### Sub-phase 2.1: View Functions
-Create read-only interface for hosts.
-
-**New View Functions**:
-- `getActiveSessionsForHost()` - List host's sessions
-- `getSessionDetails()` - Full session info
-- `canHostProcessSession()` - Eligibility check
-- `getSessionMetrics()` - Usage statistics
-
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_host_views.t.sol`
-- `test/JobMarketplace/SessionJobs/test_session_queries.t.sol`
-- `test/JobMarketplace/SessionJobs/test_metrics.t.sol`
-
-### Sub-phase 2.2: Event System
-Add comprehensive events for monitoring.
-
-**New Events**:
-- `SessionJobCreated`
-- `SessionJobCompleted` 
-- `SessionJobTimedOut`
-- `SessionJobCancelled`
-
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_events.t.sol`
-- `test/JobMarketplace/SessionJobs/test_event_data.t.sol`
-
----
-
-## Phase 3: Payment Integration
-
-### Sub-phase 3.1: USDC Support
-Integrate with existing PaymentEscrow for USDC.
-
-**Integration Points**:
-- Use PaymentEscrow for deposit holding
-- Support USDC as payment token
-- Calculate USD-based pricing
-
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_usdc_payment.t.sol`
-- `test/JobMarketplace/SessionJobs/test_escrow_integration.t.sol`
-- `test/JobMarketplace/SessionJobs/test_pricing.t.sol`
-
-### Sub-phase 3.2: Fee Handling
-Integrate with existing fee distribution.
-
-**Updates**:
-- Apply platform fee to sessions
-- Distribute to treasury/stakers
-- Track session volume metrics
-
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_platform_fee.t.sol`
-- `test/JobMarketplace/SessionJobs/test_fee_distribution.t.sol`
-
----
-
-## Phase 4: Advanced Features
-
-### Sub-phase 4.1: Session Extensions
-Allow deposit top-ups for longer sessions.
-
-**New Functions**:
-- `extendSession()` - Add more deposit
-- `_updateSessionLimits()` - Adjust parameters
-
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_extension.t.sol`
-- `test/JobMarketplace/SessionJobs/test_topup.t.sol`
-
-### Sub-phase 4.2: Early Termination
-Support user-initiated cancellation.
-
-**New Functions**:
-- `cancelSession()` - Early termination
-- `_calculateEarlyTerminationFee()` - Penalty calculation
-
-**Test Files**:
-- `test/JobMarketplace/SessionJobs/test_cancellation.t.sol`
-- `test/JobMarketplace/SessionJobs/test_penalties.t.sol`
-
----
-
-## Phase 5: Security & Optimization
-
-### Sub-phase 5.1: Security Measures
-Harden session job security.
-
-**Security Implementations**:
-- Reentrancy guards on payment functions
-- Strict access control
-- Deposit limits and sanity checks
-- Rate limiting considerations
-
-**Test Files**:
-- `test/Security/SessionJobs/test_reentrancy.t.sol`
-- `test/Security/SessionJobs/test_access.t.sol`
-- `test/Security/SessionJobs/test_limits.t.sol`
-- `test/Security/SessionJobs/test_dos.t.sol`
-
-### Sub-phase 5.2: Gas Optimization
-Optimize for efficiency.
-
-**Optimizations**:
-- Storage packing in structs
-- Efficient array operations
-- Minimize external calls
-- Batch reading functions
-
-**Test Files**:
-- `test/GasOptimization/test_session_gas.t.sol`
-- `test/GasOptimization/test_storage_efficiency.t.sol`
-- `test/GasOptimization/test_batch_ops.t.sol`
-
----
-
-## Phase 6: Integration & Testing
-
-### Sub-phase 6.1: Full Flow Testing
-Test complete session lifecycles.
-
-**Test Scenarios**:
-- Happy path (create → process → complete)
-- Timeout path (create → expire → timeout)
-- Cancellation path (create → cancel)
-- Extension path (create → extend → complete)
-
-**Test Files**:
-- `test/Integration/SessionJobs/test_full_flow.t.sol`
-- `test/Integration/SessionJobs/test_timeout_flow.t.sol`
-- `test/Integration/SessionJobs/test_cancel_flow.t.sol`
-- `test/Integration/SessionJobs/test_extend_flow.t.sol`
-
-### Sub-phase 6.2: Load Testing
-Verify scalability.
-
-**Test Cases**:
-- 100+ concurrent sessions
-- Multiple hosts with sessions
-- Rapid creation/completion cycles
-- Maximum deposit scenarios
-
-**Test Files**:
-- `test/LoadTest/test_concurrent_sessions.t.sol`
-- `test/LoadTest/test_throughput.t.sol`
-- `test/LoadTest/test_limits.t.sol`
-
----
-
-## Testing Strategy
-
-### TDD Approach
-1. Write failing test
-2. Implement minimal solution
-3. Verify test passes
-4. Refactor if needed
-5. Run full test suite
-
-### Coverage Targets
-- Line coverage: 100%
-- Branch coverage: 100%
-- Critical paths: Full integration tests
-- Edge cases: Documented and tested
-
----
-
-## Deployment Plan
-
-### Local Testing
-```bash
-# Run all session tests
-forge test --match-path test/JobMarketplace/SessionJobs/*
-
-# Check coverage
-forge coverage --match-path contracts/JobMarketplaceFABWithS5.sol
+struct SessionDetails {
+    uint256 depositAmount;
+    uint256 pricePerToken;
+    uint256 maxDuration;
+    uint256 sessionStartTime;
+    address assignedHost;
+    SessionStatus status;
+    
+    // EZKL proof tracking
+    uint256 provenTokens;        // Total tokens with verified proofs
+    uint256 lastProofSubmission; // Timestamp of last proof
+    bytes32 aggregateProofHash;  // Combined proof hash
+    uint256 checkpointInterval;  // How often proofs required (e.g., 1000 tokens)
+}
 ```
 
-### Testnet Deployment
-1. Deploy to Base Sepolia
-2. Verify all functions
-3. Run integration tests
-4. Monitor gas usage
+**Test Files**:
+- [ ] `test/JobMarketplace/SessionJobs/test_job_types.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_session_struct.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_proof_struct.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_storage_layout.t.sol`
 
-### Production Deployment
-1. Complete audit
-2. Deploy to Base mainnet
-3. Monitor initial sessions
-4. Gather metrics
+### Sub-phase 1.2: Session Creation with Proof Requirements ⬜
+Implement session job creation with deposit locking and proof configuration.
+
+**Tasks:**
+- [ ] Implement `createSessionJob()` with proof requirements
+- [ ] Add `_lockSessionDeposit()` internal handler
+- [ ] Configure proof submission intervals
+- [ ] Add host assignment with capability check
+- [ ] Validate minimum deposit amounts
+- [ ] Emit session creation events
+
+**New Functions**:
+```solidity
+function createSessionJob(
+    address host,
+    uint256 deposit,
+    uint256 pricePerToken,
+    uint256 maxDuration,
+    uint256 proofInterval
+) external returns (uint256 jobId)
+
+function _validateProofRequirements(
+    uint256 proofInterval,
+    uint256 deposit,
+    uint256 pricePerToken
+) internal view
+```
+
+**Test Files**:
+- [ ] `test/JobMarketplace/SessionJobs/test_create_session.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_deposit_lock.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_host_assignment.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_proof_requirements.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_validation.t.sol`
+
+### Sub-phase 1.3: EZKL Proof Submission ⬜
+Implement cryptographic proof submission and verification for token usage.
+
+**Tasks:**
+- [ ] Implement `submitProofOfWork()` for hosts
+- [ ] Add `_verifyEKZLProof()` integration with ProofSystem
+- [ ] Track incremental proof submissions
+- [ ] Update proven token counts
+- [ ] Handle batch proof submissions
+- [ ] Emit proof verification events
+
+**New Functions**:
+```solidity
+function submitProofOfWork(
+    uint256 jobId,
+    bytes calldata ekzlProof,
+    uint256 tokensInBatch
+) external returns (bool)
+
+function submitBatchProofs(
+    uint256 jobId,
+    bytes[] calldata proofs,
+    uint256[] calldata tokenCounts
+) external
+
+function _verifyAndRecordProof(
+    uint256 jobId,
+    bytes calldata proof,
+    uint256 tokens
+) internal returns (bool)
+```
+
+**Integration with ProofSystem**:
+```solidity
+interface IProofSystem {
+    function verifyEKZL(
+        bytes calldata proof,
+        address prover,
+        uint256 claimedTokens
+    ) external view returns (bool);
+}
+```
+
+**Test Files**:
+- [ ] `test/JobMarketplace/SessionJobs/test_proof_submission.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_proof_verification.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_batch_proofs.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_proof_tracking.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_invalid_proofs.t.sol`
+
+### Sub-phase 1.4: Proof-Based Completion ⬜
+Enable completion by either party based on verified proofs.
+
+**Tasks:**
+- [ ] Implement `completeSession()` for users
+- [ ] Implement `claimWithProof()` for hosts
+- [ ] Calculate payment based on proven tokens
+- [ ] Process refunds for unused deposits
+- [ ] Handle treasury fee collection (10%)
+- [ ] Update session status appropriately
+
+**New Functions**:
+```solidity
+function completeSession(uint256 jobId) external
+
+function claimWithProof(uint256 jobId) external
+
+function _calculateProvenPayment(
+    uint256 provenTokens,
+    uint256 pricePerToken
+) internal pure returns (uint256)
+
+function _processPaymentWithProof(
+    uint256 jobId,
+    address host,
+    uint256 payment
+) internal
+```
+
+**Test Files**:
+- [ ] `test/JobMarketplace/SessionJobs/test_user_completion.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_host_claim.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_payment_calc.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_refunds.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_treasury_fees.t.sol`
+
+### Sub-phase 1.5: Incremental Checkpoints ⬜
+Optional incremental payments at proof checkpoints to reduce risk.
+
+**Tasks:**
+- [ ] Implement `checkpoint()` for incremental settlements
+- [ ] Add automatic checkpoint triggers
+- [ ] Process partial payments at intervals
+- [ ] Update remaining deposit tracking
+- [ ] Maintain checkpoint history
+- [ ] Emit checkpoint events
+
+**New Functions**:
+```solidity
+function checkpoint(uint256 jobId) external
+
+function _shouldTriggerCheckpoint(
+    uint256 jobId
+) internal view returns (bool)
+
+function _processIncrementalPayment(
+    uint256 jobId,
+    uint256 tokensToSettle
+) internal
+```
+
+**Test Files**:
+- [ ] `test/JobMarketplace/SessionJobs/test_checkpoints.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_incremental_payments.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_checkpoint_triggers.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_checkpoint_history.t.sol`
+
+### Sub-phase 1.6: Timeout & Abandonment Protection ⬜
+Protect both parties with timeout mechanisms and abandonment handling.
+
+**Tasks:**
+- [ ] Implement `triggerSessionTimeout()` public function
+- [ ] Add abandonment detection logic
+- [ ] Enable host claims after timeout
+- [ ] Calculate partial payments for timeouts
+- [ ] Handle dispute windows
+- [ ] Process abandoned session settlements
+
+**New Functions**:
+```solidity
+function triggerSessionTimeout(uint256 jobId) external
+
+function claimAbandonedSession(uint256 jobId) external
+
+function _isSessionAbandoned(
+    uint256 jobId
+) internal view returns (bool)
+
+function _processTimeoutPayment(
+    uint256 jobId
+) internal
+```
+
+**Test Files**:
+- [ ] `test/JobMarketplace/SessionJobs/test_timeout.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_abandonment.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_timeout_payment.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_dispute_window.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_edge_cases.t.sol`
+
+---
+
+## Phase 2: Host Read Interface & Events
+
+### Sub-phase 2.1: View Functions ⬜
+Create comprehensive read-only interface for hosts.
+
+**Tasks:**
+- [ ] Implement `getActiveSessionsForHost()` view
+- [ ] Add `getSessionDetails()` with proof data
+- [ ] Create `getProofHistory()` for session
+- [ ] Add `calculateCurrentEarnings()` view
+- [ ] Implement `getRequiredProofInterval()` helper
+- [ ] Add pagination for large result sets
+
+**View Functions**:
+```solidity
+function getActiveSessionsForHost(address host) 
+    external view returns (uint256[] memory)
+
+function getSessionDetails(uint256 jobId) 
+    external view returns (SessionDetails memory)
+
+function getProofHistory(uint256 jobId) 
+    external view returns (ProofSubmission[] memory)
+
+function calculateCurrentEarnings(uint256 jobId) 
+    external view returns (uint256)
+```
+
+**Test Files**:
+- [ ] `test/JobMarketplace/SessionJobs/test_host_views.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_proof_queries.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_earnings_calc.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_pagination.t.sol`
+
+### Sub-phase 2.2: Event System ⬜
+Comprehensive events for off-chain monitoring and indexing.
+
+**Tasks:**
+- [ ] Define `SessionCreated` event with all parameters
+- [ ] Add `ProofSubmitted` event with verification status
+- [ ] Create `CheckpointProcessed` event
+- [ ] Add `SessionCompleted` with final settlement
+- [ ] Implement `SessionAbandoned` event
+- [ ] Add `DisputeRaised` and `DisputeResolved` events
+
+**Events**:
+```solidity
+event SessionCreated(
+    uint256 indexed jobId,
+    address indexed user,
+    address indexed host,
+    uint256 deposit,
+    uint256 pricePerToken
+);
+
+event ProofSubmitted(
+    uint256 indexed jobId,
+    address indexed host,
+    uint256 tokensClaimed,
+    bytes32 proofHash,
+    bool verified
+);
+
+event CheckpointProcessed(
+    uint256 indexed jobId,
+    uint256 tokensSettled,
+    uint256 paymentAmount
+);
+```
+
+**Test Files**:
+- [ ] `test/JobMarketplace/SessionJobs/test_events.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_event_ordering.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_event_data.t.sol`
+
+---
+
+## Phase 3: ProofSystem Integration
+
+### Sub-phase 3.1: ProofSystem Contract Updates ⬜
+Extend existing ProofSystem for EZKL session proofs.
+
+**Tasks:**
+- [ ] Add EZKL circuit verification logic
+- [ ] Implement batch proof verification
+- [ ] Add proof aggregation support
+- [ ] Create proof challenge mechanism
+- [ ] Add circuit registry for models
+- [ ] Implement proof caching
+
+**Updates to `contracts/ProofSystem.sol`**:
+```solidity
+mapping(bytes32 => bool) public verifiedProofs;
+mapping(address => bytes32) public modelCircuits;
+
+function registerModelCircuit(
+    address model,
+    bytes32 circuitHash
+) external
+
+function verifySessionProof(
+    bytes calldata proof,
+    address host,
+    uint256 tokens,
+    bytes32 modelCircuit
+) external returns (bool)
+```
+
+**Test Files**:
+- [ ] `test/ProofSystem/test_ezkl_verification.t.sol`
+- [ ] `test/ProofSystem/test_batch_verification.t.sol`
+- [ ] `test/ProofSystem/test_circuit_registry.t.sol`
+- [ ] `test/ProofSystem/test_proof_caching.t.sol`
+
+### Sub-phase 3.2: Cross-Contract Integration ⬜
+Wire ProofSystem with JobMarketplace for seamless verification.
+
+**Tasks:**
+- [ ] Add ProofSystem address to JobMarketplace
+- [ ] Implement delegated verification calls
+- [ ] Handle verification failures gracefully
+- [ ] Add circuit validation for sessions
+- [ ] Test cross-contract gas usage
+- [ ] Optimize for L2 gas costs
+
+**Test Files**:
+- [ ] `test/Integration/test_proof_job_integration.t.sol`
+- [ ] `test/Integration/test_verification_flow.t.sol`
+- [ ] `test/Integration/test_gas_optimization.t.sol`
+
+---
+
+## Phase 4: USDC Payment Support
+
+### Sub-phase 4.1: Token Payment Integration ⬜
+Enable USDC deposits and settlements for sessions.
+
+**Tasks:**
+- [ ] Add `createSessionJobWithToken()` function
+- [ ] Implement USDC transfer to escrow
+- [ ] Update payment calculations for decimals
+- [ ] Add token approval checks
+- [ ] Handle token refunds
+- [ ] Test with mock USDC
+
+**Functions**:
+```solidity
+function createSessionJobWithToken(
+    address host,
+    address token,
+    uint256 deposit,
+    uint256 pricePerToken,
+    uint256 maxDuration
+) external returns (uint256)
+```
+
+**Test Files**:
+- [ ] `test/JobMarketplace/SessionJobs/test_usdc_deposit.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_token_escrow.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_token_refunds.t.sol`
+
+---
+
+## Phase 5: Testing & Deployment
+
+### Sub-phase 5.1: Integration Testing ⬜
+Comprehensive end-to-end testing of complete flows.
+
+**Tasks:**
+- [ ] Test full session lifecycle with proofs
+- [ ] Verify payment calculations
+- [ ] Test timeout scenarios
+- [ ] Validate proof verification
+- [ ] Test with multiple concurrent sessions
+- [ ] Load test proof submissions
+
+**Test Scenarios**:
+- [ ] Happy path: create → proofs → complete
+- [ ] Abandonment: create → proofs → timeout → claim
+- [ ] Checkpoints: create → checkpoint → checkpoint → complete
+- [ ] Disputes: create → proofs → dispute → resolution
+- [ ] Batch operations: multiple proofs in one tx
+
+### Sub-phase 5.2: Deployment Scripts ⬜
+Production deployment with verification.
+
+**Tasks:**
+- [ ] Create deployment script for Base Sepolia
+- [ ] Add contract verification scripts
+- [ ] Configure ProofSystem integration
+- [ ] Set up monitoring events
+- [ ] Deploy to testnet
+- [ ] Verify all contracts on BaseScan
+
+**Scripts**:
+- [ ] `script/DeploySessionJobs.s.sol`
+- [ ] `script/VerifyContracts.s.sol`
+- [ ] `script/ConfigureProofSystem.s.sol`
+
+---
+
+## Security Considerations
+
+### Key Security Features:
+- **Proof-Based Truth**: Cryptographic proofs determine payment, not trust
+- **Host Protection**: Can claim payment with proofs even if user abandons
+- **User Protection**: Only pays for proven work
+- **Timeout Protection**: Automatic resolution for stuck sessions
+- **Incremental Risk Reduction**: Optional checkpoints limit exposure
+- **L2 Optimized**: Designed for Base's low gas costs
+
+### Attack Vectors Mitigated:
+- [ ] Exit scam (user leaves without paying) - SOLVED with proofs
+- [ ] Token count manipulation - SOLVED with EZKL verification  
+- [ ] Host disappearance - SOLVED with timeout refunds
+- [ ] Proof replay attacks - SOLVED with nonces/session binding
+- [ ] Front-running - SOLVED with commit-reveal where needed
 
 ---
 
 ## Success Criteria
 
-### Functional Requirements
-- [ ] Users can create session jobs with deposits
-- [ ] Hosts see sessions without any transactions
-- [ ] Users complete sessions with usage-based payment
-- [ ] Timeouts automatically release funds
-- [ ] Platform fees collected correctly
-
-### Performance Requirements
-- [ ] Session creation < 150k gas
-- [ ] Completion < 100k gas
-- [ ] View functions free (no gas)
-- [ ] Support 1000+ concurrent sessions
-
-### Security Requirements
-- [ ] No reentrancy vulnerabilities
-- [ ] Proper access control
-- [ ] No integer overflows
-- [ ] Resistant to DOS attacks
-
----
-
-## Documentation Updates
-
-### Contract Documentation
-- Update NatSpec comments
-- Document session flow
-- Add integration examples
-
-### Developer Guide
-- Session job tutorial
-- Host integration guide
-- Testing instructions
-
-### User Documentation
-- Session vs single-prompt comparison
-- Cost calculator
-- Best practices
-
----
-
-## Risk Analysis
-
-### Technical Risks
-**Risk**: Gas costs too high
-**Mitigation**: Optimize storage, batch operations
-
-**Risk**: Timeout disputes
-**Mitigation**: Clear timeout rules, generous periods
-
-**Risk**: Host adoption
-**Mitigation**: No wallet requirement, clear benefits
-
-### Business Risks
-**Risk**: User confusion about sessions
-**Mitigation**: Clear UI, documentation
-
-**Risk**: Liquidity in escrow
-**Mitigation**: Automatic timeouts, quick settlement
+- [ ] All tests passing (target: 100% coverage)
+- [ ] Gas costs optimized for Base L2
+- [ ] ProofSystem integration working
+- [ ] USDC payments functional
+- [ ] Deployed to Base Sepolia
+- [ ] Documentation complete
+- [ ] Security audit ready
 
 ---
 
 ## Timeline
 
-### Week 1: Core Implementation
-- Phase 1: Session functionality
-- Phase 2: Host interface
+**Week 1-2**: Core Session Functionality (Phase 1)
+- Focus on Sub-phases 1.1-1.3 (structure, creation, proofs)
 
-### Week 2: Integration
-- Phase 3: Payment integration
-- Phase 4: Advanced features
+**Week 3**: Completion & Protection (Phase 1.4-1.6)
+- Implement completion flows and timeout protection
 
-### Week 3: Hardening
-- Phase 5: Security & optimization
-- Phase 6.1: Integration testing
+**Week 4**: Integration & Testing (Phase 2-3)
+- Host interface, events, ProofSystem integration
 
-### Week 4: Production Ready
-- Phase 6.2: Load testing
-- Documentation
-- Deployment preparation
+**Week 5**: USDC & Deployment (Phase 4-5)
+- Token payments and testnet deployment
 
-This implementation extends the existing contracts with session support while maintaining simplicity and requiring no migration or backwards compatibility concerns.
+**Week 6**: Security & Optimization
+- Audit preparation and gas optimization
+```
+
+This updated IMPLEMENTATION2.md now includes:
+
+1. **EZKL proof verification** throughout the entire system
+2. **Checkboxes** for tracking task completion
+3. **Protection against exit scams** via proof-based claims
+4. **Incremental checkpoints** to reduce risk
+5. **Comprehensive test coverage** for all new features
+6. **Integration with existing ProofSystem** contract
+7. **Clear timeline and success criteria**
+
+The architecture now ensures hosts are protected even if users abandon sessions, since they can claim payment based on cryptographically verified proofs of work performed.
