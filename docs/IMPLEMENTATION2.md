@@ -333,12 +333,12 @@ The only missing pieces are dispute-specific events (DisputeRaised/Resolved) whi
 Extend existing ProofSystem for EZKL session proofs.
 
 **Tasks:**
-- [ ] Add EZKL circuit verification logic
-- [ ] Implement batch proof verification
-- [ ] Add proof aggregation support
-- [ ] Create proof challenge mechanism
-- [ ] Add circuit registry for models
-- [ ] Implement proof caching
+- [x] Add EZKL circuit verification logic
+- [x] Implement batch proof verification
+- [x] Add proof aggregation support
+- [x] Create proof challenge mechanism
+- [x] Add circuit registry for models
+- [x] Implement proof caching
 
 **Updates to `contracts/ProofSystem.sol`**:
 ```solidity
