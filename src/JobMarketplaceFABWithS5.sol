@@ -762,6 +762,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
 
     function _processSessionPayment(uint256 jobId) internal {
         SessionDetails storage session = sessions[jobId];
+        Job storage job = jobs[jobId];
         
         (uint256 payment, uint256 treasuryFee) = _calculateProvenPayment(
             session.provenTokens,
@@ -769,42 +770,39 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         );
         
         uint256 totalCost = session.provenTokens * session.pricePerToken;
-        uint256 refund = 0;
+        uint256 refund = session.depositAmount > totalCost ? session.depositAmount - totalCost : 0;
         
-        if (session.depositAmount > totalCost) {
-            refund = session.depositAmount - totalCost;
-        }
-        
-        if (payment > 0) {
-            payable(session.assignedHost).transfer(payment);
-        }
-        if (treasuryFee > 0 && treasuryAddress != address(0)) {
-            payable(treasuryAddress).transfer(treasuryFee);
-        }
-        if (refund > 0) {
-            payable(jobs[jobId].renter).transfer(refund);
-        }
+        _sendPayments(job, session.assignedHost, payment, treasuryFee, refund);
         
         session.status = SessionStatus.Completed;
         session.lastActivity = block.timestamp;
         session.disputeDeadline = block.timestamp + DISPUTE_WINDOW;
         emit SessionCompleted(jobId, msg.sender, session.provenTokens, payment, refund);
     }
+    
+    function _sendPayments(Job storage job, address host, uint256 payment, uint256 treasuryFee, uint256 refund) internal {
+        if (job.paymentToken != address(0)) {
+            IERC20 token = IERC20(job.paymentToken);
+            if (payment > 0) token.transfer(host, payment);
+            if (treasuryFee > 0 && treasuryAddress != address(0)) token.transfer(treasuryAddress, treasuryFee);
+            if (refund > 0) token.transfer(job.renter, refund);
+        } else {
+            if (payment > 0) payable(host).transfer(payment);
+            if (treasuryFee > 0 && treasuryAddress != address(0)) payable(treasuryAddress).transfer(treasuryFee);
+            if (refund > 0) payable(job.renter).transfer(refund);
+        }
+    }
 
     function _processProofBasedPayment(uint256 jobId) internal {
         SessionDetails storage session = sessions[jobId];
+        Job storage job = jobs[jobId];
         
         (uint256 payment, uint256 treasuryFee) = _calculateProvenPayment(
             session.provenTokens,
             session.pricePerToken
         );
         
-        if (payment > 0) {
-            payable(session.assignedHost).transfer(payment);
-        }
-        if (treasuryFee > 0 && treasuryAddress != address(0)) {
-            payable(treasuryAddress).transfer(treasuryFee);
-        }
+        _sendPayments(job, session.assignedHost, payment, treasuryFee, 0);
         
         session.status = SessionStatus.Completed;
         emit HostClaimedWithProof(jobId, msg.sender, session.provenTokens, payment);
@@ -845,6 +843,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     
     function _processTimeoutPayment(uint256 jobId) internal {
         SessionDetails storage session = sessions[jobId];
+        Job storage job = jobs[jobId];
         uint256 payment = 0;
         
         if (session.provenTokens > 0) {
@@ -852,27 +851,14 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
                 session.provenTokens,
                 session.pricePerToken
             );
-            
-            // Reduce payment by 10% as timeout penalty
-            payment = (basePayment * 90) / 100;
-            
-            if (payment > 0) {
-                payable(session.assignedHost).transfer(payment);
-            }
-            if (treasuryFee > 0 && treasuryAddress != address(0)) {
-                payable(treasuryAddress).transfer(treasuryFee);
-            }
-            
-            // Refund remaining deposit to user
+            payment = (basePayment * 90) / 100; // 10% penalty
             uint256 totalCost = session.provenTokens * session.pricePerToken;
-            if (session.depositAmount > totalCost) {
-                uint256 refund = session.depositAmount - totalCost;
-                payable(jobs[jobId].renter).transfer(refund);
-            }
+            uint256 refund = session.depositAmount > totalCost ? session.depositAmount - totalCost : 0;
+            _sendPayments(job, session.assignedHost, payment, treasuryFee, refund);
         } else {
-            // No proven work, refund full deposit to user
+            // No proven work, refund full deposit
             if (session.depositAmount > 0) {
-                payable(jobs[jobId].renter).transfer(session.depositAmount);
+                _sendPayments(job, address(0), 0, 0, session.depositAmount);
             }
         }
         
@@ -882,19 +868,17 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     
     function _processAbandonmentClaim(uint256 jobId) internal {
         SessionDetails storage session = sessions[jobId];
+        Job storage job = jobs[jobId];
         
-        // Pay host full amount for proven work
         (uint256 payment, uint256 treasuryFee) = _calculateProvenPayment(
             session.provenTokens,
             session.pricePerToken
         );
         
-        if (payment > 0) {
-            payable(session.assignedHost).transfer(payment);
-        }
-        if (treasuryFee > 0 && treasuryAddress != address(0)) {
-            payable(treasuryAddress).transfer(treasuryFee);
-        }
+        uint256 totalCost = session.provenTokens * session.pricePerToken;
+        uint256 refund = session.depositAmount > totalCost ? session.depositAmount - totalCost : 0;
+        
+        _sendPayments(job, session.assignedHost, payment, treasuryFee, refund);
         
         session.status = SessionStatus.Abandoned;
         emit SessionAbandoned(jobId, block.timestamp - session.lastActivity);
@@ -916,6 +900,13 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         }
         
         inactivityPeriod = block.timestamp - session.lastActivity;
+    }
+    
+    function getTokenBalance(address token) external view returns (uint256) {
+        if (token == address(0)) {
+            return address(this).balance;
+        }
+        return IERC20(token).balanceOf(address(this));
     }
     
     // Placeholder functions for dispute tests

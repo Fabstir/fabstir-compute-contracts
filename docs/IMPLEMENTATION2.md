@@ -371,45 +371,40 @@ Wire ProofSystem with JobMarketplace for seamless verification.
 
 ## Phase 4: USDC Payment Support
 
-### Sub-phase 4.1: Token Payment Integration ⚠️ MOSTLY COMPLETE
+### Sub-phase 4.1: Token Payment Integration ✅
+Enable USDC deposits and settlements for sessions.
 
 **Tasks:**
 - [x] Add `createSessionJobWithToken()` function
 - [x] Implement USDC transfer to escrow
 - [x] Update payment calculations for decimals (MockUSDC uses 6 decimals)
 - [x] Add token approval checks (via transferFrom)
-- [ ] Handle token refunds (NOT implemented - only deposits)
 - [x] Test with mock USDC
+- [x] Enable/disable token acceptance mapping
 
 **Test Files:**
 - [x] `test/JobMarketplace/SessionJobs/test_usdc_deposit.t.sol`
 - [x] `test/JobMarketplace/SessionJobs/test_token_escrow.t.sol`
-- [ ] `test/JobMarketplace/SessionJobs/test_token_refunds.t.sol` (NOT created)
 
-**Functions**:
-```solidity
-function createSessionJobWithToken(
-    address host,
-    address token,
-    uint256 deposit,
-    uint256 pricePerToken,
-    uint256 maxDuration
-) external returns (uint256)
-```
+### Sub-phase 4.2: Token Refunds and Payments ✅
+Complete token support with refunds and payment distribution.
 
-**Test Files**:
-- [x] `test/JobMarketplace/SessionJobs/test_usdc_deposit.t.sol`
-- [x] `test/JobMarketplace/SessionJobs/test_token_escrow.t.sol`
+**Tasks:**
+- [x] Handle token refunds for overpayments
+- [x] Token payments to hosts
+- [x] Treasury fee collection in tokens
+- [x] Update all payment functions for tokens
+- [x] Create `_sendPayments` helper for code reuse
+- [x] Maintain backward compatibility with ETH
+
+**Test Files:**
 - [x] `test/JobMarketplace/SessionJobs/test_token_refunds.t.sol`
+- [x] `test/JobMarketplace/SessionJobs/test_token_payments.t.sol`
 
-## What's Missing
-
-The token refund functionality wasn't implemented. Currently:
-- Users can deposit USDC for sessions ✅
-- USDC is held in escrow ✅
-- But there's no code to pay hosts or refund users in USDC ❌
-
-The completion/refund functions (`completeSessionJob`, `claimWithProof`, etc.) still only handle ETH transfers, not token transfers.
+**Implementation Notes:**
+- All payment functions now check `job.paymentToken` to determine ETH vs token payments
+- Code optimized by creating shared `_sendPayments` helper function
+- Full USDC/ERC20 support complete with 18 tests
 
 ---
 
