@@ -15,6 +15,7 @@ contract ProofSystem is IProofSystem {
     // Events
     event ProofVerified(bytes32 indexed proofHash, address indexed prover, uint256 tokens);
     event CircuitRegistered(bytes32 indexed circuitHash, address indexed model);
+    event BatchProofVerified(bytes32[] proofHashes, address indexed prover, uint256 totalTokens);
     
     // Modifiers
     modifier onlyOwner() {
@@ -78,5 +79,55 @@ contract ProofSystem is IProofSystem {
     
     function getModelCircuit(address model) external view returns (bytes32) {
         return modelCircuits[model];
+    }
+    
+    // Batch verification functions
+    function verifyBatch(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts) external returns (bool) {
+        require(proofs.length == tokenCounts.length, "Length mismatch");
+        require(proofs.length > 0, "Empty batch");
+        require(proofs.length <= 10, "Batch too large");
+        
+        bytes32[] memory proofHashes = new bytes32[](proofs.length);
+        uint256 totalTokens = 0;
+        
+        for (uint256 i = 0; i < proofs.length; i++) {
+            // Verify each proof using internal function
+            require(_verifyEKZLInternal(proofs[i], prover, tokenCounts[i]), "Invalid proof at index");
+            
+            // Extract and record proof hash (first 32 bytes of proof)
+            bytes32 proofHash;
+            bytes calldata currentProof = proofs[i];
+            assembly {
+                proofHash := calldataload(currentProof.offset)
+            }
+            
+            proofHashes[i] = proofHash;
+            verifiedProofs[proofHash] = true;
+            totalTokens += tokenCounts[i];
+        }
+        
+        emit BatchProofVerified(proofHashes, prover, totalTokens);
+        return true;
+    }
+    
+    function verifyBatchView(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts) external view returns (bool[] memory results) {
+        require(proofs.length == tokenCounts.length, "Length mismatch");
+        
+        results = new bool[](proofs.length);
+        for (uint256 i = 0; i < proofs.length; i++) {
+            results[i] = this.verifyEKZL(proofs[i], prover, tokenCounts[i]);
+        }
+    }
+    
+    function estimateBatchGas(uint256 batchSize) external pure returns (uint256) {
+        return 50000 + (batchSize * 20000);
+    }
+    
+    // Internal helper for batch verification
+    function _verifyEKZLInternal(bytes calldata proof, address prover, uint256 claimedTokens) internal view returns (bool) {
+        if (proof.length < 64 || claimedTokens == 0 || prover == address(0)) return false;
+        bytes32 proofHash;
+        assembly { proofHash := calldataload(proof.offset) }
+        return !verifiedProofs[proofHash];
     }
 }
