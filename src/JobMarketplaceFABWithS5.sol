@@ -21,6 +21,34 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         Completed
     }
     
+    // New enums for session support
+    enum JobType { SinglePrompt, Session }
+    enum SessionStatus { Active, Completed, TimedOut, Disputed, Abandoned }
+    
+    // EZKL proof tracking structure
+    struct ProofSubmission {
+        bytes32 proofHash;
+        uint256 tokensClaimed;
+        uint256 timestamp;
+        bool verified;
+    }
+    
+    // Session details for long-running jobs
+    struct SessionDetails {
+        uint256 depositAmount;
+        uint256 pricePerToken;
+        uint256 maxDuration;
+        uint256 sessionStartTime;
+        address assignedHost;
+        SessionStatus status;
+        
+        // EZKL proof tracking
+        uint256 provenTokens;
+        uint256 lastProofSubmission;
+        bytes32 aggregateProofHash;
+        uint256 checkpointInterval;
+    }
+    
     struct Job {
         address renter;
         JobStatus status;
@@ -58,6 +86,11 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     
     // Track total earnings credited per host for analytics
     mapping(address => uint256) public totalEarningsCredited;
+    
+    // New mappings for session support
+    mapping(uint256 => SessionDetails) public sessions;
+    mapping(uint256 => ProofSubmission[]) public sessionProofs;
+    mapping(uint256 => JobType) public jobTypes;
     
     event JobCreated(
         uint256 indexed jobId, 

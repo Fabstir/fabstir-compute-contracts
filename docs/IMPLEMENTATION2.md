@@ -22,12 +22,12 @@ fabstir-compute-contracts
 Add session support with proof tracking to existing JobMarketplaceFAB contract.
 
 **Tasks:**
-- [ ] Add `JobType` enum (SinglePrompt, Session)
-- [ ] Create `SessionDetails` struct with proof fields
-- [ ] Add `ProofSubmission` struct for EZKL data
-- [ ] Extend existing `Job` struct for sessions
-- [ ] Add session tracking mappings
-- [ ] Add proof tracking mappings
+- [x] Add `JobType` enum (SinglePrompt, Session)
+- [x] Create `SessionDetails` struct with proof fields
+- [x] Add `ProofSubmission` struct for EZKL data
+- [x] Extend existing `Job` struct for sessions
+- [x] Add session tracking mappings
+- [x] Add proof tracking mappings
 
 **Updates to `contracts/JobMarketplaceFABWithS5.sol`**:
 ```solidity
