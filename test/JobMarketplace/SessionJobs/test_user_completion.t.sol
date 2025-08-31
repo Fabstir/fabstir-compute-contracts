@@ -36,7 +36,7 @@ contract UserCompletionTest is Test {
         marketplace.completeSessionJob(JOB_ID);
         
         // Verify session status
-        (,,,,, JobMarketplaceFABWithS5.SessionStatus status,,,,) = marketplace.sessions(JOB_ID);
+        (,,,,, JobMarketplaceFABWithS5.SessionStatus status,,,,,,) = marketplace.sessions(JOB_ID);
         assertEq(uint(status), uint(JobMarketplaceFABWithS5.SessionStatus.Completed), "Session should be completed");
     }
     
@@ -95,14 +95,14 @@ contract UserCompletionTest is Test {
         _setupActiveSessionWithProofs(25);
         
         // Verify initial status
-        (,,,,, JobMarketplaceFABWithS5.SessionStatus statusBefore,,,,) = marketplace.sessions(JOB_ID);
+        (,,,,, JobMarketplaceFABWithS5.SessionStatus statusBefore,,,,,,) = marketplace.sessions(JOB_ID);
         assertEq(uint(statusBefore), uint(JobMarketplaceFABWithS5.SessionStatus.Active), "Should start active");
         
         vm.prank(user);
         marketplace.completeSessionJob(JOB_ID);
         
         // Verify final status
-        (,,,,, JobMarketplaceFABWithS5.SessionStatus statusAfter,,,,) = marketplace.sessions(JOB_ID);
+        (,,,,, JobMarketplaceFABWithS5.SessionStatus statusAfter,,,,,,) = marketplace.sessions(JOB_ID);
         assertEq(uint(statusAfter), uint(JobMarketplaceFABWithS5.SessionStatus.Completed), "Should be completed");
     }
     

@@ -152,12 +152,12 @@ interface IProofSystem {
 Enable completion by either party based on verified proofs.
 
 **Tasks:**
-- [ ] Implement `completeSession()` for users
-- [ ] Implement `claimWithProof()` for hosts
-- [ ] Calculate payment based on proven tokens
-- [ ] Process refunds for unused deposits
-- [ ] Handle treasury fee collection (10%)
-- [ ] Update session status appropriately
+- [x] Implement `completeSession()` for users
+- [x] Implement `claimWithProof()` for hosts
+- [x] Calculate payment based on proven tokens
+- [x] Process refunds for unused deposits
+- [x] Handle treasury fee collection (10%)
+- [x] Update session status appropriately
 
 **New Functions**:
 ```solidity
@@ -184,7 +184,7 @@ function _processPaymentWithProof(
 - [ ] `test/JobMarketplace/SessionJobs/test_refunds.t.sol`
 - [ ] `test/JobMarketplace/SessionJobs/test_treasury_fees.t.sol`
 
-### Sub-phase 1.5: Incremental Checkpoints ⬜
+### Sub-phase 1.5: Incremental Checkpoints ⬜ (Skipped - EZKL makes it less critical)
 Optional incremental payments at proof checkpoints to reduce risk.
 
 **Tasks:**
@@ -215,16 +215,16 @@ function _processIncrementalPayment(
 - [ ] `test/JobMarketplace/SessionJobs/test_checkpoint_triggers.t.sol`
 - [ ] `test/JobMarketplace/SessionJobs/test_checkpoint_history.t.sol`
 
-### Sub-phase 1.6: Timeout & Abandonment Protection ⬜
+### Sub-phase 1.6: Timeout & Abandonment Protection ✅
 Protect both parties with timeout mechanisms and abandonment handling.
 
 **Tasks:**
-- [ ] Implement `triggerSessionTimeout()` public function
-- [ ] Add abandonment detection logic
-- [ ] Enable host claims after timeout
-- [ ] Calculate partial payments for timeouts
-- [ ] Handle dispute windows
-- [ ] Process abandoned session settlements
+- [x] Implement `triggerSessionTimeout()` public function
+- [x] Add abandonment detection logic
+- [x] Enable host claims after timeout
+- [x] Calculate partial payments for timeouts
+- [x] Handle dispute windows
+- [x] Process abandoned session settlements
 
 **New Functions**:
 ```solidity
