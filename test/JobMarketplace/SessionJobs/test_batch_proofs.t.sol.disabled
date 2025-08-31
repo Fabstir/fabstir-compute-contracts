@@ -1,0 +1,134 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "forge-std/Test.sol";
+import "../../../src/JobMarketplaceFABWithS5.sol";
+import "../../../src/NodeRegistryFAB.sol";
+
+contract BatchProofsTest is Test {
+    JobMarketplaceFABWithS5 public marketplace;
+    NodeRegistryFAB public nodeRegistry;
+    MockProofSystem public proofSystem;
+    
+    address public host = address(0x1);
+    address public renter = address(0x2);
+    uint256 public jobId;
+    
+    event BatchProofsSubmitted(
+        uint256 indexed jobId,
+        uint256 proofCount,
+        uint256 totalTokens
+    );
+    
+    function setUp() public {
+        nodeRegistry = new NodeRegistryFAB();
+        marketplace = new JobMarketplaceFABWithS5(address(nodeRegistry), payable(address(0x3)));
+        proofSystem = new MockProofSystem();
+        marketplace.setProofSystem(address(proofSystem));
+        
+        // Register host
+        vm.deal(host, 101 ether);
+        vm.prank(host);
+        nodeRegistry.registerNode{value: 100 ether}("node1", "region1");
+        
+        // Create session job
+        vm.deal(renter, 2 ether);
+        vm.prank(renter);
+        jobId = marketplace.createSessionJob{value: 1 ether}(
+            host,
+            1 ether,
+            0.001 ether,
+            1 days,
+            100
+        );
+    }
+    
+    function test_BatchSubmission() public {
+        bytes[] memory proofs = new bytes[](3);
+        proofs[0] = abi.encode("proof1");
+        proofs[1] = abi.encode("proof2");
+        proofs[2] = abi.encode("proof3");
+        
+        uint256[] memory tokenCounts = new uint256[](3);
+        tokenCounts[0] = 100;
+        tokenCounts[1] = 150;
+        tokenCounts[2] = 200;
+        
+        vm.prank(host);
+        marketplace.submitBatchProofs(jobId, proofs, tokenCounts);
+        
+        assertEq(marketplace.getProvenTokens(jobId), 450, "Total tokens should be sum");
+        
+        JobMarketplaceFABWithS5.ProofSubmission[] memory submissions = marketplace.getProofSubmissions(jobId);
+        assertEq(submissions.length, 3, "Should have 3 submissions");
+    }
+    
+    function test_ArrayLengthValidation() public {
+        bytes[] memory proofs = new bytes[](2);
+        proofs[0] = abi.encode("proof1");
+        proofs[1] = abi.encode("proof2");
+        
+        uint256[] memory tokenCounts = new uint256[](3); // Mismatched length
+        tokenCounts[0] = 100;
+        tokenCounts[1] = 150;
+        tokenCounts[2] = 200;
+        
+        vm.prank(host);
+        vm.expectRevert("Array length mismatch");
+        marketplace.submitBatchProofs(jobId, proofs, tokenCounts);
+    }
+    
+    function test_CumulativeTokenTracking() public {
+        // First batch
+        bytes[] memory proofs1 = new bytes[](2);
+        proofs1[0] = abi.encode("proof1");
+        proofs1[1] = abi.encode("proof2");
+        
+        uint256[] memory tokens1 = new uint256[](2);
+        tokens1[0] = 100;
+        tokens1[1] = 150;
+        
+        vm.prank(host);
+        marketplace.submitBatchProofs(jobId, proofs1, tokens1);
+        
+        // Second batch
+        bytes[] memory proofs2 = new bytes[](2);
+        proofs2[0] = abi.encode("proof3");
+        proofs2[1] = abi.encode("proof4");
+        
+        uint256[] memory tokens2 = new uint256[](2);
+        tokens2[0] = 200;
+        tokens2[1] = 250;
+        
+        vm.prank(host);
+        marketplace.submitBatchProofs(jobId, proofs2, tokens2);
+        
+        assertEq(marketplace.getProvenTokens(jobId), 700, "All tokens should accumulate");
+    }
+    
+    function test_BatchEventEmission() public {
+        bytes[] memory proofs = new bytes[](2);
+        proofs[0] = abi.encode("proof1");
+        proofs[1] = abi.encode("proof2");
+        
+        uint256[] memory tokenCounts = new uint256[](2);
+        tokenCounts[0] = 100;
+        tokenCounts[1] = 150;
+        
+        vm.expectEmit(true, false, false, true);
+        emit BatchProofsSubmitted(jobId, 2, 250);
+        
+        vm.prank(host);
+        marketplace.submitBatchProofs(jobId, proofs, tokenCounts);
+    }
+}
+
+contract MockProofSystem {
+    function verifyEKZL(
+        bytes calldata,
+        address,
+        uint256
+    ) external pure returns (bool) {
+        return true;
+    }
+}

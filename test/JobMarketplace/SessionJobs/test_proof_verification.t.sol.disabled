@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "forge-std/Test.sol";
+import "../../../src/JobMarketplaceFABWithS5.sol";
+import "../../../src/NodeRegistryFAB.sol";
+
+contract ProofVerificationTest is Test {
+    JobMarketplaceFABWithS5 public marketplace;
+    NodeRegistryFAB public nodeRegistry;
+    ProofSystemWithFailure public proofSystem;
+    
+    address public host = address(0x1);
+    address public renter = address(0x2);
+    uint256 public jobId;
+    
+    function setUp() public {
+        nodeRegistry = new NodeRegistryFAB();
+        marketplace = new JobMarketplaceFABWithS5(address(nodeRegistry), payable(address(0x3)));
+        proofSystem = new ProofSystemWithFailure();
+        marketplace.setProofSystem(address(proofSystem));
+        
+        // Register host
+        vm.deal(host, 101 ether);
+        vm.prank(host);
+        nodeRegistry.registerNode{value: 100 ether}("node1", "region1");
+        
+        // Create session job
+        vm.deal(renter, 2 ether);
+        vm.prank(renter);
+        jobId = marketplace.createSessionJob{value: 1 ether}(
+            host,
+            1 ether,
+            0.001 ether,
+            1 days,
+            100
+        );
+    }
+    
+    function test_ProofVerificationLogic() public {
+        bytes memory validProof = abi.encode("valid");
+        bytes memory invalidProof = abi.encode("invalid");
+        
+        vm.prank(host);
+        bool verified = marketplace.submitProofOfWork(jobId, validProof, 100);
+        assertTrue(verified, "Valid proof should verify");
+        
+        vm.prank(host);
+        bool notVerified = marketplace.submitProofOfWork(jobId, invalidProof, 100);
+        assertFalse(notVerified, "Invalid proof should not verify");
+    }
+    
+    function test_VerifiedVsUnverifiedProofs() public {
+        bytes memory validProof = abi.encode("valid");
+        bytes memory invalidProof = abi.encode("invalid");
+        
+        vm.prank(host);
+        marketplace.submitProofOfWork(jobId, validProof, 100);
+        
+        vm.prank(host);
+        marketplace.submitProofOfWork(jobId, invalidProof, 50);
+        
+        JobMarketplaceFABWithS5.ProofSubmission[] memory submissions = marketplace.getProofSubmissions(jobId);
+        assertEq(submissions.length, 2, "Should have two submissions");
+        assertTrue(submissions[0].verified, "First should be verified");
+        assertFalse(submissions[1].verified, "Second should not be verified");
+        
+        // Only verified tokens count
+        assertEq(marketplace.getProvenTokens(jobId), 100, "Only verified tokens should count");
+    }
+    
+    function test_ProofSystemIntegration() public {
+        bytes memory proof = abi.encode("test");
+        
+        // Proof system should be called with correct parameters
+        vm.prank(host);
+        marketplace.submitProofOfWork(jobId, proof, 100);
+        
+        assertEq(proofSystem.lastProver(), host, "Prover should be host");
+        assertEq(proofSystem.lastTokens(), 100, "Tokens should match");
+    }
+    
+    function test_VerificationFailures() public {
+        bytes memory invalidProof = abi.encode("invalid");
+        
+        vm.prank(host);
+        bool verified = marketplace.submitProofOfWork(jobId, invalidProof, 100);
+        
+        assertFalse(verified, "Should return false for invalid proof");
+        assertEq(marketplace.getProvenTokens(jobId), 0, "No tokens should be proven");
+    }
+}
+
+contract ProofSystemWithFailure {
+    address public lastProver;
+    uint256 public lastTokens;
+    
+    function verifyEKZL(
+        bytes calldata proof,
+        address prover,
+        uint256 tokens
+    ) external returns (bool) {
+        lastProver = prover;
+        lastTokens = tokens;
+        
+        // "valid" proofs pass, "invalid" fail
+        return keccak256(proof) == keccak256(abi.encode("valid"));
+    }
+}
