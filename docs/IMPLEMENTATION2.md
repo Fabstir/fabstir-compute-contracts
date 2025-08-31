@@ -102,12 +102,12 @@ function _validateProofRequirements(
 Implement cryptographic proof submission and verification for token usage.
 
 **Tasks:**
-- [ ] Implement `submitProofOfWork()` for hosts
-- [ ] Add `_verifyEKZLProof()` integration with ProofSystem
-- [ ] Track incremental proof submissions
-- [ ] Update proven token counts
-- [ ] Handle batch proof submissions
-- [ ] Emit proof verification events
+- [x] Implement `submitProofOfWork()` for hosts
+- [x] Add `_verifyEKZLProof()` integration with ProofSystem
+- [x] Track incremental proof submissions
+- [x] Update proven token counts
+- [x] Handle batch proof submissions
+- [x] Emit proof verification events
 
 **New Functions**:
 ```solidity
