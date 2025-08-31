@@ -1,0 +1,76 @@
+{
+  "networks": {
+    "base_mainnet": {
+      "chainId": 8453,
+      "rpc": "https://mainnet.base.org",
+      "explorer": "https://basescan.org",
+      "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "gas_settings": {
+        "maxFeePerGas": "10000000000",
+        "maxPriorityFeePerGas": "1000000000"
+      }
+    },
+    "base_sepolia": {
+      "chainId": 84532,
+      "rpc": "https://sepolia.base.org",
+      "explorer": "https://sepolia.basescan.org",
+      "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "gas_settings": {
+        "maxFeePerGas": "5000000000",
+        "maxPriorityFeePerGas": "500000000"
+      }
+    },
+    "local": {
+      "chainId": 31337,
+      "rpc": "http://localhost:8545",
+      "explorer": "",
+      "usdc": "",
+      "gas_settings": {
+        "maxFeePerGas": "20000000000",
+        "maxPriorityFeePerGas": "2000000000"
+      }
+    }
+  },
+  "contracts": {
+    "ProofSystem": {
+      "verify": true,
+      "constructor_args": [],
+      "compiler_version": "0.8.19",
+      "optimization": true,
+      "optimization_runs": 200
+    },
+    "JobMarketplaceFABWithS5": {
+      "verify": true,
+      "constructor_args": ["nodeRegistry", "hostEarnings"],
+      "compiler_version": "0.8.19",
+      "optimization": true,
+      "optimization_runs": 200
+    }
+  },
+  "deployment_order": [
+    "ProofSystem",
+    "JobMarketplaceFABWithS5"
+  ],
+  "post_deployment": {
+    "JobMarketplaceFABWithS5": [
+      {
+        "function": "setProofSystem",
+        "args": ["ProofSystem"]
+      },
+      {
+        "function": "setTreasuryAddress",
+        "args": ["treasury"]
+      },
+      {
+        "function": "setAcceptedToken",
+        "args": ["usdc", true]
+      }
+    ],
+    "ProofSystem": [
+      {
+        "function": "registerModelCircuit",
+        "args": ["0x0000000000000000000000000000000000000001", "llama-70b-circuit"]
+      }
+    ]
+  }
+}
