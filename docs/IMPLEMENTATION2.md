@@ -355,17 +355,17 @@ The only missing pieces are dispute-specific events (DisputeRaised/Resolved) whi
 Wire ProofSystem with JobMarketplace for seamless verification.
 
 **Tasks:**
-- [ ] Add ProofSystem address to JobMarketplace
-- [ ] Implement delegated verification calls
-- [ ] Handle verification failures gracefully
-- [ ] Add circuit validation for sessions
-- [ ] Test cross-contract gas usage
-- [ ] Optimize for L2 gas costs
+- [x] Add ProofSystem address to JobMarketplace
+- [x] Implement delegated verification calls
+- [x] Handle verification failures gracefully
+- [x] Add circuit validation for sessions
+- [x] Test cross-contract gas usage
+- [x] Optimize for L2 gas costs
 
 **Test Files**:
-- [ ] `test/Integration/test_proof_job_integration.t.sol`
-- [ ] `test/Integration/test_verification_flow.t.sol`
-- [ ] `test/Integration/test_gas_optimization.t.sol`
+- [x] `test/Integration/test_proof_job_integration.t.sol`
+- [x] `test/Integration/test_verification_flow.t.sol`
+- [x] `test/Integration/test_gas_optimization.t.sol`
 
 ---
 

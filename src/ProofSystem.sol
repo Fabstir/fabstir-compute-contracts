@@ -59,6 +59,29 @@ contract ProofSystem is IProofSystem {
         emit ProofVerified(proofHash, msg.sender, 0);
     }
     
+    // Verify and mark proof as complete (prevents replay)
+    function verifyAndMarkComplete(
+        bytes calldata proof,
+        address prover,
+        uint256 claimedTokens
+    ) external returns (bool) {
+        // First verify using view function
+        if (!this.verifyEKZL(proof, prover, claimedTokens)) {
+            return false;
+        }
+        
+        // Extract proof hash and mark as verified
+        bytes32 proofHash;
+        assembly {
+            proofHash := calldataload(proof.offset)
+        }
+        
+        verifiedProofs[proofHash] = true;
+        emit ProofVerified(proofHash, prover, claimedTokens);
+        
+        return true;
+    }
+    
     // Circuit registry functions
     function registerModelCircuit(
         address model,

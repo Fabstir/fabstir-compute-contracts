@@ -16,6 +16,12 @@ interface IProofSystem {
         address prover,
         uint256 claimedTokens
     ) external view returns (bool);
+    
+    function verifyAndMarkComplete(
+        bytes calldata proof,
+        address prover,
+        uint256 claimedTokens
+    ) external returns (bool);
 }
 
 /**
@@ -506,7 +512,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     IProofSystem public proofSystem;
     
     function setProofSystem(address _proofSystem) external {
-        require(_proofSystem != address(0), "Invalid address");
+        require(_proofSystem != address(0), "Invalid proof system");
         proofSystem = IProofSystem(_proofSystem);
     }
     
@@ -555,19 +561,21 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         bytes calldata proof,
         uint256 tokens
     ) internal returns (bool) {
+        // Verify with ProofSystem if available (use verifyAndMarkComplete for replay prevention)
         bool verified = address(proofSystem) != address(0) ? 
-            proofSystem.verifyEKZL(proof, msg.sender, tokens) : false;
+            proofSystem.verifyAndMarkComplete(proof, msg.sender, tokens) : false;
         
-        ProofSubmission memory submission = ProofSubmission({
-            proofHash: keccak256(proof),
-            tokensClaimed: tokens,
-            timestamp: block.timestamp,
-            verified: verified
-        });
-        
-        sessionProofs[jobId].push(submission);
-        
+        // Only record if verification passed
         if (verified) {
+            ProofSubmission memory submission = ProofSubmission({
+                proofHash: keccak256(proof),
+                tokensClaimed: tokens,
+                timestamp: block.timestamp,
+                verified: true
+            });
+            
+            sessionProofs[jobId].push(submission);
+            
             SessionDetails storage session = sessions[jobId];
             session.provenTokens += tokens;
             session.lastProofSubmission = block.timestamp;
