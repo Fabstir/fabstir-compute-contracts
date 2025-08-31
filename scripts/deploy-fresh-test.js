@@ -12,19 +12,29 @@
  */
 
 const { ethers } = require('ethers');
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
-// Contract ABIs (minimal for deployment)
-const HOST_EARNINGS_ABI = require('../out/HostEarnings.sol/HostEarnings.json').abi;
-const HOST_EARNINGS_BYTECODE = require('../out/HostEarnings.sol/HostEarnings.json').bytecode.object;
+// Load contract artifacts
+function loadContract(contractPath) {
+    try {
+        const fullPath = path.join(__dirname, '..', 'out', contractPath);
+        const artifact = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+        return {
+            abi: artifact.abi,
+            bytecode: artifact.bytecode.object
+        };
+    } catch (error) {
+        console.error(`Failed to load contract ${contractPath}:`, error.message);
+        throw error;
+    }
+}
 
-const PAYMENT_ESCROW_ABI = require('../out/PaymentEscrowWithEarnings.sol/PaymentEscrowWithEarnings.json').abi;
-const PAYMENT_ESCROW_BYTECODE = require('../out/PaymentEscrowWithEarnings.sol/PaymentEscrowWithEarnings.json').bytecode.object;
-
-const JOB_MARKETPLACE_ABI = require('../out/JobMarketplaceFABWithEarnings.sol/JobMarketplaceFABWithEarnings.json').abi;
-const JOB_MARKETPLACE_BYTECODE = require('../out/JobMarketplaceFABWithEarnings.sol/JobMarketplaceFABWithEarnings.json').bytecode.object;
+// Load contracts
+const HOST_EARNINGS = loadContract('HostEarnings.sol/HostEarnings.json');
+const PAYMENT_ESCROW = loadContract('PaymentEscrowWithEarnings.sol/PaymentEscrowWithEarnings.json');
+const JOB_MARKETPLACE = loadContract('JobMarketplaceFABWithS5.sol/JobMarketplaceFABWithS5.json');
 
 // Configuration
 const CONFIG = {
@@ -35,7 +45,7 @@ const CONFIG = {
     TREASURY_MANAGER: '0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078',
     
     // Network configuration
-    RPC_URL: process.env.RPC_URL || 'https://sepolia.base.org',
+    RPC_URL: process.env.BASE_SEPOLIA_RPC_URL || process.env.RPC_URL || 'https://sepolia.base.org',
     PRIVATE_KEY: process.env.PRIVATE_KEY,
     
     // Deployment settings
@@ -79,6 +89,8 @@ async function main() {
         
         // Validate environment
         if (!CONFIG.PRIVATE_KEY) {
+            console.log('Available env vars:', Object.keys(process.env).filter(k => k.includes('PRIVATE')));
+            console.log('CONFIG.PRIVATE_KEY:', CONFIG.PRIVATE_KEY);
             throw new Error('PRIVATE_KEY not found in environment variables');
         }
         
@@ -106,16 +118,16 @@ async function main() {
         
         // 1. Deploy HostEarnings
         const HostEarningsFactory = new ethers.ContractFactory(
-            HOST_EARNINGS_ABI,
-            HOST_EARNINGS_BYTECODE,
+            HOST_EARNINGS.abi,
+            HOST_EARNINGS.bytecode,
             signer
         );
         const hostEarnings = await deployContract(HostEarningsFactory, 'HostEarnings');
         
         // 2. Deploy PaymentEscrowWithEarnings
         const PaymentEscrowFactory = new ethers.ContractFactory(
-            PAYMENT_ESCROW_ABI,
-            PAYMENT_ESCROW_BYTECODE,
+            PAYMENT_ESCROW.abi,
+            PAYMENT_ESCROW.bytecode,
             signer
         );
         const paymentEscrow = await deployContract(
@@ -125,15 +137,15 @@ async function main() {
             CONFIG.FEE_BASIS_POINTS
         );
         
-        // 3. Deploy JobMarketplaceFABWithEarnings
+        // 3. Deploy JobMarketplaceFABWithS5
         const JobMarketplaceFactory = new ethers.ContractFactory(
-            JOB_MARKETPLACE_ABI,
-            JOB_MARKETPLACE_BYTECODE,
+            JOB_MARKETPLACE.abi,
+            JOB_MARKETPLACE.bytecode,
             signer
         );
         const jobMarketplace = await deployContract(
             JobMarketplaceFactory,
-            'JobMarketplaceFABWithEarnings',
+            'JobMarketplaceFABWithS5',
             CONFIG.NODE_REGISTRY,
             await hostEarnings.getAddress()
         );
@@ -143,7 +155,7 @@ async function main() {
         
         // Configure HostEarnings
         log('  Adding PaymentEscrow as authorized...', 'cyan');
-        let tx = await hostEarnings.addAuthorized(await paymentEscrow.getAddress());
+        let tx = await hostEarnings.setAuthorizedCaller(await paymentEscrow.getAddress(), true);
         await tx.wait();
         log('  ✓ HostEarnings configured', 'green');
         
@@ -181,15 +193,15 @@ async function main() {
         // Save to file if requested
         if (CONFIG.SAVE_TO_FILE) {
             const deploymentsDir = path.join(__dirname, '..', 'deployments');
-            await fs.mkdir(deploymentsDir, { recursive: true });
+            fs.mkdirSync(deploymentsDir, { recursive: true });
             
             const filename = path.join(deploymentsDir, 'test-env-latest.json');
-            await fs.writeFile(filename, JSON.stringify(addresses, null, 2));
+            fs.writeFileSync(filename, JSON.stringify(addresses, null, 2));
             
             // Also save timestamped version
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const backupFilename = path.join(deploymentsDir, `test-env-${timestamp}.json`);
-            await fs.writeFile(backupFilename, JSON.stringify(addresses, null, 2));
+            fs.writeFileSync(backupFilename, JSON.stringify(addresses, null, 2));
             
             log(`\n  Addresses saved to:`, 'green');
             log(`    ${filename}`);

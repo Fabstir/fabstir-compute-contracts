@@ -8,10 +8,15 @@
     "build": "forge build"
   },
   "dependencies": {
+    "dotenv": "^17.2.1",
     "ethers": "^6.8.0"
   },
-  "devDependencies": {},
-  "keywords": ["ethereum", "smart-contracts", "deployment", "base-sepolia"],
+  "keywords": [
+    "ethereum",
+    "smart-contracts",
+    "deployment",
+    "base-sepolia"
+  ],
   "author": "Fabstir",
   "license": "MIT"
 }
