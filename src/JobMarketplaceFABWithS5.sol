@@ -9,6 +9,15 @@ import "./HostEarnings.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+// Proof system interface
+interface IProofSystem {
+    function verifyEKZL(
+        bytes calldata proof,
+        address prover,
+        uint256 claimedTokens
+    ) external view returns (bool);
+}
+
 /**
  * @title JobMarketplaceFABWithS5
  * @dev JobMarketplace with S5 CID storage for prompts and responses
@@ -471,5 +480,109 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         if (minDeposit < 0.01 ether) minDeposit = 0.01 ether;
         minProofInterval = 100;
         maxDuration = 365 days;
+    }
+    
+    // EZKL Proof submission events
+    event ProofSubmitted(
+        uint256 indexed jobId,
+        address indexed host,
+        uint256 tokensClaimed,
+        bytes32 proofHash,
+        bool verified
+    );
+    
+    event BatchProofsSubmitted(
+        uint256 indexed jobId,
+        uint256 proofCount,
+        uint256 totalTokens
+    );
+    
+    IProofSystem public proofSystem;
+    
+    function setProofSystem(address _proofSystem) external {
+        require(_proofSystem != address(0), "Invalid address");
+        proofSystem = IProofSystem(_proofSystem);
+    }
+    
+    function submitProofOfWork(
+        uint256 jobId,
+        bytes calldata ekzlProof,
+        uint256 tokensInBatch
+    ) external returns (bool verified) {
+        require(jobTypes[jobId] == JobType.Session, "Job does not exist");
+        SessionDetails storage session = sessions[jobId];
+        require(session.status == SessionStatus.Active, "Session not active");
+        require(session.assignedHost == msg.sender, "Not assigned host");
+        require(tokensInBatch > 0, "Tokens must be positive");
+        require(ekzlProof.length > 0, "Proof required");
+        
+        uint256 maxTokens = session.depositAmount / session.pricePerToken;
+        require(session.provenTokens + tokensInBatch <= maxTokens, "Exceeds deposit capacity");
+        require(session.provenTokens < maxTokens, "Max tokens already proven");
+        
+        verified = _verifyAndRecordProof(jobId, ekzlProof, tokensInBatch);
+        
+        emit ProofSubmitted(jobId, msg.sender, tokensInBatch, keccak256(ekzlProof), verified);
+        return verified;
+    }
+    
+    function submitBatchProofs(
+        uint256 jobId,
+        bytes[] calldata proofs,
+        uint256[] calldata tokenCounts
+    ) external {
+        require(proofs.length == tokenCounts.length, "Array length mismatch");
+        require(proofs.length > 0, "Empty batch");
+        
+        uint256 totalTokens = 0;
+        for (uint256 i = 0; i < proofs.length; i++) {
+            _verifyAndRecordProof(jobId, proofs[i], tokenCounts[i]);
+            totalTokens += tokenCounts[i];
+            emit ProofSubmitted(jobId, msg.sender, tokenCounts[i], keccak256(proofs[i]), true);
+        }
+        
+        emit BatchProofsSubmitted(jobId, proofs.length, totalTokens);
+    }
+    
+    function _verifyAndRecordProof(
+        uint256 jobId,
+        bytes calldata proof,
+        uint256 tokens
+    ) internal returns (bool) {
+        bool verified = address(proofSystem) != address(0) ? 
+            proofSystem.verifyEKZL(proof, msg.sender, tokens) : false;
+        
+        ProofSubmission memory submission = ProofSubmission({
+            proofHash: keccak256(proof),
+            tokensClaimed: tokens,
+            timestamp: block.timestamp,
+            verified: verified
+        });
+        
+        sessionProofs[jobId].push(submission);
+        
+        if (verified) {
+            SessionDetails storage session = sessions[jobId];
+            session.provenTokens += tokens;
+            session.lastProofSubmission = block.timestamp;
+            session.aggregateProofHash = keccak256(abi.encode(session.aggregateProofHash, submission.proofHash));
+        }
+        
+        return verified;
+    }
+    
+    function getProofSubmissions(uint256 jobId) external view returns (ProofSubmission[] memory) {
+        return sessionProofs[jobId];
+    }
+    
+    function getProvenTokens(uint256 jobId) external view returns (uint256) {
+        return sessions[jobId].provenTokens;
+    }
+    
+    function completeSession(uint256 jobId) external {
+        SessionDetails storage session = sessions[jobId];
+        require(session.assignedHost == msg.sender, "Not assigned host");
+        require(session.status == SessionStatus.Active, "Session not active");
+        session.status = SessionStatus.Completed;
     }
 }

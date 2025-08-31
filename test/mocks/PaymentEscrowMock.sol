@@ -63,4 +63,18 @@ contract PaymentEscrowMock is IPaymentEscrow {
             }
         }
     }
+    
+    function releaseToEarnings(
+        bytes32 _jobId,
+        address _host,
+        uint256 _amount,
+        address _token,
+        address _earningsContract
+    ) external {
+        // Mock implementation for releaseToEarnings
+        // Just transfers to the earnings contract
+        if (_token != address(0) && _amount > 0) {
+            IERC20(_token).transfer(_earningsContract, _amount);
+        }
+    }
 }
