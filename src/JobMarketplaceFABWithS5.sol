@@ -874,4 +874,143 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     function owner() public view returns (address) {
         return address(this);
     }
+    
+    // View functions for hosts (read-only, no gas costs)
+    
+    function getActiveSessionsForHost(address host) 
+        external view returns (uint256[] memory jobIds) {
+        uint256 count = 0;
+        uint256 maxCheck = 1000; // Reasonable max for view function
+        
+        // Count active sessions
+        for (uint256 i = 1; i <= maxCheck; i++) {
+            if (sessions[i].assignedHost == host && 
+                sessions[i].status == SessionStatus.Active) {
+                count++;
+            }
+        }
+        
+        // Populate array
+        jobIds = new uint256[](count);
+        uint256 index = 0;
+        for (uint256 i = 1; i <= maxCheck; i++) {
+            if (sessions[i].assignedHost == host && 
+                sessions[i].status == SessionStatus.Active) {
+                jobIds[index++] = i;
+            }
+        }
+    }
+    
+    function getSessionDetails(uint256 jobId) 
+        external view returns (
+            address user,
+            address host,
+            uint256 deposit,
+            uint256 pricePerToken,
+            uint256 provenTokens,
+            uint256 startTime,
+            SessionStatus status,
+            uint256 lastActivity
+        ) {
+        SessionDetails storage session = sessions[jobId];
+        Job storage job = jobs[jobId];
+        
+        return (
+            job.renter,
+            session.assignedHost,
+            session.depositAmount,
+            session.pricePerToken,
+            session.provenTokens,
+            session.sessionStartTime,
+            session.status,
+            session.lastActivity
+        );
+    }
+    
+    function calculateCurrentEarnings(uint256 jobId) 
+        external view returns (
+            uint256 grossEarnings,
+            uint256 treasuryFee,
+            uint256 netEarnings
+        ) {
+        SessionDetails storage session = sessions[jobId];
+        
+        grossEarnings = session.provenTokens * session.pricePerToken;
+        treasuryFee = (grossEarnings * TREASURY_FEE_PERCENT) / 100;
+        netEarnings = grossEarnings - treasuryFee;
+    }
+    
+    function getRequiredProofInterval(uint256 jobId) 
+        external view returns (uint256) {
+        return sessions[jobId].checkpointInterval;
+    }
+    
+    function getSessionsPaginated(
+        address host,
+        uint256 offset,
+        uint256 limit
+    ) external view returns (
+        uint256[] memory jobIds,
+        uint256 totalCount
+    ) {
+        uint256 maxCheck = 1000; // Reasonable max for view function
+        
+        // Count total sessions for host
+        totalCount = 0;
+        for (uint256 i = 1; i <= maxCheck; i++) {
+            if (sessions[i].assignedHost == host) {
+                totalCount++;
+            }
+        }
+        
+        // Apply pagination
+        uint256 resultSize;
+        if (offset >= totalCount) {
+            resultSize = 0;
+        } else {
+            resultSize = (offset + limit > totalCount) ? 
+                totalCount - offset : limit;
+        }
+        jobIds = new uint256[](resultSize);
+        
+        uint256 currentIndex = 0;
+        uint256 resultIndex = 0;
+        
+        for (uint256 i = 1; i <= maxCheck && resultIndex < resultSize; i++) {
+            if (sessions[i].assignedHost == host) {
+                if (currentIndex >= offset) {
+                    jobIds[resultIndex++] = i;
+                }
+                currentIndex++;
+            }
+        }
+    }
+    
+    function getHostStats(address host) external view returns (
+        uint256 totalSessions,
+        uint256 activeSessions,
+        uint256 completedSessions,
+        uint256 totalTokensProven,
+        uint256 totalEarnings
+    ) {
+        uint256 maxCheck = 1000; // Reasonable max for view function
+        
+        for (uint256 i = 1; i <= maxCheck; i++) {
+            SessionDetails storage session = sessions[i];
+            if (session.assignedHost == host) {
+                totalSessions++;
+                
+                if (session.status == SessionStatus.Active) {
+                    activeSessions++;
+                } else if (session.status == SessionStatus.Completed) {
+                    completedSessions++;
+                }
+                
+                totalTokensProven += session.provenTokens;
+                uint256 gross = session.provenTokens * session.pricePerToken;
+                uint256 fee = (gross * TREASURY_FEE_PERCENT) / 100;
+                totalEarnings += (gross - fee);
+            }
+        }
+    }
 }
