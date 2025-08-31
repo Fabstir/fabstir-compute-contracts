@@ -585,4 +585,140 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         require(session.status == SessionStatus.Active, "Session not active");
         session.status = SessionStatus.Completed;
     }
+    
+    // Test helper function for setting up sessions directly
+    function createSessionForTesting(
+        uint256 jobId,
+        address renter,
+        address host,
+        uint256 deposit,
+        uint256 pricePerToken
+    ) external payable {
+        // Only for testing - would add access control in production
+        jobs[jobId] = Job({
+            renter: renter,
+            status: JobStatus.Posted,
+            assignedHost: host,
+            maxPrice: deposit,
+            deadline: block.timestamp + 3600,
+            completedAt: 0,
+            paymentToken: address(0),
+            escrowId: bytes32(0),
+            modelId: "test",
+            promptCID: "test",
+            responseCID: ""
+        });
+        
+        sessions[jobId] = SessionDetails({
+            depositAmount: deposit,
+            pricePerToken: pricePerToken,
+            maxDuration: 3600,
+            sessionStartTime: block.timestamp,
+            assignedHost: host,
+            status: SessionStatus.Active,
+            provenTokens: 0,
+            lastProofSubmission: 0,
+            aggregateProofHash: bytes32(0),
+            checkpointInterval: 100
+        });
+        
+        jobTypes[jobId] = JobType.Session;
+    }
+    
+    // Phase 1.4: Proof-Based Completion
+    event SessionCompleted(
+        uint256 indexed jobId,
+        address indexed completedBy,
+        uint256 tokensPaid,
+        uint256 paymentAmount,
+        uint256 refundAmount
+    );
+
+    event HostClaimedWithProof(
+        uint256 indexed jobId,
+        address indexed host,
+        uint256 provenTokens,
+        uint256 payment
+    );
+
+    uint256 public constant TREASURY_FEE_PERCENT = 10;
+    address public treasuryAddress;
+
+    function setTreasuryAddress(address _treasury) external {
+        treasuryAddress = _treasury;
+    }
+
+    function completeSessionJob(uint256 jobId) external {
+        SessionDetails storage session = sessions[jobId];
+        require(msg.sender == jobs[jobId].renter, "Only user can complete");
+        require(session.status == SessionStatus.Active, "Session not active");
+        
+        _processSessionPayment(jobId);
+    }
+
+    function claimWithProof(uint256 jobId) external {
+        SessionDetails storage session = sessions[jobId];
+        require(msg.sender == session.assignedHost, "Not assigned host");
+        require(session.status == SessionStatus.Active, "Session not active");
+        require(session.provenTokens > 0, "No proven work");
+        
+        _processProofBasedPayment(jobId);
+    }
+
+    function _calculateProvenPayment(
+        uint256 provenTokens,
+        uint256 pricePerToken
+    ) internal pure returns (uint256 payment, uint256 treasuryFee) {
+        uint256 totalPayment = provenTokens * pricePerToken;
+        treasuryFee = (totalPayment * TREASURY_FEE_PERCENT) / 100;
+        payment = totalPayment - treasuryFee;
+    }
+
+    function _processSessionPayment(uint256 jobId) internal {
+        SessionDetails storage session = sessions[jobId];
+        
+        (uint256 payment, uint256 treasuryFee) = _calculateProvenPayment(
+            session.provenTokens,
+            session.pricePerToken
+        );
+        
+        uint256 totalCost = session.provenTokens * session.pricePerToken;
+        uint256 refund = 0;
+        
+        if (session.depositAmount > totalCost) {
+            refund = session.depositAmount - totalCost;
+        }
+        
+        if (payment > 0) {
+            payable(session.assignedHost).transfer(payment);
+        }
+        if (treasuryFee > 0 && treasuryAddress != address(0)) {
+            payable(treasuryAddress).transfer(treasuryFee);
+        }
+        if (refund > 0) {
+            payable(jobs[jobId].renter).transfer(refund);
+        }
+        
+        session.status = SessionStatus.Completed;
+        emit SessionCompleted(jobId, msg.sender, session.provenTokens, payment, refund);
+    }
+
+    function _processProofBasedPayment(uint256 jobId) internal {
+        SessionDetails storage session = sessions[jobId];
+        
+        (uint256 payment, uint256 treasuryFee) = _calculateProvenPayment(
+            session.provenTokens,
+            session.pricePerToken
+        );
+        
+        if (payment > 0) {
+            payable(session.assignedHost).transfer(payment);
+        }
+        if (treasuryFee > 0 && treasuryAddress != address(0)) {
+            payable(treasuryAddress).transfer(treasuryFee);
+        }
+        
+        session.status = SessionStatus.Completed;
+        emit HostClaimedWithProof(jobId, msg.sender, session.provenTokens, payment);
+    }
 }
