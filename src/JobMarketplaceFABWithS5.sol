@@ -110,6 +110,21 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     event JobCompleted(uint256 indexed jobId, string responseCID);
     event EarningsCredited(address indexed host, uint256 amount, address token);
     
+    // New events for session support
+    event SessionJobCreated(
+        uint256 indexed jobId,
+        address indexed user,
+        address indexed host,
+        uint256 deposit,
+        uint256 pricePerToken,
+        uint256 maxDuration
+    );
+    
+    event SessionProofRequirementSet(
+        uint256 indexed jobId,
+        uint256 checkpointInterval
+    );
+    
     constructor(address _nodeRegistry, address payable _hostEarnings) {
         nodeRegistry = NodeRegistryFAB(_nodeRegistry);
         hostEarnings = HostEarnings(_hostEarnings);
@@ -380,5 +395,81 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         uint256 _maxPrice
     ) external payable nonReentrant returns (uint256) {
         revert("ETH jobs not supported - use postJobWithToken with USDC");
+    }
+    
+    // Create session-based job with upfront deposit
+    function createSessionJob(
+        address host,
+        uint256 deposit,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval
+    ) external payable returns (uint256 jobId) {
+        require(deposit > 0, "Deposit must be positive");
+        require(pricePerToken > 0, "Price per token must be positive");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Duration must be positive");
+        require(proofInterval > 0, "Proof interval required");
+        require(host != address(0), "Invalid host address");
+        require(msg.value >= deposit, "Insufficient deposit");
+        require(deposit <= 1000 ether, "Deposit too large");
+        
+        // Validate host
+        (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(host);
+        require(operator != address(0), "Host not registered");
+        require(active, "Host not active");
+        require(stakedAmount >= nodeRegistry.MIN_STAKE(), "Host stake insufficient");
+        
+        // Validate proof requirements
+        _validateProofRequirements(proofInterval, deposit, pricePerToken);
+        
+        jobId = nextJobId++;
+        
+        sessions[jobId] = SessionDetails({
+            depositAmount: deposit,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            sessionStartTime: block.timestamp,
+            assignedHost: host,
+            status: SessionStatus.Active,
+            provenTokens: 0,
+            lastProofSubmission: 0,
+            aggregateProofHash: bytes32(0),
+            checkpointInterval: proofInterval
+        });
+        
+        jobTypes[jobId] = JobType.Session;
+        _lockSessionDeposit(jobId, deposit);
+        
+        emit SessionJobCreated(jobId, msg.sender, host, deposit, pricePerToken, maxDuration);
+        emit SessionProofRequirementSet(jobId, proofInterval);
+    }
+    
+    function _lockSessionDeposit(uint256 jobId, uint256 amount) internal {
+        // Funds held in contract (ETH already transferred via msg.value)
+    }
+    
+    function _validateProofRequirements(
+        uint256 proofInterval,
+        uint256 deposit,
+        uint256 pricePerToken
+    ) internal pure {
+        require(proofInterval >= 100, "Proof interval too small");
+        require(proofInterval <= 1000000, "Proof interval too large");
+        uint256 maxTokens = deposit / pricePerToken;
+        require(maxTokens >= 100, "Deposit covers less than minimum tokens");
+        require(proofInterval <= maxTokens, "Interval exceeds max tokens");
+    }
+    
+    function getSessionRequirements(
+        uint256 pricePerToken
+    ) external pure returns (
+        uint256 minDeposit,
+        uint256 minProofInterval,
+        uint256 maxDuration
+    ) {
+        minDeposit = pricePerToken * 100;
+        if (minDeposit < 0.01 ether) minDeposit = 0.01 ether;
+        minProofInterval = 100;
+        maxDuration = 365 days;
     }
 }

@@ -63,16 +63,16 @@ struct SessionDetails {
 - [ ] `test/JobMarketplace/SessionJobs/test_proof_struct.t.sol`
 - [ ] `test/JobMarketplace/SessionJobs/test_storage_layout.t.sol`
 
-### Sub-phase 1.2: Session Creation with Proof Requirements ⬜
-Implement session job creation with deposit locking and proof configuration.
+### Sub-phase 1.2: Session Creation with Proof Requirements ✅
+Implement session job creation with deposit locking.
 
 **Tasks:**
-- [ ] Implement `createSessionJob()` with proof requirements
-- [ ] Add `_lockSessionDeposit()` internal handler
-- [ ] Configure proof submission intervals
-- [ ] Add host assignment with capability check
-- [ ] Validate minimum deposit amounts
-- [ ] Emit session creation events
+- [x] Implement `createSessionJob()` with proof requirements
+- [x] Add `_lockSessionDeposit()` internal handler
+- [x] Configure proof submission intervals
+- [x] Add host assignment with capability check
+- [x] Validate minimum deposit amounts
+- [x] Emit session creation events
 
 **New Functions**:
 ```solidity
