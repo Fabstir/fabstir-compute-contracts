@@ -27,4 +27,12 @@ contract ProofSystemMock {
     ) external view returns (bool) {
         return _verificationResult;
     }
+    
+    function verifyAndMarkComplete(
+        bytes calldata proof,
+        address prover,
+        uint256 tokens
+    ) external returns (bool) {
+        return _verificationResult;
+    }
 }

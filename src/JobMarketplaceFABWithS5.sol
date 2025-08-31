@@ -511,9 +511,24 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     
     IProofSystem public proofSystem;
     
+    // Token payment support
+    mapping(address => bool) public acceptedTokens;
+    
+    // Event for token payments
+    event SessionJobCreatedWithToken(
+        uint256 indexed jobId,
+        address indexed token,
+        uint256 deposit
+    );
+    
     function setProofSystem(address _proofSystem) external {
         require(_proofSystem != address(0), "Invalid proof system");
         proofSystem = IProofSystem(_proofSystem);
+    }
+    
+    // Enable/disable token acceptance
+    function setAcceptedToken(address token, bool accepted) external {
+        acceptedTokens[token] = accepted;
     }
     
     function submitProofOfWork(
@@ -680,6 +695,43 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
 
     function setTreasuryAddress(address _treasury) external {
         treasuryAddress = _treasury;
+    }
+    
+    // Create session with USDC or other ERC20 tokens
+    function createSessionJobWithToken(
+        address host, address token, uint256 deposit,
+        uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval
+    ) external returns (uint256 jobId) {
+        require(acceptedTokens[token], "Token not accepted");
+        require(deposit > 0, "Deposit required");
+        IERC20(token).transferFrom(msg.sender, address(this), deposit);
+        
+        jobId = nextJobId++;
+        jobs[jobId] = Job({
+            renter: msg.sender, status: JobStatus.Claimed,
+            assignedHost: host, maxPrice: deposit,
+            deadline: block.timestamp + maxDuration, completedAt: 0,
+            paymentToken: token, escrowId: bytes32(jobId),
+            modelId: "", promptCID: "", responseCID: ""
+        });
+        
+        sessions[jobId] = SessionDetails({
+            depositAmount: deposit, pricePerToken: pricePerToken,
+            maxDuration: maxDuration, sessionStartTime: block.timestamp,
+            assignedHost: host, status: SessionStatus.Active,
+            provenTokens: 0, lastProofSubmission: 0,
+            aggregateProofHash: bytes32(0), checkpointInterval: proofInterval,
+            lastActivity: block.timestamp, disputeDeadline: 0
+        });
+        
+        jobTypes[jobId] = JobType.Session;
+        emit SessionJobCreatedWithToken(jobId, token, deposit);
+    }
+    
+    // Check if job uses tokens
+    function isTokenJob(uint256 jobId) external view returns (bool) {
+        // Check if job has a payment token set
+        return jobs[jobId].paymentToken != address(0);
     }
 
     function completeSessionJob(uint256 jobId) external {

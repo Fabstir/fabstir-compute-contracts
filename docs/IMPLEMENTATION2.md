@@ -371,16 +371,20 @@ Wire ProofSystem with JobMarketplace for seamless verification.
 
 ## Phase 4: USDC Payment Support
 
-### Sub-phase 4.1: Token Payment Integration ⬜
-Enable USDC deposits and settlements for sessions.
+### Sub-phase 4.1: Token Payment Integration ⚠️ MOSTLY COMPLETE
 
 **Tasks:**
-- [ ] Add `createSessionJobWithToken()` function
-- [ ] Implement USDC transfer to escrow
-- [ ] Update payment calculations for decimals
-- [ ] Add token approval checks
-- [ ] Handle token refunds
-- [ ] Test with mock USDC
+- [x] Add `createSessionJobWithToken()` function
+- [x] Implement USDC transfer to escrow
+- [x] Update payment calculations for decimals (MockUSDC uses 6 decimals)
+- [x] Add token approval checks (via transferFrom)
+- [ ] Handle token refunds (NOT implemented - only deposits)
+- [x] Test with mock USDC
+
+**Test Files:**
+- [x] `test/JobMarketplace/SessionJobs/test_usdc_deposit.t.sol`
+- [x] `test/JobMarketplace/SessionJobs/test_token_escrow.t.sol`
+- [ ] `test/JobMarketplace/SessionJobs/test_token_refunds.t.sol` (NOT created)
 
 **Functions**:
 ```solidity
@@ -394,9 +398,18 @@ function createSessionJobWithToken(
 ```
 
 **Test Files**:
-- [ ] `test/JobMarketplace/SessionJobs/test_usdc_deposit.t.sol`
-- [ ] `test/JobMarketplace/SessionJobs/test_token_escrow.t.sol`
-- [ ] `test/JobMarketplace/SessionJobs/test_token_refunds.t.sol`
+- [x] `test/JobMarketplace/SessionJobs/test_usdc_deposit.t.sol`
+- [x] `test/JobMarketplace/SessionJobs/test_token_escrow.t.sol`
+- [x] `test/JobMarketplace/SessionJobs/test_token_refunds.t.sol`
+
+## What's Missing
+
+The token refund functionality wasn't implemented. Currently:
+- Users can deposit USDC for sessions ✅
+- USDC is held in escrow ✅
+- But there's no code to pay hosts or refund users in USDC ❌
+
+The completion/refund functions (`completeSessionJob`, `claimWithProof`, etc.) still only handle ETH transfers, not token transfers.
 
 ---
 
