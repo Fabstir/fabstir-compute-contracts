@@ -1,12 +1,19 @@
 # HostEarnings Contract
 
-## Overview
+> ⚠️ **OUTDATED DOCUMENTATION**  
+> This document describes the HostEarnings contract which is **NO LONGER USED** for session jobs.  
+> Session jobs in JobMarketplaceFABWithS5 use direct payments instead.  
+> See [CURRENT_STATUS.md](../../CURRENT_STATUS.md) for current architecture.
 
-The HostEarnings contract is a gas-efficient earnings accumulation system for Fabstir marketplace hosts. Instead of receiving direct payments for each completed job, hosts accumulate earnings that can be withdrawn in batches, resulting in 40-46% gas savings for hosts completing multiple jobs.
+---
 
-**Contract Address (Base Sepolia)**: `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E`  
+## Overview (HISTORICAL)
+
+The HostEarnings contract was a gas-efficient earnings accumulation system for Fabstir marketplace hosts. It has been superseded by direct payment mechanisms in the current JobMarketplaceFABWithS5 implementation.
+
+**OLD Contract Address (Base Sepolia)**: `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` ❌ **DEPRECATED**  
 **Deployed**: 2025-08-24  
-**Source**: [`src/HostEarnings.sol`](../../../src/HostEarnings.sol)
+**Status**: **NOT USED FOR SESSION JOBS**
 
 ### Key Features
 - Accumulates host earnings from multiple jobs

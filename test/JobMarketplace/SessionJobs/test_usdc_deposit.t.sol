@@ -19,7 +19,7 @@ contract USDCDepositTest is Test {
         usdc = new MockUSDC();
         
         // Enable USDC as accepted token
-        marketplace.setAcceptedToken(address(usdc), true);
+        marketplace.setAcceptedToken(address(usdc), true, 800000);
         
         // Give renter some USDC
         usdc.mint(renter, 10000 * 10**6); // 10k USDC

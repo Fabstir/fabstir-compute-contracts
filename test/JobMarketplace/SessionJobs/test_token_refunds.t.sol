@@ -29,7 +29,7 @@ contract TokenRefundsTest is Test {
         marketplace.setTreasuryAddress(treasury);
         
         // Enable USDC
-        marketplace.setAcceptedToken(address(usdc), true);
+        marketplace.setAcceptedToken(address(usdc), true, 800000);
         
         // Setup funds
         usdc.mint(renter, 10000 * 10**6);

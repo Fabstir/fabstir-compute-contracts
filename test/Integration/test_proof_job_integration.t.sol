@@ -53,7 +53,7 @@ contract ProofJobIntegrationTest is Test {
         proof[0] = 0x01;
         
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, proof, 50);
+        marketplace.submitProofOfWork(jobId, proof, 100);
         
         // Get session details to verify
         (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId);
@@ -69,7 +69,7 @@ contract ProofJobIntegrationTest is Test {
         bytes memory invalidProof = new bytes(32);
         
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, invalidProof, 50);
+        marketplace.submitProofOfWork(jobId, invalidProof, 100);
         
         // Verify tokens NOT updated
         (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId);
@@ -86,7 +86,7 @@ contract ProofJobIntegrationTest is Test {
         validProof[0] = 0x02;
         
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, validProof, 75);
+        marketplace.submitProofOfWork(jobId, validProof, 100);
         
         // Verify tokens updated correctly
         (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId);
@@ -171,7 +171,7 @@ contract ProofJobIntegrationTest is Test {
         bytes memory proof = new bytes(32);
         
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, proof, 50);
+        marketplace.submitProofOfWork(jobId, proof, 100);
         
         // Should not record failed proof
         JobMarketplaceFABWithS5.ProofSubmission[] memory submissions = marketplace.getProofSubmissions(jobId);

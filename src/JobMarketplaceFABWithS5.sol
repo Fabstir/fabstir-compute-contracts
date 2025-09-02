@@ -93,6 +93,8 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     }
     
     uint256 public constant MAX_PAYMENT = 1000 ether;
+    uint256 public constant MIN_DEPOSIT = 0.0002 ether; // ~$0.80 at $4000/ETH (for ETH payments)
+    uint256 public constant MIN_PROVEN_TOKENS = 100; // Minimum meaningful work
     address public usdcAddress = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     
     NodeRegistryFAB public nodeRegistry;
@@ -396,25 +398,6 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         return (job.promptCID, job.responseCID);
     }
     
-    /**
-     * @notice Check host's total credited earnings
-     * @param host The host address
-     * @return Total earnings credited to the host
-     */
-    function getHostTotalCredited(address host) external view returns (uint256) {
-        return totalEarningsCredited[host];
-    }
-    
-    /**
-     * @notice Post job with ETH (deprecated)
-     */
-    function postJob(
-        string memory _modelId,
-        string memory _inputHash,
-        uint256 _maxPrice
-    ) external payable nonReentrant returns (uint256) {
-        revert("ETH jobs not supported - use postJobWithToken with USDC");
-    }
     
     // Create session-based job with upfront deposit
     function createSessionJob(
@@ -424,6 +407,8 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         uint256 maxDuration,
         uint256 proofInterval
     ) external payable returns (uint256 jobId) {
+        require(msg.value >= MIN_DEPOSIT, "Deposit below minimum");
+        require(deposit >= MIN_DEPOSIT, "Deposit amount below minimum");
         require(deposit > 0, "Deposit must be positive");
         require(pricePerToken > 0, "Price per token must be positive");
         require(maxDuration > 0 && maxDuration <= 365 days, "Duration must be positive");
@@ -442,6 +427,21 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         _validateProofRequirements(proofInterval, deposit, pricePerToken);
         
         jobId = nextJobId++;
+        
+        // Create Job struct for proper session tracking
+        jobs[jobId] = Job({
+            renter: msg.sender,
+            status: JobStatus.Claimed,
+            assignedHost: host,
+            maxPrice: deposit,
+            deadline: block.timestamp + maxDuration,
+            completedAt: 0,
+            paymentToken: address(0), // ETH payment
+            escrowId: bytes32(jobId),
+            modelId: "",
+            promptCID: "",
+            responseCID: ""
+        });
         
         sessions[jobId] = SessionDetails({
             depositAmount: deposit,
@@ -513,6 +513,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     
     // Token payment support
     mapping(address => bool) public acceptedTokens;
+    mapping(address => uint256) public tokenMinDeposits;
     
     // Event for token payments
     event SessionJobCreatedWithToken(
@@ -526,9 +527,13 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         proofSystem = IProofSystem(_proofSystem);
     }
     
-    // Enable/disable token acceptance
-    function setAcceptedToken(address token, bool accepted) external {
+    // Enable/disable token acceptance and set minimum deposit
+    function setAcceptedToken(address token, bool accepted, uint256 minDeposit) external {
         acceptedTokens[token] = accepted;
+        // Set minimum deposit (use 800000 as default for USDC-like tokens)
+        if (accepted) {
+            tokenMinDeposits[token] = minDeposit > 0 ? minDeposit : 800000;
+        }
     }
     
     function submitProofOfWork(
@@ -540,6 +545,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         SessionDetails storage session = sessions[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
         require(session.assignedHost == msg.sender, "Not assigned host");
+        require(tokensInBatch >= MIN_PROVEN_TOKENS, "Token count below minimum");
         require(tokensInBatch > 0, "Tokens must be positive");
         require(ekzlProof.length > 0, "Proof required");
         
@@ -608,6 +614,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     function getProvenTokens(uint256 jobId) external view returns (uint256) {
         return sessions[jobId].provenTokens;
     }
+    
     
     function completeSession(uint256 jobId) external {
         SessionDetails storage session = sessions[jobId];
@@ -703,6 +710,10 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval
     ) external returns (uint256 jobId) {
         require(acceptedTokens[token], "Token not accepted");
+        // Use token-specific minimum deposit
+        uint256 minRequired = tokenMinDeposits[token];
+        require(minRequired > 0, "Token minimum not set");
+        require(deposit >= minRequired, "Deposit amount below minimum");
         require(deposit > 0, "Deposit required");
         IERC20(token).transferFrom(msg.sender, address(this), deposit);
         
@@ -903,9 +914,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     }
     
     function getTokenBalance(address token) external view returns (uint256) {
-        if (token == address(0)) {
-            return address(this).balance;
-        }
+        if (token == address(0)) return address(this).balance;
         return IERC20(token).balanceOf(address(this));
     }
     

@@ -21,7 +21,7 @@ contract TokenEscrowTest is Test {
         usdc = new MockUSDC();
         
         // Enable USDC
-        marketplace.setAcceptedToken(address(usdc), true);
+        marketplace.setAcceptedToken(address(usdc), true, 800000);
         
         // Setup renters with USDC
         usdc.mint(renter1, 5000 * 10**6);
@@ -143,23 +143,23 @@ contract TokenEscrowTest is Test {
         assertFalse(marketplace.acceptedTokens(address(token2)));
         
         // Enable token1
-        marketplace.setAcceptedToken(address(token1), true);
+        marketplace.setAcceptedToken(address(token1), true, 800000);
         assertTrue(marketplace.acceptedTokens(address(token1)));
         assertFalse(marketplace.acceptedTokens(address(token2)));
         
         // Enable token2
-        marketplace.setAcceptedToken(address(token2), true);
+        marketplace.setAcceptedToken(address(token2), true, 800000);
         assertTrue(marketplace.acceptedTokens(address(token2)));
         
         // Disable token1
-        marketplace.setAcceptedToken(address(token1), false);
+        marketplace.setAcceptedToken(address(token1), false, 0);
         assertFalse(marketplace.acceptedTokens(address(token1)));
         assertTrue(marketplace.acceptedTokens(address(token2)));
     }
     
     function test_MultipleTokenTypes() public {
         MockUSDC altToken = new MockUSDC();
-        marketplace.setAcceptedToken(address(altToken), true);
+        marketplace.setAcceptedToken(address(altToken), true, 800000);
         
         uint256 usdcDeposit = 100 * 10**6;
         uint256 altDeposit = 50 * 10**6;

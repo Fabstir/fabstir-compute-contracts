@@ -1,89 +1,86 @@
-# Client ABI Files
+# Client ABIs
 
-This directory contains minimal ABI files for client applications to interact with the Fabstir smart contracts on Base Sepolia.
+This directory contains the Application Binary Interfaces (ABIs) for client integration.
 
-## Contract Addresses
+## Updated Contracts (with Economic Minimums)
 
-```javascript
-const contractAddresses = {
-  jobMarketplace: "0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304",
-  paymentEscrow: "0xa4C5599Ea3617060ce86Ff0916409e1fb4a0d2c6", 
-  nodeRegistry: "0x87516C13Ea2f99de598665e14cab64E191A0f8c4",
-  hostEarnings: "0xbFfCd6BAaCCa205d471bC52Bd37e1957B1A43d4a",
-  treasury: "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078" // EOA wallet, not a contract
-}
-```
+### JobMarketplaceFABWithS5
+- **Address**: 0x9DE1fCABb9e3E903229B47bA737B23fc473173A1
+- **Network**: Base Sepolia
+- **Key Features**:
+  - MIN_DEPOSIT: 0.0002 ETH (~$0.80)
+  - MIN_PROVEN_TOKENS: 100 tokens minimum
+  - Token-specific minimums via mapping (800000 for USDC)
+  - Session jobs with direct payments
+  - EZKL proof verification integration
 
-## Available ABIs
+### ProofSystem
+- **Address**: 0x02868C63A9F2740311fb04a0e4093D47975f09ca
+- **Network**: Base Sepolia
+- **Purpose**: EZKL proof verification for trustless AI inference
 
-- **JobMarketplaceFABWithS5-CLIENT-ABI.json** - Job posting and management with S5 CID support
-- **PaymentEscrowWithEarnings-CLIENT-ABI.json** - Payment escrow and fee handling
-- **NodeRegistryFAB-CLIENT-ABI.json** - Node registration and management
-- **HostEarnings-CLIENT-ABI.json** - Host earnings accumulation and withdrawal
+### NodeRegistryFAB
+- **Address**: 0x87516C13Ea2f99de598665e14cab64E191A0f8c4
+- **Network**: Base Sepolia
+- **Stake Required**: 1000 FAB tokens
+
+### HostEarnings
+- **Purpose**: Tracks accumulated earnings for hosts (legacy support)
+
+### PaymentEscrowWithEarnings
+- **Purpose**: Legacy payment escrow for single-prompt jobs
 
 ## Usage Example
 
 ```javascript
-import { ethers } from 'ethers';
 import JobMarketplaceABI from './JobMarketplaceFABWithS5-CLIENT-ABI.json';
-import PaymentEscrowABI from './PaymentEscrowWithEarnings-CLIENT-ABI.json';
-import NodeRegistryABI from './NodeRegistryFAB-CLIENT-ABI.json';
-import HostEarningsABI from './HostEarnings-CLIENT-ABI.json';
+import ProofSystemABI from './ProofSystem-CLIENT-ABI.json';
+import { ethers } from 'ethers';
 
-// Initialize contracts
-const provider = new ethers.JsonRpcProvider('https://sepolia.base.org');
+// Initialize provider
+const provider = new ethers.providers.JsonRpcProvider('https://base-sepolia.g.alchemy.com/v2/YOUR_KEY');
+
+// Create contract instances
+const marketplace = new ethers.Contract(
+  '0x9DE1fCABb9e3E903229B47bA737B23fc473173A1',
+  JobMarketplaceABI,
+  provider
+);
+
+// Check economic minimums
+const minDeposit = await marketplace.MIN_DEPOSIT(); // 0.0002 ETH
+const minTokens = await marketplace.MIN_PROVEN_TOKENS(); // 100
+
+// Create session job (with signer)
 const signer = provider.getSigner();
+const marketplaceWithSigner = marketplace.connect(signer);
 
-const contracts = {
-  jobMarketplace: new ethers.Contract(
-    contractAddresses.jobMarketplace,
-    JobMarketplaceABI,
-    signer
-  ),
-  paymentEscrow: new ethers.Contract(
-    contractAddresses.paymentEscrow,
-    PaymentEscrowABI,
-    signer
-  ),
-  nodeRegistry: new ethers.Contract(
-    contractAddresses.nodeRegistry,
-    NodeRegistryABI,
-    signer
-  ),
-  hostEarnings: new ethers.Contract(
-    contractAddresses.hostEarnings,
-    HostEarningsABI,
-    signer
-  )
-};
+await marketplaceWithSigner.createSessionJob(
+  hostAddress,
+  ethers.utils.parseEther("0.001"), // deposit
+  ethers.utils.parseUnits("1", "gwei"), // price per token
+  3600, // max duration (1 hour)
+  300, // proof interval
+  { value: ethers.utils.parseEther("0.001") }
+);
 ```
 
-## Key Functions
+## Session Job Functions
 
-### JobMarketplace
-- `postJobWithToken()` - Post a job with S5 CID for prompt
-- `claimJob()` - Host claims a job
-- `completeJob()` - Complete job with S5 CID for response
-- `getJob()` - Get job details including CIDs
+Key functions for session jobs:
+- `createSessionJob()` - Create ETH-based session
+- `createSessionJobWithToken()` - Create token-based session
+- `submitProofOfWork()` - Submit proof with minimum 100 tokens
+- `completeSessionJob()` - Complete and settle payments
+- `triggerSessionTimeout()` - Handle timeout scenarios
 
-### NodeRegistry
-- `registerNode()` - Register as a host with FAB stake
-- `unregisterNode()` - Unregister and withdraw stake
-- `isHostActive()` - Check if host is active
-- `getNodeInfo()` - Get host details
+## Constants
 
-### HostEarnings
-- `getBalance()` - Check earnings balance
-- `withdraw()` - Withdraw specific token earnings
-- `withdrawAll()` - Withdraw all earnings
+- `MIN_DEPOSIT`: 200000000000000 wei (0.0002 ETH)
+- `MIN_PROVEN_TOKENS`: 100
+- `TREASURY_FEE_PERCENT`: 10
+- `MIN_SESSION_DURATION`: 600 seconds
+- `ABANDONMENT_TIMEOUT`: 86400 seconds (24 hours)
 
-### PaymentEscrow
-- `releaseEscrow()` - Release payment for completed job
-- `getEscrow()` - Get escrow details
-
-## Notes
-
-- Treasury address is an EOA (wallet), not a smart contract
-- All contracts use S5 CID storage for prompts/responses
-- Minimum stake for node registration: 1000 FAB tokens
-- Platform fee: 10% (1000 basis points)
+## Last Updated
+December 2024 - With economic minimums implementation for Base L2

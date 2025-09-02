@@ -1,17 +1,30 @@
 # Current Contract Addresses - Base Sepolia
 
-Last Updated: August 26, 2025
+Last Updated: September 1, 2025
 
-## ✅ Active Contracts (Use These)
+> **⚠️ IMPORTANT**: This file contains TWO different JobMarketplaceFABWithS5 deployments:
+> - **Session Jobs Enabled**: `0x445882e14b22E921c7d4Fe32a7736a32197578AF` ✅ USE THIS
+> - **Old Single-Prompt Only**: `0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304` ❌ OUTDATED
 
-These are the currently deployed and configured contracts on Base Sepolia:
+## ✅ Active Contracts for SESSION JOBS (Current)
+
+These contracts support the latest session-based AI inference with proof checkpoints:
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceFABWithS5** | `0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304` | Job marketplace with S5 CID storage for prompts/responses |
-| **NodeRegistryFAB** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Node registration with FAB token staking (1000 FAB required) |
-| **HostEarnings** | `0xbFfCd6BAaCCa205d471bC52Bd37e1957B1A43d4a` | Accumulates host earnings for gas-efficient withdrawals |
-| **PaymentEscrowWithEarnings** | `0xa4C5599Ea3617060ce86Ff0916409e1fb4a0d2c6` | Payment escrow with earnings accumulation support |
+| **JobMarketplaceFABWithS5** | `0x445882e14b22E921c7d4Fe32a7736a32197578AF` | ✅ SESSION JOBS ENABLED |
+| **ProofSystem** | `0x707B775933C4C4c89894EC516edad83b2De77A05` | EZKL proof verification |
+| **NodeRegistryFAB** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Node registration with FAB staking |
+
+## ❌ Old Single-Prompt Contracts (DEPRECATED)
+
+These contracts do NOT support session jobs:
+
+| Contract | Address | Issue |
+|----------|---------|-------|
+| **JobMarketplaceFABWithS5** (old) | `0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304` | No session job support |
+| **HostEarnings** | `0xbFfCd6BAaCCa205d471bC52Bd37e1957B1A43d4a` | Not used for session jobs |
+| **PaymentEscrowWithEarnings** | `0xa4C5599Ea3617060ce86Ff0916409e1fb4a0d2c6` | Not used for session jobs |
 
 ## 📦 Token Contracts
 
@@ -52,23 +65,29 @@ These contracts are from earlier deployments and are no longer compatible with t
 
 ## 🚀 For Your Client Application
 
-Update your configuration with:
+Update your configuration with the CORRECT session-enabled contracts:
 
 ```javascript
 const config = {
-  // Active contracts (S5-enabled - Latest Deployment)
-  jobMarketplace: '0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304', // JobMarketplaceFABWithS5
+  // Session Jobs Enabled Contracts (CURRENT)
+  jobMarketplace: '0x445882e14b22E921c7d4Fe32a7736a32197578AF', // ✅ CORRECT for session jobs
+  proofSystem: '0x707B775933C4C4c89894EC516edad83b2De77A05',
   nodeRegistry: '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
-  hostEarnings: '0xbFfCd6BAaCCa205d471bC52Bd37e1957B1A43d4a',
-  paymentEscrow: '0xa4C5599Ea3617060ce86Ff0916409e1fb4a0d2c6',
   
   // Tokens
   fabToken: '0xC78949004B4EB6dEf2D66e49Cd81231472612D62',
   usdcToken: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
   
+  // Platform
+  treasury: '0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11',
+  
   // Network
   chainId: 84532, // Base Sepolia
   rpcUrl: 'https://base-sepolia.g.alchemy.com/v2/YOUR_API_KEY'
+  
+  // NOT NEEDED for session jobs:
+  // - paymentEscrow (direct payments used)
+  // - hostEarnings (direct transfers used)
 };
 ```
 

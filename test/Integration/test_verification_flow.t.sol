@@ -103,7 +103,7 @@ contract VerificationFlowTest is Test {
         bytes memory shortProof = new bytes(32); // Too short
         
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, shortProof, 50);
+        marketplace.submitProofOfWork(jobId, shortProof, 100);
         
         // Another short proof
         bytes memory anotherShortProof = new bytes(31); // Also too short
@@ -137,7 +137,7 @@ contract VerificationFlowTest is Test {
         // Measure gas for single verification
         uint256 gasBefore = gasleft();
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, proof, 50);
+        marketplace.submitProofOfWork(jobId, proof, 100);
         uint256 gasUsed = gasBefore - gasleft();
         
         // Verify reasonable gas usage (< 250k for L2 verification with state updates)
@@ -159,7 +159,7 @@ contract VerificationFlowTest is Test {
         proof[0] = 0x01;
         
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, proof, 50);
+        marketplace.submitProofOfWork(jobId, proof, 100);
         
         // Verify proof accepted
         (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId);
@@ -176,7 +176,7 @@ contract VerificationFlowTest is Test {
         proof[0] = 0x01;
         
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, proof, 50);
+        marketplace.submitProofOfWork(jobId, proof, 100);
         
         // Try to replay same proof in new session
         uint256 jobId2 = 106;
@@ -185,7 +185,7 @@ contract VerificationFlowTest is Test {
         
         // Should fail due to replay protection
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId2, proof, 50);
+        marketplace.submitProofOfWork(jobId2, proof, 100);
         
         (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId2);
         assertEq(provenTokens, 0, "Replayed proof should be rejected");

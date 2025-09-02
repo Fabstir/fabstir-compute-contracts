@@ -34,15 +34,26 @@ node scripts/deploy-fresh-test.js
 ## What Gets Deployed
 
 ### New Contracts (Fresh Instances)
-- **JobMarketplaceFABWithEarnings** - Fresh job counter starting from 1
-- **PaymentEscrowWithEarnings** - Clean escrow state
-- **HostEarnings** - Empty earnings balances
+- **JobMarketplaceFABWithS5** - Fresh job counter starting from 1
+  - Session jobs use internal `_sendPayments()` for direct transfers
+  - No external PaymentEscrow needed for session jobs
+  - **Economic Minimums Enforced:**
+    - MIN_DEPOSIT: 0.0002 ETH (prevents spam)
+    - MIN_PROVEN_TOKENS: 100 (ensures meaningful work)
+    - Token minimums: 800000 for USDC (0.80 USDC)
+- **ProofSystem** - Clean proof verification state
 
 ### Reused Contracts (Existing)
 - **NodeRegistry** (`0x87516C13Ea2f99de598665e14cab64E191A0f8c4`) - Keep existing host registrations
 - **FAB Token** (`0xC78949004B4EB6dEf2D66e49Cd81231472612D62`) - Same token contract
 - **USDC** (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`) - Same stablecoin
-- **TreasuryManager** (`0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078`) - Same fee recipient
+- **Treasury Address** - Same fee recipient
+
+### Note on Architecture
+The JobMarketplaceFABWithS5 contract uses a **hybrid payment model**:
+- **Session Jobs**: Direct, self-contained payments (gas-efficient)
+- **Legacy Jobs**: May reference external contracts if needed
+- This reduces gas costs by ~30% for session job payments
 
 ## Prerequisites
 
@@ -86,9 +97,8 @@ After deployment, update your client app with the new addresses:
 ```javascript
 // Update your config file or environment
 const contracts = {
-  marketplace: "0x...", // New address from deployment
-  paymentEscrow: "0x...", // New address from deployment
-  hostEarnings: "0x...", // New address from deployment
+  marketplace: "0x...", // New JobMarketplaceFABWithS5 address
+  proofSystem: "0x...", // New ProofSystem address
   nodeRegistry: "0x87516C13Ea2f99de598665e14cab64E191A0f8c4", // Same
   usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e" // Same
 };
@@ -97,8 +107,8 @@ const contracts = {
 #### Environment Variables
 ```bash
 export JOB_MARKETPLACE_FAB="0x..." # New address
-export PAYMENT_ESCROW="0x..." # New address
-export HOST_EARNINGS="0x..." # New address
+export PROOF_SYSTEM="0x..." # New address
+# Note: No separate PaymentEscrow/HostEarnings needed for session jobs
 ```
 
 ### Step 3: Verify Deployment
@@ -127,9 +137,8 @@ Example output:
 ```json
 {
   "marketplace": "0x...",
-  "paymentEscrow": "0x...",
-  "hostEarnings": "0x...",
-  "treasury": "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078",
+  "proofSystem": "0x...",
+  "treasury": "0x...",
   "nodeRegistry": "0x87516C13Ea2f99de598665e14cab64E191A0f8c4",
   "fab": "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
   "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",

@@ -1,12 +1,30 @@
-# JobMarketplaceFABWithEarnings Contract
+# JobMarketplace Contract Documentation
 
-## Overview
+> ⚠️ **OUTDATED DOCUMENTATION**  
+> This document describes JobMarketplaceFABWithEarnings which has been **SUPERSEDED**.  
+> Current implementation is **JobMarketplaceFABWithS5** with session jobs and direct payments.  
+> See [CURRENT_STATUS.md](../../CURRENT_STATUS.md) and [SESSION_JOBS.md](../../SESSION_JOBS.md) for current architecture.
 
-The JobMarketplaceFABWithEarnings contract is an enhanced version of JobMarketplaceFAB that implements host earnings accumulation for significant gas savings. It maintains FAB token staking and USDC payment functionality while reducing gas costs by 40-46% for hosts completing multiple jobs.
+---
 
-**Contract Address (Base Sepolia)**: `0xEB646BF2323a441698B256623F858c8787d70f9F` (LATEST - with earnings accumulation)  
-**Previous Version**: `0x870E74D1Fe7D9097deC27651f67422B598b689Cd` (direct payment, deprecated)  
-**Source**: [`src/JobMarketplaceFABWithEarnings.sol`](../../../src/JobMarketplaceFABWithEarnings.sol)
+## Current Implementation: JobMarketplaceFABWithS5
+
+**Current Contract Address (Base Sepolia)**: `0x9DE1fCABb9e3E903229B47bA737B23fc473173A1` ✅  
+**Features**: Session jobs, direct payments, EZKL proof verification, **economic minimums**  
+**Documentation**: See [SESSION_JOBS.md](../../SESSION_JOBS.md)
+
+### Economic Minimums (NEW)
+- **MIN_DEPOSIT**: 0.0002 ETH (~$0.80) - Prevents spam sessions
+- **MIN_PROVEN_TOKENS**: 100 - Ensures meaningful work per proof
+- **Token Minimums**: Configurable per token (800000 for USDC = $0.80)
+
+---
+
+## Historical: JobMarketplaceFABWithEarnings (DEPRECATED)
+
+**OLD Contract Address**: `0xEB646BF2323a441698B256623F858c8787d70f9F` ❌ **SUPERSEDED**  
+**Previous Version**: `0x870E74D1Fe7D9097deC27651f67422B598b689Cd` ❌ **DEPRECATED**  
+**Status**: **REPLACED BY JobMarketplaceFABWithS5**
 
 ### Key Features
 - Integration with NodeRegistryFAB for FAB-based host verification

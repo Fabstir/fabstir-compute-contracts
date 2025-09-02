@@ -1,12 +1,19 @@
 # PaymentEscrowWithEarnings Contract
 
-## Overview
+> ⚠️ **OUTDATED DOCUMENTATION**  
+> This document describes the PaymentEscrow contract which is **NOT USED** for session jobs.  
+> Session jobs in JobMarketplaceFABWithS5 use internal `_sendPayments()` for direct transfers.  
+> See [CURRENT_STATUS.md](../../CURRENT_STATUS.md) and [SESSION_JOBS.md](../../SESSION_JOBS.md) for current architecture.
 
-The PaymentEscrowWithEarnings contract provides a secure multi-token escrow system for the Fabstir marketplace with integrated host earnings accumulation. It holds payments during job execution and handles release to the HostEarnings contract for gas-efficient batch withdrawals, supporting both ETH and ERC20 tokens (primarily USDC).
+---
 
-**Contract Address (Base Sepolia)**: `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` (LATEST - with earnings accumulation)  
-**Previous Version**: `0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3` (direct payment, deprecated)  
-**Source**: [`src/PaymentEscrowWithEarnings.sol`](../../../src/PaymentEscrowWithEarnings.sol)
+## Overview (HISTORICAL)
+
+The PaymentEscrowWithEarnings contract provided a secure multi-token escrow system for the older Fabstir marketplace implementation. It has been superseded by direct payment mechanisms in JobMarketplaceFABWithS5 for session jobs.
+
+**OLD Contract Address (Base Sepolia)**: `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` ❌ **NOT USED FOR SESSIONS**  
+**Previous Version**: `0xF382E11ebdB90e6cDE55521C659B70eEAc1C9ac3` ❌ **DEPRECATED**  
+**Status**: **REPLACED BY DIRECT PAYMENTS IN SESSION JOBS**
 
 ### Key Features
 - Multi-token support (ETH and ERC20, especially USDC)

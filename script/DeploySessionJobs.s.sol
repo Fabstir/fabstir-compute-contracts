@@ -58,7 +58,7 @@ contract DeploySessionJobs is Script {
         
         // 4. Enable USDC if available
         if (usdc != address(0)) {
-            marketplace.setAcceptedToken(usdc, true);
+            marketplace.setAcceptedToken(usdc, true, 800000); // 0.80 USDC minimum
             console.log("USDC enabled at:", usdc);
         }
         

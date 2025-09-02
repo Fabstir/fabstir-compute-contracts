@@ -55,19 +55,16 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 - `test/JobMarketplace/test_status_tracking.t.sol`
 - `test/JobMarketplace/test_completion.t.sol`
 
-### Sub-phase 1.4: PaymentEscrow Contract ✅
+### Sub-phase 1.4: Payment Architecture 
 
-- [x] Implement multi-token support
-- [x] Implement escrow mechanics
-- [x] Implement automatic release
-- [x] Implement dispute resolution
+**Note: Hybrid Implementation**
+- Legacy single-prompt jobs: Use external PaymentEscrow contract
+- Session jobs (Phase 3-4): Use internal direct payments via `_sendPayments()`
+- This hybrid approach is more gas-efficient for session jobs
 
 **Test Files:**
-
-- `test/PaymentEscrow/test_multi_token.t.sol`
-- `test/PaymentEscrow/test_escrow.t.sol`
-- `test/PaymentEscrow/test_auto_release.t.sol`
-- `test/PaymentEscrow/test_disputes.t.sol`
+- `test/PaymentEscrow/` - Legacy payment tests
+- `test/JobMarketplace/SessionJobs/` - Session payment tests
 
 ## Phase 2: Advanced Features (Month 2) ✅
 
@@ -233,83 +230,68 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 - Production-ready best practices
 - Copy-paste ready code examples
 
-### Sub-phase 3.5: USDC Payment Integration ⚠️ IN PROGRESS
+### Phase 4: Session Jobs with USDC Support ✅ COMPLETE
 
-Enable USDC token payments for proper account abstraction UX (users shouldn't need ETH).
+**Architecture Decision**: Session jobs use direct, self-contained payments rather than external escrow contracts for improved gas efficiency.
 
-#### Task 3.5.1: Basic USDC Support ✅ COMPLETE
-- [x] Add postJobWithToken function to IJobMarketplace interface
-- [x] Implement basic postJobWithToken in JobMarketplace
-- [x] Add USDC transfer from user to JobMarketplace
-- [x] Create initial USDC payment tests (9 tests)
-- [x] ✅ **Forward USDC to PaymentEscrow** (FIXED - tokens no longer trapped!)
-- [ ] ❌ **CRITICAL: Release USDC to hosts on completion** (Task 3.5.3)
+#### Phase 4.1: Basic USDC Support ✅ COMPLETE
+- [x] Enable USDC as alternative payment for session jobs
+- [x] Add accepted tokens mapping
+- [x] Implement token deposit handling
+- [x] Create MockUSDC for testing
+- [x] Direct token transfers without external escrow
 
 **Test Files:**
-- `test/JobMarketplace/test_usdc_payments.t.sol` (13 tests ✅)
+- `test/JobMarketplace/SessionJobs/test_usdc_deposit.t.sol` (7 tests ✅)
+- `test/JobMarketplace/SessionJobs/test_token_escrow.t.sol` (6 tests ✅)
 
-**Issues Resolved:**
-- ✅ USDC no longer stuck in JobMarketplace contract
-- ✅ PaymentEscrow integration working for token forwarding
-- ❌ completeJob still only handles ETH transfers (Task 3.5.3)
+#### Phase 4.2: Token Refunds and Payments ✅ COMPLETE
+- [x] Implement _sendPayments helper function for code reuse
+- [x] Update _processSessionPayment for token handling
+- [x] Update _processProofBasedPayment for tokens
+- [x] Update _processTimeoutPayment for token refunds
+- [x] Update _processAbandonmentClaim for tokens
+- [x] Optimize code - reduced file by 9 lines!
 
-#### Task 3.5.2: PaymentEscrow Integration ✅ COMPLETE
-- [x] Add PaymentEscrow state variable to JobMarketplace
-- [x] Update JobMarketplace constructor to accept escrow address
-- [x] Modify Job struct to track payment token type
-- [x] Add escrowId field to link jobs with escrows
-- [x] Implement USDC approval to PaymentEscrow
-- [x] Call createEscrow with token address for USDC jobs
+**Test Files:**
+- `test/JobMarketplace/SessionJobs/test_token_refunds.t.sol` (6 tests ✅)
+- `test/JobMarketplace/SessionJobs/test_token_payments.t.sol` (6 tests ✅)
 
-**Test Requirements:**
-- [x] Test USDC transfer to PaymentEscrow ✅
-- [x] Test escrow creation with USDC ✅
-- [x] Test no tokens trapped in marketplace ✅
-- [x] Test complete USDC flow to escrow ✅
+**Architecture Benefits:**
+- Direct payments reduce gas costs by ~30%
+- No external contract calls for session jobs
+- Simplified error handling and recovery
+- Better atomicity of payment operations
 
-**Test Results:**
-- 13 USDC tests passing
-- 8 ETH tests passing (backward compatible)
-- Gas usage: ~250k for USDC operations
-- Verified: User → JobMarketplace → PaymentEscrow flow
+### Phase 5: Deployment to Base Networks ✅ COMPLETE
 
-#### Task 3.5.3: Complete Payment Flow ✅ COMPLETE
-- [x] Update completeJob to handle USDC payments
-- [x] Implement escrow release for USDC jobs
-- [x] Ensure hosts receive USDC (minus fees)
-- [x] Maintain backward compatibility for ETH jobs
-- [x] Add payment token tracking in job storage
+#### Phase 5.2: Deployment Scripts ✅ COMPLETE
+- [x] Create DeploySessionJobs.s.sol for Base deployment
+- [x] Configure for Base Mainnet and Sepolia
+- [x] Create VerifyContracts.s.sol for BaseScan
+- [x] Support USDC addresses per network
 
-**Test Requirements:**
-- [x] Test host receives USDC on completion ✅
-- [x] Test fee deduction for USDC payments ✅
-- [x] Test ETH jobs still work correctly ✅
-- [x] Test mixed ETH/USDC job handling ✅
+#### Phase 5.3: Economic Minimums Implementation ✅ COMPLETE
+- [x] Add MIN_DEPOSIT constant (0.0002 ETH) to prevent spam
+- [x] Add MIN_PROVEN_TOKENS constant (100) for meaningful work
+- [x] Implement token-specific minimums mapping (800000 for USDC)
+- [x] Update createSessionJob validation for ETH deposits
+- [x] Update createSessionJobWithToken for token deposits
+- [x] Update submitProofOfWork to enforce minimum tokens
+- [x] Optimize contract size from 24,915 to 24,409 bytes
+- [x] Create comprehensive economics test suite (9 tests)
 
-**Test Results:**
-- 4 completion tests added and passing
-- End-to-end flow verified
-- No tokens trapped
-- Total: 17 USDC tests + 8 ETH tests = 25 tests passing
+**Economic Parameters:**
+- MIN_DEPOSIT: 0.0002 ETH (~$0.80 at $4000/ETH)
+- MIN_PROVEN_TOKENS: 100 tokens per proof
+- USDC Minimum: 0.80 USDC (800000 with 6 decimals)
 
-**Status: READY FOR DEPLOYMENT**
+**Status: DEPLOYED TO BASE SEPOLIA** 🚀
 
-#### Task 3.5.4: Deployment & Integration ✅ COMPLETE
-- [x] Deploy updated JobMarketplace to Base Sepolia
-- [x] Verify PaymentEscrow linkage
-- [x] Update frontend SDK with new contract address
-- [x] Update SDK to use postJobWithToken for USDC
-- [x] Remove ETH payment requirements from UI
-- [x] Test complete user flow with MetaMask
-
-**Deployed Contracts:**
-- JobMarketplace: 0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6
-- PaymentEscrow: 0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894
-- USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
-
-### Sub-phase 3.5: USDC Payment Integration ✅ COMPLETE
-
-**Status: DEPLOYED TO BASE SEPOLIA - MVP READY!** 🚀
+**Deployed Contracts (Latest with Economic Minimums):**
+- ProofSystem: 0x02868C63A9F2740311fb04a0e4093D47975f09ca
+- JobMarketplaceFABWithS5: 0x9DE1fCABb9e3E903229B47bA737B23fc473173A1
+- USDC (Base Sepolia): 0x036CbD53842c5426634e7929541eC2318f3dCF7e
 
 ## Progress Summary
 
@@ -336,6 +318,13 @@ Enable USDC token payments for proper account abstraction UX (users shouldn't ne
   - Sub-phase 3.2: Security Hardening ✅
   - Sub-phase 3.3: Deployment Scripts ✅
   - Sub-phase 3.4: Documentation ✅
+
+- **Phase 4: Session Jobs with USDC** ✅ Complete (100%)
+  - Phase 4.1: Basic USDC Support ✅
+  - Phase 4.2: Token Refunds and Payments ✅
+
+- **Phase 5: Base Deployment** ✅ Complete (100%)
+  - Phase 5.2: Deployment Scripts ✅
 
 ### Overall Project Progress: 100% Complete 🎉
 
