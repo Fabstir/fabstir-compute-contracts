@@ -1,25 +1,32 @@
 # Current Contract Addresses - Base Sepolia
 
-Last Updated: December 2, 2024
+Last Updated: January 2, 2025
 
-> **🚀 NEW DEPLOYMENT**: Fixed payment distribution issue with improved ETH transfer handling
-> - **Latest Fixed Version**: `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` ✅ USE THIS
-> - **Previous Session Jobs**: `0x445882e14b22E921c7d4Fe32a7736a32197578AF` ⚠️ HAS PAYMENT BUG
-> - **Old Single-Prompt Only**: `0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304` ❌ OUTDATED
+> **🚀 LATEST DEPLOYMENT**: Fixed USDC session creation validation issue
+> - **Current Version**: `0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d` ✅ USE THIS
+> - **Previous Version**: `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` ⚠️ Missing USDC validations
+> - **Older Session Jobs**: `0x445882e14b22E921c7d4Fe32a7736a32197578AF` ❌ HAS PAYMENT BUG
 
-## ✅ Active Contracts - FIXED PAYMENT DISTRIBUTION (Current)
+## ✅ Active Contracts - FIXED USDC VALIDATION (Current)
 
-These contracts include the fix for ETH payment distribution using `call{value:}()` instead of `transfer()`:
+These contracts include all fixes for payment distribution AND USDC session validation:
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceFABWithS5** | `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` | ✅ FIXED PAYMENTS + SESSION JOBS |
-| **ProofSystem** | `0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9` | EZKL proof verification (new deployment) |
+| **JobMarketplaceFABWithS5** | `0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d` | ✅ FIXED USDC + PAYMENTS + SESSIONS |
+| **PaymentEscrowWithEarnings** | `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` | Payment handling with earnings |
+| **HostEarnings** | `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` | Host earnings accumulation |
+| **ProofSystem** | `0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9` | EZKL proof verification |
 | **NodeRegistryFAB** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Node registration with FAB staking |
 
 ## ⚠️ Previous Deployments with Issues
 
-### Session Jobs with Payment Bug
+### Missing USDC Validations (December 2024)
+| Contract | Address | Issue |
+|----------|---------|-------|
+| **JobMarketplaceFABWithS5** | `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` | No host/parameter validation for USDC sessions |
+
+### Session Jobs with Payment Bug (November 2024)
 | Contract | Address | Issue |
 |----------|---------|-------|
 | **JobMarketplaceFABWithS5** | `0x445882e14b22E921c7d4Fe32a7736a32197578AF` | transfer() fails silently |
@@ -75,9 +82,11 @@ Update your configuration with the FIXED contracts:
 
 ```javascript
 const config = {
-  // Fixed Payment Distribution Contracts (CURRENT - December 2, 2024)
-  jobMarketplace: '0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A', // ✅ FIXED payment distribution
-  proofSystem: '0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9',     // ✅ NEW deployment
+  // Fixed USDC Validation + Payment Distribution (CURRENT - January 2, 2025)
+  jobMarketplace: '0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d', // ✅ FIXED USDC validation + payments
+  paymentEscrow: '0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C',  // ✅ Earnings accumulation
+  hostEarnings: '0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E',   // ✅ Host earnings tracker
+  proofSystem: '0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9',     // ✅ EZKL verification
   nodeRegistry: '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
   
   // Tokens

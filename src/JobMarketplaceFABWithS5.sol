@@ -715,6 +715,24 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         require(minRequired > 0, "Token minimum not set");
         require(deposit >= minRequired, "Deposit amount below minimum");
         require(deposit > 0, "Deposit required");
+        
+        // Add missing validations (same as ETH version)
+        require(pricePerToken > 0, "Price per token must be positive");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Duration must be positive");
+        require(proofInterval > 0, "Proof interval required");
+        require(host != address(0), "Invalid host address");
+        require(deposit <= 1000 ether, "Deposit too large");
+        
+        // Validate host registration
+        (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(host);
+        require(operator != address(0), "Host not registered");
+        require(active, "Host not active");
+        require(stakedAmount >= nodeRegistry.MIN_STAKE(), "Host stake insufficient");
+        
+        // Validate proof requirements
+        _validateProofRequirements(proofInterval, deposit, pricePerToken);
+        
+        // Transfer tokens AFTER all validations pass
         IERC20(token).transferFrom(msg.sender, address(this), deposit);
         
         jobId = nextJobId++;
@@ -963,49 +981,4 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
             }
         }
     }
-    
-    function getSessionDetails(uint256 jobId) 
-        external view returns (
-            address user,
-            address host,
-            uint256 deposit,
-            uint256 pricePerToken,
-            uint256 provenTokens,
-            uint256 startTime,
-            SessionStatus status,
-            uint256 lastActivity
-        ) {
-        SessionDetails storage session = sessions[jobId];
-        Job storage job = jobs[jobId];
-        
-        return (
-            job.renter,
-            session.assignedHost,
-            session.depositAmount,
-            session.pricePerToken,
-            session.provenTokens,
-            session.sessionStartTime,
-            session.status,
-            session.lastActivity
-        );
-    }
-    
-    function calculateCurrentEarnings(uint256 jobId) 
-        external view returns (
-            uint256 grossEarnings,
-            uint256 treasuryFee,
-            uint256 netEarnings
-        ) {
-        SessionDetails storage session = sessions[jobId];
-        
-        grossEarnings = session.provenTokens * session.pricePerToken;
-        treasuryFee = (grossEarnings * TREASURY_FEE_PERCENT) / 100;
-        netEarnings = grossEarnings - treasuryFee;
-    }
-    
-    function getRequiredProofInterval(uint256 jobId) 
-        external view returns (uint256) {
-        return sessions[jobId].checkpointInterval;
-    }
-    
 }

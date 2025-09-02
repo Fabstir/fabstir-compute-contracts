@@ -13,6 +13,7 @@ HOST_EARNINGS=$(forge create src/HostEarnings.sol:HostEarnings \
     --rpc-url "$BASE_SEPOLIA_RPC_URL" \
     --private-key "$PRIVATE_KEY" \
     --legacy \
+    --broadcast \
     | grep "Deployed to:" | awk '{print $3}')
 
 echo "   HostEarnings: $HOST_EARNINGS"
@@ -24,6 +25,7 @@ PAYMENT_ESCROW=$(forge create src/PaymentEscrowWithEarnings.sol:PaymentEscrowWit
     --private-key "$PRIVATE_KEY" \
     --constructor-args "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078" "1000" \
     --legacy \
+    --broadcast \
     | grep "Deployed to:" | awk '{print $3}')
 
 echo "   PaymentEscrow: $PAYMENT_ESCROW"
@@ -35,6 +37,7 @@ JOB_MARKETPLACE=$(forge create src/JobMarketplaceFABWithS5.sol:JobMarketplaceFAB
     --private-key "$PRIVATE_KEY" \
     --constructor-args "0x87516C13Ea2f99de598665e14cab64E191A0f8c4" "$HOST_EARNINGS" \
     --legacy \
+    --broadcast \
     | grep "Deployed to:" | awk '{print $3}')
 
 echo "   JobMarketplace: $JOB_MARKETPLACE"
