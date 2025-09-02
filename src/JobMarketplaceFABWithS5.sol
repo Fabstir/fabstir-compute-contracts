@@ -38,7 +38,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     
     // New enums for session support
     enum JobType { SinglePrompt, Session }
-    enum SessionStatus { Active, Completed, TimedOut, Disputed, Abandoned }
+    enum SessionStatus { Active, Completed, TimedOut, Disputed, Abandoned, Cancelled }
     
     // EZKL proof tracking structure
     struct ProofSubmission {
@@ -794,13 +794,29 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     function _sendPayments(Job storage job, address host, uint256 payment, uint256 treasuryFee, uint256 refund) internal {
         if (job.paymentToken != address(0)) {
             IERC20 token = IERC20(job.paymentToken);
-            if (payment > 0) token.transfer(host, payment);
-            if (treasuryFee > 0 && treasuryAddress != address(0)) token.transfer(treasuryAddress, treasuryFee);
-            if (refund > 0) token.transfer(job.renter, refund);
+            if (payment > 0) {
+                require(token.transfer(host, payment), "Token payment to host failed");
+            }
+            if (treasuryFee > 0 && treasuryAddress != address(0)) {
+                require(token.transfer(treasuryAddress, treasuryFee), "Token treasury fee failed");
+            }
+            if (refund > 0) {
+                require(token.transfer(job.renter, refund), "Token refund failed");
+            }
         } else {
-            if (payment > 0) payable(host).transfer(payment);
-            if (treasuryFee > 0 && treasuryAddress != address(0)) payable(treasuryAddress).transfer(treasuryFee);
-            if (refund > 0) payable(job.renter).transfer(refund);
+            // Use call instead of transfer for ETH payments for better gas handling
+            if (payment > 0) {
+                (bool success, ) = payable(host).call{value: payment}("");
+                require(success, "ETH payment to host failed");
+            }
+            if (treasuryFee > 0 && treasuryAddress != address(0)) {
+                (bool success, ) = payable(treasuryAddress).call{value: treasuryFee}("");
+                require(success, "ETH treasury fee failed");
+            }
+            if (refund > 0) {
+                (bool success, ) = payable(job.renter).call{value: refund}("");
+                require(success, "ETH refund failed");
+            }
         }
     }
 
@@ -895,44 +911,31 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         emit SessionAbandoned(jobId, block.timestamp - session.lastActivity);
     }
     
-    function getTimeoutStatus(uint256 jobId) external view returns (
-        bool isExpired,
-        bool isAbandoned,
-        uint256 timeRemaining,
-        uint256 inactivityPeriod
-    ) {
-        SessionDetails storage session = sessions[jobId];
-        isExpired = _isSessionExpired(jobId);
-        isAbandoned = _isSessionAbandoned(jobId);
-        
-        if (session.maxDuration > 0) {
-            uint256 expiryTime = session.sessionStartTime + session.maxDuration;
-            timeRemaining = expiryTime > block.timestamp ? expiryTime - block.timestamp : 0;
-        }
-        
-        inactivityPeriod = block.timestamp - session.lastActivity;
-    }
-    
     function getTokenBalance(address token) external view returns (uint256) {
         if (token == address(0)) return address(this).balance;
         return IERC20(token).balanceOf(address(this));
     }
     
-    // Placeholder functions for dispute tests
-    function withdrawFromSession(uint256 jobId) external view {
-        SessionDetails storage session = sessions[jobId];
-        if (session.disputeDeadline > 0 && block.timestamp <= session.disputeDeadline) {
-            revert("Dispute window active");
+    // Emergency withdrawal for stuck funds (simplified to save gas)
+    event EmergencyWithdrawal(address indexed recipient, uint256 amount, address token);
+    
+    function emergencyWithdraw(address token) external nonReentrant {
+        require(msg.sender == treasuryAddress, "Only treasury");
+        
+        uint256 amount;
+        if (token == address(0)) {
+            amount = address(this).balance;
+            require(amount > 0, "No ETH");
+            (bool ok, ) = payable(treasuryAddress).call{value: amount}("");
+            require(ok, "ETH fail");
+        } else {
+            IERC20 t = IERC20(token);
+            amount = t.balanceOf(address(this));
+            require(amount > 0, "No tokens");
+            require(t.transfer(treasuryAddress, amount), "Token fail");
         }
-        // Success - no revert
-    }
-    
-    function emergencyResolveSession(uint256) external view {
-        require(msg.sender == owner(), "Only owner");
-    }
-    
-    function owner() public view returns (address) {
-        return address(this);
+        
+        emit EmergencyWithdrawal(treasuryAddress, amount, token);
     }
     
     // View functions for hosts (read-only, no gas costs)
@@ -1005,72 +1008,4 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         return sessions[jobId].checkpointInterval;
     }
     
-    function getSessionsPaginated(
-        address host,
-        uint256 offset,
-        uint256 limit
-    ) external view returns (
-        uint256[] memory jobIds,
-        uint256 totalCount
-    ) {
-        uint256 maxCheck = 1000; // Reasonable max for view function
-        
-        // Count total sessions for host
-        totalCount = 0;
-        for (uint256 i = 1; i <= maxCheck; i++) {
-            if (sessions[i].assignedHost == host) {
-                totalCount++;
-            }
-        }
-        
-        // Apply pagination
-        uint256 resultSize;
-        if (offset >= totalCount) {
-            resultSize = 0;
-        } else {
-            resultSize = (offset + limit > totalCount) ? 
-                totalCount - offset : limit;
-        }
-        jobIds = new uint256[](resultSize);
-        
-        uint256 currentIndex = 0;
-        uint256 resultIndex = 0;
-        
-        for (uint256 i = 1; i <= maxCheck && resultIndex < resultSize; i++) {
-            if (sessions[i].assignedHost == host) {
-                if (currentIndex >= offset) {
-                    jobIds[resultIndex++] = i;
-                }
-                currentIndex++;
-            }
-        }
-    }
-    
-    function getHostStats(address host) external view returns (
-        uint256 totalSessions,
-        uint256 activeSessions,
-        uint256 completedSessions,
-        uint256 totalTokensProven,
-        uint256 totalEarnings
-    ) {
-        uint256 maxCheck = 1000; // Reasonable max for view function
-        
-        for (uint256 i = 1; i <= maxCheck; i++) {
-            SessionDetails storage session = sessions[i];
-            if (session.assignedHost == host) {
-                totalSessions++;
-                
-                if (session.status == SessionStatus.Active) {
-                    activeSessions++;
-                } else if (session.status == SessionStatus.Completed) {
-                    completedSessions++;
-                }
-                
-                totalTokensProven += session.provenTokens;
-                uint256 gross = session.provenTokens * session.pricePerToken;
-                uint256 fee = (gross * TREASURY_FEE_PERCENT) / 100;
-                totalEarnings += (gross - fee);
-            }
-        }
-    }
 }

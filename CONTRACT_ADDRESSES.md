@@ -1,25 +1,31 @@
 # Current Contract Addresses - Base Sepolia
 
-Last Updated: September 1, 2025
+Last Updated: December 2, 2024
 
-> **⚠️ IMPORTANT**: This file contains TWO different JobMarketplaceFABWithS5 deployments:
-> - **Session Jobs Enabled**: `0x445882e14b22E921c7d4Fe32a7736a32197578AF` ✅ USE THIS
+> **🚀 NEW DEPLOYMENT**: Fixed payment distribution issue with improved ETH transfer handling
+> - **Latest Fixed Version**: `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` ✅ USE THIS
+> - **Previous Session Jobs**: `0x445882e14b22E921c7d4Fe32a7736a32197578AF` ⚠️ HAS PAYMENT BUG
 > - **Old Single-Prompt Only**: `0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304` ❌ OUTDATED
 
-## ✅ Active Contracts for SESSION JOBS (Current)
+## ✅ Active Contracts - FIXED PAYMENT DISTRIBUTION (Current)
 
-These contracts support the latest session-based AI inference with proof checkpoints:
+These contracts include the fix for ETH payment distribution using `call{value:}()` instead of `transfer()`:
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceFABWithS5** | `0x445882e14b22E921c7d4Fe32a7736a32197578AF` | ✅ SESSION JOBS ENABLED |
-| **ProofSystem** | `0x707B775933C4C4c89894EC516edad83b2De77A05` | EZKL proof verification |
+| **JobMarketplaceFABWithS5** | `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` | ✅ FIXED PAYMENTS + SESSION JOBS |
+| **ProofSystem** | `0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9` | EZKL proof verification (new deployment) |
 | **NodeRegistryFAB** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Node registration with FAB staking |
 
-## ❌ Old Single-Prompt Contracts (DEPRECATED)
+## ⚠️ Previous Deployments with Issues
 
-These contracts do NOT support session jobs:
+### Session Jobs with Payment Bug
+| Contract | Address | Issue |
+|----------|---------|-------|
+| **JobMarketplaceFABWithS5** | `0x445882e14b22E921c7d4Fe32a7736a32197578AF` | transfer() fails silently |
+| **ProofSystem** | `0x707B775933C4C4c89894EC516edad83b2De77A05` | Works but paired with buggy marketplace |
 
+### Old Single-Prompt Contracts (DEPRECATED)
 | Contract | Address | Issue |
 |----------|---------|-------|
 | **JobMarketplaceFABWithS5** (old) | `0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304` | No session job support |
@@ -65,13 +71,13 @@ These contracts are from earlier deployments and are no longer compatible with t
 
 ## 🚀 For Your Client Application
 
-Update your configuration with the CORRECT session-enabled contracts:
+Update your configuration with the FIXED contracts:
 
 ```javascript
 const config = {
-  // Session Jobs Enabled Contracts (CURRENT)
-  jobMarketplace: '0x445882e14b22E921c7d4Fe32a7736a32197578AF', // ✅ CORRECT for session jobs
-  proofSystem: '0x707B775933C4C4c89894EC516edad83b2De77A05',
+  // Fixed Payment Distribution Contracts (CURRENT - December 2, 2024)
+  jobMarketplace: '0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A', // ✅ FIXED payment distribution
+  proofSystem: '0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9',     // ✅ NEW deployment
   nodeRegistry: '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
   
   // Tokens
@@ -79,7 +85,7 @@ const config = {
   usdcToken: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
   
   // Platform
-  treasury: '0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11',
+  treasury: '0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078',
   
   // Network
   chainId: 84532, // Base Sepolia

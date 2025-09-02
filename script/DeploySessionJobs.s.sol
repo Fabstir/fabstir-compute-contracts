@@ -42,6 +42,18 @@ contract DeploySessionJobs is Script {
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         
+        // Validate critical addresses before deployment
+        require(nodeRegistry != address(0), "NodeRegistry address not set");
+        require(treasury != address(0), "Treasury address not set");
+        
+        console.log("========================================");
+        console.log("Deploying with configuration:");
+        console.log("NodeRegistry:", nodeRegistry);
+        console.log("HostEarnings:", hostEarnings);
+        console.log("Treasury:", treasury);
+        console.log("USDC:", usdc);
+        console.log("========================================");
+        
         vm.startBroadcast(deployerPrivateKey);
         
         // 1. Deploy ProofSystem
@@ -49,12 +61,14 @@ contract DeploySessionJobs is Script {
         console.log("ProofSystem deployed at:", address(proofSystem));
         
         // 2. Deploy JobMarketplace with required constructor args
+        // Note: hostEarnings can be address(0) - it's optional now
         marketplace = new JobMarketplaceFABWithS5(nodeRegistry, hostEarnings);
         console.log("JobMarketplace deployed at:", address(marketplace));
         
         // 3. Configure contracts
         marketplace.setProofSystem(address(proofSystem));
         marketplace.setTreasuryAddress(treasury);
+        console.log("Treasury set to:", treasury);
         
         // 4. Enable USDC if available
         if (usdc != address(0)) {
@@ -70,6 +84,11 @@ contract DeploySessionJobs is Script {
         
         vm.stopBroadcast();
         
+        // Verify deployment configuration
+        require(marketplace.treasuryAddress() == treasury, "Treasury not set correctly");
+        require(address(marketplace.proofSystem()) == address(proofSystem), "ProofSystem not set correctly");
+        require(address(marketplace.nodeRegistry()) == nodeRegistry, "NodeRegistry not set correctly");
+        
         // Log deployment info
         console.log("========================================");
         console.log("Deployment Complete!");
@@ -80,6 +99,17 @@ contract DeploySessionJobs is Script {
         console.log("Treasury:", treasury);
         console.log("USDC:", usdc);
         console.log("Chain ID:", block.chainid);
+        console.log("========================================");
+        console.log("Verification:");
+        console.log("- Treasury correctly set:", marketplace.treasuryAddress() == treasury);
+        console.log("- ProofSystem correctly set:", address(marketplace.proofSystem()) == address(proofSystem));
+        console.log("- NodeRegistry correctly set:", address(marketplace.nodeRegistry()) == nodeRegistry);
+        if (usdc != address(0)) {
+            bool accepted = marketplace.acceptedTokens(usdc);
+            uint256 minDeposit = marketplace.tokenMinDeposits(usdc);
+            console.log("- USDC accepted:", accepted);
+            console.log("- USDC min deposit:", minDeposit);
+        }
         console.log("========================================");
         
         // Save addresses for verification (disabled in simulation)
