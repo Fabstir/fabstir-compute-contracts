@@ -46,3 +46,13 @@ deploy-manual.sh
 force-deploy.sh
 .claude/
 .vscode/
+
+.env.deploy
+
+# Logs
+*.log
+
+# Temporary test files
+debug-*.js
+test-*.js
+check-*.js

@@ -34,6 +34,15 @@ contract ProofSystem is IProofSystem {
         address prover,
         uint256 claimedTokens
     ) external view override returns (bool) {
+        return _verifyEKZL(proof, prover, claimedTokens);
+    }
+    
+    // Internal verification logic
+    function _verifyEKZL(
+        bytes calldata proof,
+        address prover,
+        uint256 claimedTokens
+    ) internal view returns (bool) {
         // Basic validation
         if (proof.length < 64) return false;
         if (claimedTokens == 0) return false;
@@ -65,8 +74,8 @@ contract ProofSystem is IProofSystem {
         address prover,
         uint256 claimedTokens
     ) external returns (bool) {
-        // First verify using view function
-        if (!this.verifyEKZL(proof, prover, claimedTokens)) {
+        // First verify using internal function
+        if (!_verifyEKZL(proof, prover, claimedTokens)) {
             return false;
         }
         
@@ -146,11 +155,8 @@ contract ProofSystem is IProofSystem {
         return 50000 + (batchSize * 20000);
     }
     
-    // Internal helper for batch verification
+    // Internal helper for batch verification (delegates to main internal function)
     function _verifyEKZLInternal(bytes calldata proof, address prover, uint256 claimedTokens) internal view returns (bool) {
-        if (proof.length < 64 || claimedTokens == 0 || prover == address(0)) return false;
-        bytes32 proofHash;
-        assembly { proofHash := calldataload(proof.offset) }
-        return !verifiedProofs[proofHash];
+        return _verifyEKZL(proof, prover, claimedTokens);
     }
 }

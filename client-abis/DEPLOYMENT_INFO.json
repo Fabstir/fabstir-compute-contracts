@@ -1,0 +1,73 @@
+{
+  "network": "Base Sepolia",
+  "chainId": 84532,
+  "lastUpdated": "2025-01-04",
+  "status": "USDC Payment Settlement Verified Working",
+  "contracts": {
+    "JobMarketplaceFABWithS5": {
+      "address": "0xD937c594682Fe74E6e3d06239719805C04BE804A",
+      "deploymentDate": "2025-01-04",
+      "status": "ACTIVE - USDC VERIFIED",
+      "features": [
+        "USDC payment settlement working",
+        "90% host / 10% treasury distribution verified",
+        "ETH payments working",
+        "Session jobs with proof checkpoints",
+        "EZKL proof verification"
+      ]
+    },
+    "ProofSystem": {
+      "address": "0x2ACcc60893872A499700908889B38C5420CBcFD1",
+      "deploymentDate": "2025-01-04",
+      "status": "ACTIVE - FIXED",
+      "features": [
+        "Internal verification function fixed",
+        "USDC session proof verification working",
+        "Batch verification support"
+      ]
+    },
+    "NodeRegistryFAB": {
+      "address": "0x87516C13Ea2f99de598665e14cab64E191A0f8c4",
+      "status": "ACTIVE",
+      "features": [
+        "FAB token staking",
+        "1000 FAB minimum stake",
+        "Host registration and validation"
+      ]
+    },
+    "PaymentEscrowWithEarnings": {
+      "address": "0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C",
+      "status": "ACTIVE",
+      "note": "Not used for session jobs (direct payments used)"
+    },
+    "HostEarnings": {
+      "address": "0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E",
+      "status": "ACTIVE",
+      "note": "Not used for session jobs (direct payments used)"
+    }
+  },
+  "tokens": {
+    "FAB": {
+      "address": "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
+      "decimals": 18,
+      "usage": "Governance and host staking"
+    },
+    "USDC": {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "decimals": 6,
+      "usage": "Job payments",
+      "minimumDeposit": 800000,
+      "minimumDepositFormatted": "0.80 USDC"
+    }
+  },
+  "platform": {
+    "treasury": "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078",
+    "feePercent": 10,
+    "minStake": "1000000000000000000000",
+    "minStakeFormatted": "1000 FAB"
+  },
+  "rpcEndpoints": [
+    "https://sepolia.base.org",
+    "https://base-sepolia.g.alchemy.com/v2/YOUR_API_KEY"
+  ]
+}

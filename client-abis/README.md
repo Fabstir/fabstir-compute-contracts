@@ -2,35 +2,36 @@
 
 This directory contains the Application Binary Interfaces (ABIs) for client integration.
 
-## Updated Contracts (Fixed USDC Validation - January 2, 2025)
+## Current Deployed Contracts (January 4, 2025)
 
 ### JobMarketplaceFABWithS5
-- **Address**: 0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d
+- **Address**: 0xD937c594682Fe74E6e3d06239719805C04BE804A
 - **Network**: Base Sepolia
+- **Status**: ✅ USDC PAYMENTS VERIFIED WORKING
 - **Key Features**:
-  - **FIXED**: USDC session validation with host registration checks
-  - **FIXED**: Payment distribution using `call{value:}()` instead of `transfer()`
-  - **OPTIMIZED**: Contract size reduced to 24,564 bytes (under limit)
-  - MIN_DEPOSIT: 0.0002 ETH (~$0.80)
-  - MIN_PROVEN_TOKENS: 100 tokens minimum
-  - Token-specific minimums via mapping (800000 for USDC)
-  - Session jobs with earnings accumulation
+  - USDC payment settlement with 90% host / 10% treasury distribution
+  - ETH and USDC payment support fully functional
+  - Direct payment distribution (no external escrow)
+  - Session jobs with proof checkpoints
   - EZKL proof verification integration
+  - MIN_DEPOSIT: 0.0002 ETH or 0.80 USDC minimum
+  - MIN_PROVEN_TOKENS: 100 tokens minimum
+
+### ProofSystem
+- **Address**: 0x2ACcc60893872A499700908889B38C5420CBcFD1
+- **Network**: Base Sepolia
+- **Purpose**: EZKL proof verification for trustless AI inference
+- **Fixed**: Internal verification function call for USDC sessions
 
 ### PaymentEscrowWithEarnings
 - **Address**: 0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C
 - **Network**: Base Sepolia
-- **Purpose**: Payment distribution with earnings accumulation
+- **Purpose**: Payment distribution with earnings accumulation (not used for session jobs)
 
 ### HostEarnings
 - **Address**: 0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E
 - **Network**: Base Sepolia
-- **Purpose**: Tracks accumulated earnings for hosts
-
-### ProofSystem
-- **Address**: 0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9
-- **Network**: Base Sepolia
-- **Purpose**: EZKL proof verification for trustless AI inference
+- **Purpose**: Tracks accumulated earnings for hosts (not used for session jobs)
 
 ### NodeRegistryFAB
 - **Address**: 0x87516C13Ea2f99de598665e14cab64E191A0f8c4
@@ -50,7 +51,7 @@ const provider = new ethers.providers.JsonRpcProvider('https://base-sepolia.g.al
 
 // Create contract instances
 const marketplace = new ethers.Contract(
-  '0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d', // Fixed USDC validation
+  '0xD937c594682Fe74E6e3d06239719805C04BE804A', // USDC verified working
   JobMarketplaceABI,
   provider
 );
@@ -112,4 +113,4 @@ For treasury address only:
 - `ABANDONMENT_TIMEOUT`: 86400 seconds (24 hours)
 
 ## Last Updated
-January 2, 2025 - Fixed USDC session validation and contract size optimization
+January 4, 2025 - USDC payment settlement fully working with 90/10 distribution verified

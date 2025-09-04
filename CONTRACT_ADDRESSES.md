@@ -1,22 +1,25 @@
 # Current Contract Addresses - Base Sepolia
 
-Last Updated: January 2, 2025
+Last Updated: January 4, 2025
 
-> **🚀 LATEST DEPLOYMENT**: Fixed USDC session creation validation issue
-> - **Current Version**: `0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d` ✅ USE THIS
-> - **Previous Version**: `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` ⚠️ Missing USDC validations
+> **🚀 LATEST DEPLOYMENT**: USDC Payment Settlement Fixed and Verified
+> - **Current Version**: `0xD937c594682Fe74E6e3d06239719805C04BE804A` ✅ USE THIS (January 4, 2025)
+> - **ProofSystem Fixed**: `0x2ACcc60893872A499700908889B38C5420CBcFD1` ✅ FIXED (January 4, 2025)
+> - **Previous (STUCK)**: `0xf5e0b435180013b6a7B23280CB77C5E1C3aB921e` ❌ Session 9 stuck/corrupted
+> - **Previous Attempt**: `0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d` ❌ Not deployed (insufficient funds)
+> - **December 2024**: `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` ⚠️ Missing USDC validations
 > - **Older Session Jobs**: `0x445882e14b22E921c7d4Fe32a7736a32197578AF` ❌ HAS PAYMENT BUG
 
-## ✅ Active Contracts - FIXED USDC VALIDATION (Current)
+## ✅ Active Contracts - FIXED USDC VERIFICATION (Current)
 
-These contracts include all fixes for payment distribution AND USDC session validation:
+These contracts include all fixes for payment distribution AND USDC session verification:
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceFABWithS5** | `0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d` | ✅ FIXED USDC + PAYMENTS + SESSIONS |
+| **JobMarketplaceFABWithS5** | `0xD937c594682Fe74E6e3d06239719805C04BE804A` | ✅ USDC PAYMENTS WORKING - 90/10 VERIFIED |
+| **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ FIXED internal verification for USDC |
 | **PaymentEscrowWithEarnings** | `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` | Payment handling with earnings |
 | **HostEarnings** | `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` | Host earnings accumulation |
-| **ProofSystem** | `0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9` | EZKL proof verification |
 | **NodeRegistryFAB** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Node registration with FAB staking |
 
 ## ⚠️ Previous Deployments with Issues
@@ -82,11 +85,11 @@ Update your configuration with the FIXED contracts:
 
 ```javascript
 const config = {
-  // Fixed USDC Validation + Payment Distribution (CURRENT - January 2, 2025)
-  jobMarketplace: '0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d', // ✅ FIXED USDC validation + payments
+  // USDC Payment Settlement Fixed (CURRENT - January 4, 2025)
+  jobMarketplace: '0xD937c594682Fe74E6e3d06239719805C04BE804A', // ✅ USDC WORKING - 90/10 VERIFIED
+  proofSystem: '0x2ACcc60893872A499700908889B38C5420CBcFD1',     // ✅ FIXED internal verification
   paymentEscrow: '0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C',  // ✅ Earnings accumulation
   hostEarnings: '0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E',   // ✅ Host earnings tracker
-  proofSystem: '0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9',     // ✅ EZKL verification
   nodeRegistry: '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
   
   // Tokens
