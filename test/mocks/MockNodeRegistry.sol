@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {INodeRegistry} from "../../src/interfaces/INodeRegistry.sol";
-
-contract MockNodeRegistry is INodeRegistry {
-    mapping(address => bool) public activeNodes;
-    mapping(address => address) public nodeControllers;
-    
-    function setActiveNode(address node, bool active) external {
-        activeNodes[node] = active;
+contract MockNodeRegistry {
+    struct Node {
+        address operator;
+        uint256 stakedAmount;
+        bool active;
+        uint256 reputation;
     }
     
-    function isActiveNode(address operator) external view returns (bool) {
-        return activeNodes[operator];
-    }
+    mapping(address => Node) public nodes;
+    uint256 public constant MIN_STAKE = 1000 ether;
     
-    function getNodeController(address node) external view returns (address) {
-        return nodeControllers[node];
+    function registerMockHost(address host) external {
+        nodes[host] = Node({
+            operator: host,
+            stakedAmount: MIN_STAKE,
+            active: true,
+            reputation: 100
+        });
     }
 }

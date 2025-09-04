@@ -154,13 +154,13 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     }
     
     function setPaymentEscrow(address _paymentEscrow) external {
-        require(address(paymentEscrow) == address(0), "Already set");
+        require(address(paymentEscrow) == address(0));
         paymentEscrow = IPaymentEscrow(_paymentEscrow);
     }
     
     function setHostEarnings(address payable _hostEarnings) external {
-        require(_hostEarnings != address(0), "Invalid address");
-        require(msg.sender == treasuryAddress || treasuryAddress == address(0), "Only treasury can update");
+        require(_hostEarnings != address(0));
+        require(msg.sender == treasuryAddress || treasuryAddress == address(0));
         hostEarnings = HostEarnings(_hostEarnings);
         emit HostEarningsUpdated(_hostEarnings);
     }
@@ -170,8 +170,8 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
      * @dev Call this after deploying both contracts to enable earnings accumulation
      */
     function initializeHostEarnings() external {
-        require(address(hostEarnings) != address(0), "HostEarnings not set");
-        require(msg.sender == treasuryAddress || treasuryAddress == address(0), "Only treasury can initialize");
+        require(address(hostEarnings) != address(0));
+        require(msg.sender == treasuryAddress || treasuryAddress == address(0));
         // This will need to be called on the HostEarnings contract to authorize this marketplace
         emit HostEarningsInitializationRequired(address(hostEarnings));
     }
@@ -181,7 +181,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     }
     
     function setReputationSystem(address _reputation) external {
-        require(address(reputationSystem) == address(0), "Already set");
+        require(address(reputationSystem) == address(0));
         reputationSystem = IReputationSystem(_reputation);
     }
     
@@ -202,11 +202,11 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         uint256 deadline,
         address hostAddress
     ) external nonReentrant returns (bytes32) {
-        require(bytes(promptCID).length > 0, "Prompt CID required");
-        require(paymentToken == usdcAddress, "Only USDC accepted");
-        require(paymentAmount > 0, "Payment must be positive");
-        require(address(paymentEscrow) != address(0), "PaymentEscrow not set");
-        require(deadline > block.timestamp, "Deadline must be in future");
+        require(bytes(promptCID).length > 0);
+        require(paymentToken == usdcAddress);
+        require(paymentAmount > 0);
+        require(address(paymentEscrow) != address(0));
+        require(deadline > block.timestamp);
         
         // Generate job ID
         bytes32 jobId = keccak256(abi.encodePacked(msg.sender, block.timestamp, nextJobId, modelId));
@@ -250,10 +250,10 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         address paymentToken,
         uint256 paymentAmount
     ) external nonReentrant returns (bytes32) {
-        require(bytes(details.promptCID).length > 0, "Prompt CID required");
-        require(paymentToken == usdcAddress, "Only USDC accepted");
-        require(paymentAmount > 0, "Payment must be positive");
-        require(address(paymentEscrow) != address(0), "PaymentEscrow not set");
+        require(bytes(details.promptCID).length > 0);
+        require(paymentToken == usdcAddress);
+        require(paymentAmount > 0);
+        require(address(paymentEscrow) != address(0));
         
         // Generate job ID
         bytes32 jobId = keccak256(abi.encodePacked(msg.sender, block.timestamp, nextJobId, details.modelId));
@@ -290,20 +290,20 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
      */
     function claimJob(uint256 _jobId) external {
         Job storage job = jobs[_jobId];
-        require(job.renter != address(0), "Job does not exist");
-        require(job.status == JobStatus.Posted, "Job not available");
-        require(block.timestamp <= job.deadline, "Job expired");
+        require(job.renter != address(0));
+        require(job.status == JobStatus.Posted);
+        require(block.timestamp <= job.deadline);
         
         // If specific host was requested, only that host can claim
         if (job.assignedHost != address(0)) {
-            require(job.assignedHost == msg.sender, "Job reserved for specific host");
+            require(job.assignedHost == msg.sender);
         }
         
         // Check if host is registered in NodeRegistryFAB
         (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(msg.sender);
-        require(operator != address(0), "Not a registered host");
-        require(active, "Host not active");
-        require(stakedAmount >= nodeRegistry.MIN_STAKE(), "Insufficient stake");
+        require(operator != address(0));
+        require(active);
+        require(stakedAmount >= nodeRegistry.MIN_STAKE());
         
         job.assignedHost = msg.sender;
         job.status = JobStatus.Claimed;
@@ -321,10 +321,10 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         string memory _responseCID
     ) external nonReentrant {
         Job storage job = jobs[_jobId];
-        require(job.assignedHost == msg.sender, "Not assigned host");
-        require(job.status == JobStatus.Claimed, "Job not claimed");
-        require(block.timestamp <= job.deadline, "Deadline passed");
-        require(bytes(_responseCID).length > 0, "Response CID required");
+        require(job.assignedHost == msg.sender);
+        require(job.status == JobStatus.Claimed);
+        require(block.timestamp <= job.deadline);
+        require(bytes(_responseCID).length > 0);
         
         job.responseCID = _responseCID;
         job.status = JobStatus.Completed;
@@ -422,21 +422,21 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         uint256 maxDuration,
         uint256 proofInterval
     ) external payable returns (uint256 jobId) {
-        require(msg.value >= MIN_DEPOSIT, "Deposit below minimum");
-        require(deposit >= MIN_DEPOSIT, "Deposit amount below minimum");
-        require(deposit > 0, "Deposit must be positive");
-        require(pricePerToken > 0, "Price per token must be positive");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Duration must be positive");
-        require(proofInterval > 0, "Proof interval required");
-        require(host != address(0), "Invalid host address");
-        require(msg.value >= deposit, "Insufficient deposit");
-        require(deposit <= 1000 ether, "Deposit too large");
+        require(msg.value >= MIN_DEPOSIT);
+        require(deposit >= MIN_DEPOSIT);
+        require(deposit > 0);
+        require(pricePerToken > 0);
+        require(maxDuration > 0 && maxDuration <= 365 days);
+        require(proofInterval > 0);
+        require(host != address(0));
+        require(msg.value >= deposit);
+        require(deposit <= 1000 ether);
         
         // Validate host
         (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(host);
-        require(operator != address(0), "Host not registered");
-        require(active, "Host not active");
-        require(stakedAmount >= nodeRegistry.MIN_STAKE(), "Host stake insufficient");
+        require(operator != address(0));
+        require(active);
+        require(stakedAmount >= nodeRegistry.MIN_STAKE());
         
         // Validate proof requirements
         _validateProofRequirements(proofInterval, deposit, pricePerToken);
@@ -489,11 +489,11 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         uint256 deposit,
         uint256 pricePerToken
     ) internal pure {
-        require(proofInterval >= 100, "Proof interval too small");
-        require(proofInterval <= 1000000, "Proof interval too large");
+        require(proofInterval >= 100);
+        require(proofInterval <= 1000000);
         uint256 maxTokens = deposit / pricePerToken;
-        require(maxTokens >= 100, "Deposit covers less than minimum tokens");
-        require(proofInterval <= maxTokens, "Interval exceeds max tokens");
+        require(maxTokens >= 100);
+        require(proofInterval <= maxTokens);
     }
     
     function getSessionRequirements(
@@ -538,7 +538,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     );
     
     function setProofSystem(address _proofSystem) external {
-        require(_proofSystem != address(0), "Invalid proof system");
+        require(_proofSystem != address(0));
         proofSystem = IProofSystem(_proofSystem);
     }
     
@@ -556,17 +556,17 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         bytes calldata ekzlProof,
         uint256 tokensInBatch
     ) external returns (bool verified) {
-        require(jobTypes[jobId] == JobType.Session, "Job does not exist");
+        require(jobTypes[jobId] == JobType.Session);
         SessionDetails storage session = sessions[jobId];
-        require(session.status == SessionStatus.Active, "Session not active");
-        require(session.assignedHost == msg.sender, "Not assigned host");
-        require(tokensInBatch >= MIN_PROVEN_TOKENS, "Token count below minimum");
-        require(tokensInBatch > 0, "Tokens must be positive");
-        require(ekzlProof.length > 0, "Proof required");
+        require(session.status == SessionStatus.Active);
+        require(session.assignedHost == msg.sender);
+        require(tokensInBatch >= MIN_PROVEN_TOKENS);
+        require(tokensInBatch > 0);
+        require(ekzlProof.length > 0);
         
         uint256 maxTokens = session.depositAmount / session.pricePerToken;
-        require(session.provenTokens + tokensInBatch <= maxTokens, "Exceeds deposit capacity");
-        require(session.provenTokens < maxTokens, "Max tokens already proven");
+        require(session.provenTokens + tokensInBatch <= maxTokens);
+        require(session.provenTokens < maxTokens);
         
         verified = _verifyAndRecordProof(jobId, ekzlProof, tokensInBatch);
         
@@ -579,8 +579,8 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         bytes[] calldata proofs,
         uint256[] calldata tokenCounts
     ) external {
-        require(proofs.length == tokenCounts.length, "Array length mismatch");
-        require(proofs.length > 0, "Empty batch");
+        require(proofs.length == tokenCounts.length);
+        require(proofs.length > 0);
         
         uint256 totalTokens = 0;
         for (uint256 i = 0; i < proofs.length; i++) {
@@ -633,8 +633,8 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     
     function completeSession(uint256 jobId) external {
         SessionDetails storage session = sessions[jobId];
-        require(session.assignedHost == msg.sender, "Not assigned host");
-        require(session.status == SessionStatus.Active, "Session not active");
+        require(session.assignedHost == msg.sender);
+        require(session.status == SessionStatus.Active);
         session.status = SessionStatus.Completed;
     }
     
@@ -724,25 +724,25 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         address host, address token, uint256 deposit,
         uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval
     ) external returns (uint256 jobId) {
-        require(acceptedTokens[token], "Token not accepted");
+        require(acceptedTokens[token]);
         // Use token-specific minimum deposit
         uint256 minRequired = tokenMinDeposits[token];
-        require(minRequired > 0, "Token minimum not set");
-        require(deposit >= minRequired, "Deposit amount below minimum");
-        require(deposit > 0, "Deposit required");
+        require(minRequired > 0);
+        require(deposit >= minRequired);
+        require(deposit > 0);
         
         // Add missing validations (same as ETH version)
-        require(pricePerToken > 0, "Price per token must be positive");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Duration must be positive");
-        require(proofInterval > 0, "Proof interval required");
-        require(host != address(0), "Invalid host address");
-        require(deposit <= 1000 ether, "Deposit too large");
+        require(pricePerToken > 0);
+        require(maxDuration > 0 && maxDuration <= 365 days);
+        require(proofInterval > 0);
+        require(host != address(0));
+        require(deposit <= 1000 ether);
         
         // Validate host registration
         (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(host);
-        require(operator != address(0), "Host not registered");
-        require(active, "Host not active");
-        require(stakedAmount >= nodeRegistry.MIN_STAKE(), "Host stake insufficient");
+        require(operator != address(0));
+        require(active);
+        require(stakedAmount >= nodeRegistry.MIN_STAKE());
         
         // Validate proof requirements
         _validateProofRequirements(proofInterval, deposit, pricePerToken);
@@ -780,17 +780,17 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
 
     function completeSessionJob(uint256 jobId) external {
         SessionDetails storage session = sessions[jobId];
-        require(msg.sender == jobs[jobId].renter, "Only user can complete");
-        require(session.status == SessionStatus.Active, "Session not active");
+        require(msg.sender == jobs[jobId].renter);
+        require(session.status == SessionStatus.Active);
         
         _processSessionPayment(jobId);
     }
 
     function claimWithProof(uint256 jobId) external {
         SessionDetails storage session = sessions[jobId];
-        require(msg.sender == session.assignedHost, "Not assigned host");
-        require(session.status == SessionStatus.Active, "Session not active");
-        require(session.provenTokens > 0, "No proven work");
+        require(msg.sender == session.assignedHost);
+        require(session.status == SessionStatus.Active);
+        require(session.provenTokens > 0);
         
         _processProofBasedPayment(jobId);
     }
@@ -832,21 +832,21 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
             if (payment > 0) {
                 if (address(hostEarnings) != address(0)) {
                     // Transfer to HostEarnings contract for accumulation
-                    require(token.transfer(address(hostEarnings), payment), "Token transfer to HostEarnings failed");
+                    require(token.transfer(address(hostEarnings), payment));
                     // Credit the host's balance in HostEarnings
                     hostEarnings.creditEarnings(host, payment, job.paymentToken);
                     emit EarningsCredited(host, payment, job.paymentToken);
                 } else {
                     // Fallback to direct transfer if HostEarnings not configured
-                    require(token.transfer(host, payment), "Token payment to host failed");
+                    require(token.transfer(host, payment));
                 }
             }
             
             if (treasuryFee > 0 && treasuryAddress != address(0)) {
-                require(token.transfer(treasuryAddress, treasuryFee), "Token treasury fee failed");
+                require(token.transfer(treasuryAddress, treasuryFee));
             }
             if (refund > 0) {
-                require(token.transfer(job.renter, refund), "Token refund failed");
+                require(token.transfer(job.renter, refund));
             }
         } else {
             // ETH payments - use HostEarnings if available for gas savings
@@ -854,24 +854,24 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
                 if (address(hostEarnings) != address(0)) {
                     // Send ETH to HostEarnings contract for accumulation
                     (bool success, ) = payable(address(hostEarnings)).call{value: payment}("");
-                    require(success, "ETH transfer to HostEarnings failed");
+                    require(success);
                     // Credit the host's balance in HostEarnings
                     hostEarnings.creditEarnings(host, payment, address(0));
                     emit EarningsCredited(host, payment, address(0));
                 } else {
                     // Fallback to direct transfer if HostEarnings not configured
                     (bool success, ) = payable(host).call{value: payment}("");
-                    require(success, "ETH payment to host failed");
+                    require(success);
                 }
             }
             
             if (treasuryFee > 0 && treasuryAddress != address(0)) {
                 (bool success, ) = payable(treasuryAddress).call{value: treasuryFee}("");
-                require(success, "ETH treasury fee failed");
+                require(success);
             }
             if (refund > 0) {
                 (bool success, ) = payable(job.renter).call{value: refund}("");
-                require(success, "ETH refund failed");
+                require(success);
             }
         }
     }
@@ -895,18 +895,18 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     
     function triggerSessionTimeout(uint256 jobId) external {
         SessionDetails storage session = sessions[jobId];
-        require(session.status == SessionStatus.Active, "Session not active");
-        require(_isSessionExpired(jobId), "Session not expired");
+        require(session.status == SessionStatus.Active);
+        require(_isSessionExpired(jobId));
         
         _processTimeoutPayment(jobId);
     }
     
     function claimAbandonedSession(uint256 jobId) external {
         SessionDetails storage session = sessions[jobId];
-        require(msg.sender == session.assignedHost, "Not assigned host");
-        require(session.status == SessionStatus.Active, "Session not active");
-        require(_isSessionAbandoned(jobId), "Session not abandoned");
-        require(session.provenTokens > 0, "No proven work");
+        require(msg.sender == session.assignedHost);
+        require(session.status == SessionStatus.Active);
+        require(_isSessionAbandoned(jobId));
+        require(session.provenTokens > 0);
         
         _processAbandonmentClaim(jobId);
     }
@@ -976,19 +976,19 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     event EmergencyWithdrawal(address indexed recipient, uint256 amount, address token);
     
     function emergencyWithdraw(address token) external nonReentrant {
-        require(msg.sender == treasuryAddress, "Only treasury");
+        require(msg.sender == treasuryAddress);
         
         uint256 amount;
         if (token == address(0)) {
             amount = address(this).balance;
-            require(amount > 0, "No ETH");
+            require(amount > 0);
             (bool ok, ) = payable(treasuryAddress).call{value: amount}("");
-            require(ok, "ETH fail");
+            require(ok);
         } else {
             IERC20 t = IERC20(token);
             amount = t.balanceOf(address(this));
-            require(amount > 0, "No tokens");
-            require(t.transfer(treasuryAddress, amount), "Token fail");
+            require(amount > 0);
+            require(t.transfer(treasuryAddress, amount));
         }
         
         emit EmergencyWithdrawal(treasuryAddress, amount, token);

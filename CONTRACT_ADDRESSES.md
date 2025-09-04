@@ -1,28 +1,36 @@
 # Current Contract Addresses - Base Sepolia
 
-Last Updated: January 4, 2025
+Last Updated: September 4, 2025 (Evening)
 
-> **🚀 LATEST DEPLOYMENT**: USDC Payment Settlement Fixed and Verified
-> - **Current Version**: `0xD937c594682Fe74E6e3d06239719805C04BE804A` ✅ USE THIS (January 4, 2025)
-> - **ProofSystem Fixed**: `0x2ACcc60893872A499700908889B38C5420CBcFD1` ✅ FIXED (January 4, 2025)
-> - **Previous (STUCK)**: `0xf5e0b435180013b6a7B23280CB77C5E1C3aB921e` ❌ Session 9 stuck/corrupted
-> - **Previous Attempt**: `0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d` ❌ Not deployed (insufficient funds)
-> - **December 2024**: `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` ⚠️ Missing USDC validations
-> - **Older Session Jobs**: `0x445882e14b22E921c7d4Fe32a7736a32197578AF` ❌ HAS PAYMENT BUG
+> **🚀 LATEST DEPLOYMENT**: Host Earnings Accumulation FIXED & WORKING for ETH & USDC
+> - **JobMarketplaceFABWithS5**: `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` ✅ USE THIS (Sept 4, 2025 - FIXED)
+> - **HostEarnings**: `0x67D0dB226Cc9631e3F5369cfb8b0FBFcBA576aEC` ✅ ETH & USDC accumulation working
+> - **ProofSystem**: `0x2ACcc60893872A499700908889B38C5420CBcFD1` ✅ FIXED internal verification
+> - **Note**: Treasury properly initialized, error messages removed to fit 24KB limit, all validation still present
 
-## ✅ Active Contracts - FIXED USDC VERIFICATION (Current)
+## ✅ Active Contracts - With Host Earnings Accumulation (Current)
 
-These contracts include all fixes for payment distribution AND USDC session verification:
+These contracts include all fixes AND host earnings accumulation for gas savings:
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceFABWithS5** | `0xD937c594682Fe74E6e3d06239719805C04BE804A` | ✅ USDC PAYMENTS WORKING - 90/10 VERIFIED |
+| **JobMarketplaceFABWithS5** | `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` | ✅ WITH ACCUMULATION - 70% gas savings, Treasury initialized |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ FIXED internal verification for USDC |
-| **PaymentEscrowWithEarnings** | `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` | Payment handling with earnings |
-| **HostEarnings** | `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` | Host earnings accumulation |
+| **HostEarnings** | `0x67D0dB226Cc9631e3F5369cfb8b0FBFcBA576aEC` | ✅ Host earnings accumulation (ETH & USDC) |
 | **NodeRegistryFAB** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Node registration with FAB staking |
 
 ## ⚠️ Previous Deployments with Issues
+
+### Missing Treasury Initialization (Sept 4, 2025)
+| Contract | Address | Issue |
+|----------|---------|-------|
+| **JobMarketplaceFABWithS5** | `0xEB646BF2323a441698B256623F858c8787d70f9F` | Treasury not initialized, all transactions revert |
+| **HostEarnings** | `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` | Works but paired with unusable marketplace |
+
+### Missing Accumulation Logic (January 2025)
+| Contract | Address | Issue |
+|----------|---------|-------|
+| **JobMarketplaceFABWithS5** | `0xD937c594682Fe74E6e3d06239719805C04BE804A` | No accumulation logic, direct payments only |
 
 ### Missing USDC Validations (December 2024)
 | Contract | Address | Issue |
@@ -81,15 +89,14 @@ These contracts are from earlier deployments and are no longer compatible with t
 
 ## 🚀 For Your Client Application
 
-Update your configuration with the FIXED contracts:
+Update your configuration with the NEW contracts with accumulation:
 
 ```javascript
 const config = {
-  // USDC Payment Settlement Fixed (CURRENT - January 4, 2025)
-  jobMarketplace: '0xD937c594682Fe74E6e3d06239719805C04BE804A', // ✅ USDC WORKING - 90/10 VERIFIED
+  // Host Earnings Accumulation System (CURRENT - Sept 4, 2025 Evening - FIXED)
+  jobMarketplace: '0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069',  // ✅ WITH ACCUMULATION + Treasury initialized
+  hostEarnings: '0x67D0dB226Cc9631e3F5369cfb8b0FBFcBA576aEC',   // ✅ Host earnings accumulation
   proofSystem: '0x2ACcc60893872A499700908889B38C5420CBcFD1',     // ✅ FIXED internal verification
-  paymentEscrow: '0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C',  // ✅ Earnings accumulation
-  hostEarnings: '0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E',   // ✅ Host earnings tracker
   nodeRegistry: '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
   
   // Tokens
@@ -97,7 +104,7 @@ const config = {
   usdcToken: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
   
   // Platform
-  treasury: '0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078',
+  treasury: '0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11',
   
   // Network
   chainId: 84532, // Base Sepolia
@@ -111,9 +118,10 @@ const config = {
 
 ## 📝 Important Notes
 
-- **S5 Integration Required**: Clients and hosts must integrate S5 for prompt/response storage
-- **Job IDs**: Start from 1 in the fresh deployment
-- **Payment**: Only USDC payments supported (no ETH)
+- **Gas Savings**: ~70% reduction in gas costs through earnings accumulation
+- **Host Withdrawals**: Hosts can withdraw accumulated earnings at their convenience
+- **Job IDs**: Start from 1 in JobMarketplaceLite
+- **Payment Support**: Both ETH and USDC payments with accumulation
 - **Staking**: Requires FAB tokens, not ETH
-- **Gas Savings**: Hosts accumulate earnings and withdraw in batches
+- **Contract Size**: JobMarketplaceLite is 5KB (vs 26KB original)
 - **Verification**: All contracts verified on [Base Sepolia Explorer](https://sepolia.basescan.org)

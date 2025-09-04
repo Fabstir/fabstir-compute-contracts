@@ -48,6 +48,9 @@ contract HostEarnings is ReentrancyGuard, Ownable {
     
     constructor() Ownable(msg.sender) {}
     
+    // Allow contract to receive ETH for accumulation
+    // (receive and fallback are already defined below)
+    
     /**
      * @dev Authorize a contract (JobMarketplace) to credit earnings
      */
@@ -75,6 +78,16 @@ contract HostEarnings is ReentrancyGuard, Ownable {
         totalAccumulated[token] += amount;
         
         emit EarningsCredited(host, token, amount, earnings[host][token]);
+    }
+    
+    /**
+     * @dev Get the balance of a host for a specific token
+     * @param host The host address
+     * @param token The token address (address(0) for ETH)
+     * @return The accumulated balance
+     */
+    function getBalance(address host, address token) external view returns (uint256) {
+        return earnings[host][token];
     }
     
     /**
@@ -154,15 +167,6 @@ contract HostEarnings is ReentrancyGuard, Ownable {
         }
     }
     
-    /**
-     * @dev Get earnings balance for a host
-     * @param host The host address
-     * @param token The token address (address(0) for ETH)
-     * @return The current earnings balance
-     */
-    function getBalance(address host, address token) external view returns (uint256) {
-        return earnings[host][token];
-    }
     
     /**
      * @dev Get multiple token balances for a host

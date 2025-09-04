@@ -55,8 +55,8 @@ contract ProofJobIntegrationTest is Test {
         vm.prank(host);
         marketplace.submitProofOfWork(jobId, proof, 100);
         
-        // Get session details to verify
-        (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId);
+        // Get session details to verify - access sessions mapping directly
+        (,,,,,, uint256 provenTokens,,,,,) = marketplace.sessions(jobId);
         assertEq(provenTokens, 50, "Tokens should be updated");
     }
     
@@ -72,7 +72,7 @@ contract ProofJobIntegrationTest is Test {
         marketplace.submitProofOfWork(jobId, invalidProof, 100);
         
         // Verify tokens NOT updated
-        (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId);
+        (,,,,,, uint256 provenTokens,,,,,) = marketplace.sessions(jobId);
         assertEq(provenTokens, 0, "Tokens should not be updated for invalid proof");
     }
     
@@ -89,7 +89,7 @@ contract ProofJobIntegrationTest is Test {
         marketplace.submitProofOfWork(jobId, validProof, 100);
         
         // Verify tokens updated correctly
-        (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId);
+        (,,,,,, uint256 provenTokens,,,,,) = marketplace.sessions(jobId);
         assertEq(provenTokens, 75, "Tokens should match claim");
     }
     
@@ -113,7 +113,7 @@ contract ProofJobIntegrationTest is Test {
         marketplace.submitProofOfWork(jobId, proof, 30);
         
         // Verify new system was used
-        (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId);
+        (,,,,,, uint256 provenTokens,,,,,) = marketplace.sessions(jobId);
         assertEq(provenTokens, 30, "New proof system should verify");
     }
     
@@ -135,7 +135,7 @@ contract ProofJobIntegrationTest is Test {
         marketplace.submitProofOfWork(jobId, proof2, 30);
         
         // Verify accumulated tokens
-        (,,,,uint256 provenTokens,,,) = marketplace.getSessionDetails(jobId);
+        (,,,,,, uint256 provenTokens,,,,,) = marketplace.sessions(jobId);
         assertEq(provenTokens, 55, "Tokens should accumulate");
     }
     
