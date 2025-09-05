@@ -108,6 +108,10 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     // Track total earnings credited per host for analytics
     mapping(address => uint256) public totalEarningsCredited;
     
+    // Treasury accumulation for gas efficiency
+    uint256 public accumulatedTreasuryETH;
+    mapping(address => uint256) public accumulatedTreasuryTokens;
+    
     // New mappings for session support
     mapping(uint256 => SessionDetails) public sessions;
     mapping(uint256 => ProofSubmission[]) public sessionProofs;
@@ -132,6 +136,8 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
     event EarningsCredited(address indexed host, uint256 amount, address token);
     event HostEarningsUpdated(address indexed hostEarnings);
     event HostEarningsInitializationRequired(address indexed hostEarnings);
+    event TreasuryFeesAccumulated(uint256 amount, address token);
+    event TreasuryFeesWithdrawn(uint256 amount, address token);
     
     // New events for session support
     event SessionJobCreated(
@@ -843,7 +849,9 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
             }
             
             if (treasuryFee > 0 && treasuryAddress != address(0)) {
-                require(token.transfer(treasuryAddress, treasuryFee));
+                // Accumulate treasury fees instead of direct transfer for gas efficiency
+                accumulatedTreasuryTokens[job.paymentToken] += treasuryFee;
+                emit TreasuryFeesAccumulated(treasuryFee, job.paymentToken);
             }
             if (refund > 0) {
                 require(token.transfer(job.renter, refund));
@@ -866,8 +874,9 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
             }
             
             if (treasuryFee > 0 && treasuryAddress != address(0)) {
-                (bool success, ) = payable(treasuryAddress).call{value: treasuryFee}("");
-                require(success);
+                // Accumulate treasury fees instead of direct transfer for gas efficiency
+                accumulatedTreasuryETH += treasuryFee;
+                emit TreasuryFeesAccumulated(treasuryFee, address(0));
             }
             if (refund > 0) {
                 (bool success, ) = payable(job.renter).call{value: refund}("");
@@ -972,7 +981,58 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         return IERC20(token).balanceOf(address(this));
     }
     
-    // Emergency withdrawal for stuck funds (simplified to save gas)
+    // Treasury fee withdrawal functions for accumulated fees
+    function withdrawTreasuryETH() external nonReentrant {
+        require(msg.sender == treasuryAddress);
+        uint256 amount = accumulatedTreasuryETH;
+        require(amount > 0);
+        
+        accumulatedTreasuryETH = 0;
+        (bool success, ) = payable(treasuryAddress).call{value: amount}("");
+        require(success);
+        
+        emit TreasuryFeesWithdrawn(amount, address(0));
+    }
+    
+    function withdrawTreasuryTokens(address token) external nonReentrant {
+        require(msg.sender == treasuryAddress);
+        require(token != address(0));
+        
+        uint256 amount = accumulatedTreasuryTokens[token];
+        require(amount > 0);
+        
+        accumulatedTreasuryTokens[token] = 0;
+        require(IERC20(token).transfer(treasuryAddress, amount));
+        
+        emit TreasuryFeesWithdrawn(amount, token);
+    }
+    
+    // Batch withdrawal for multiple tokens
+    function withdrawAllTreasuryFees(address[] calldata tokens) external nonReentrant {
+        require(msg.sender == treasuryAddress);
+        
+        // Withdraw ETH if any
+        if (accumulatedTreasuryETH > 0) {
+            uint256 ethAmount = accumulatedTreasuryETH;
+            accumulatedTreasuryETH = 0;
+            (bool success, ) = payable(treasuryAddress).call{value: ethAmount}("");
+            require(success);
+            emit TreasuryFeesWithdrawn(ethAmount, address(0));
+        }
+        
+        // Withdraw each token
+        for (uint256 i = 0; i < tokens.length; i++) {
+            address token = tokens[i];
+            uint256 amount = accumulatedTreasuryTokens[token];
+            if (amount > 0) {
+                accumulatedTreasuryTokens[token] = 0;
+                require(IERC20(token).transfer(treasuryAddress, amount));
+                emit TreasuryFeesWithdrawn(amount, token);
+            }
+        }
+    }
+    
+    // Emergency withdrawal for truly stuck funds (not accumulated fees)
     event EmergencyWithdrawal(address indexed recipient, uint256 amount, address token);
     
     function emergencyWithdraw(address token) external nonReentrant {
@@ -980,14 +1040,19 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         
         uint256 amount;
         if (token == address(0)) {
-            amount = address(this).balance;
-            require(amount > 0);
+            // For ETH, only withdraw amount exceeding accumulated fees
+            uint256 totalBalance = address(this).balance;
+            require(totalBalance > accumulatedTreasuryETH);
+            amount = totalBalance - accumulatedTreasuryETH;
             (bool ok, ) = payable(treasuryAddress).call{value: amount}("");
             require(ok);
         } else {
+            // For tokens, only withdraw amount exceeding accumulated fees
             IERC20 t = IERC20(token);
-            amount = t.balanceOf(address(this));
-            require(amount > 0);
+            uint256 totalBalance = t.balanceOf(address(this));
+            uint256 accumulated = accumulatedTreasuryTokens[token];
+            require(totalBalance > accumulated);
+            amount = totalBalance - accumulated;
             require(t.transfer(treasuryAddress, amount));
         }
         

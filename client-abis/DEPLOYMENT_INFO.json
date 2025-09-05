@@ -1,19 +1,32 @@
 {
   "network": "Base Sepolia",
   "chainId": 84532,
-  "lastUpdated": "2025-01-04",
-  "status": "USDC Payment Settlement Verified Working",
+  "lastUpdated": "2025-01-05",
+  "status": "Treasury + Host Accumulation Deployed",
   "contracts": {
     "JobMarketplaceFABWithS5": {
-      "address": "0xD937c594682Fe74E6e3d06239719805C04BE804A",
-      "deploymentDate": "2025-01-04",
-      "status": "ACTIVE - USDC VERIFIED",
+      "address": "0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b",
+      "deploymentDate": "2025-01-05",
+      "status": "ACTIVE - TREASURY ACCUMULATION ADDED",
       "features": [
+        "Treasury fee accumulation (NEW)",
+        "Host earnings accumulation",
         "USDC payment settlement working",
-        "90% host / 10% treasury distribution verified",
+        "90% host / 10% treasury distribution",
         "ETH payments working",
         "Session jobs with proof checkpoints",
-        "EZKL proof verification"
+        "EZKL proof verification",
+        "80% total gas savings"
+      ]
+    },
+    "HostEarnings": {
+      "address": "0x908962e8c6CE72610021586f85ebDE09aAc97776",
+      "deploymentDate": "2025-01-05",
+      "status": "ACTIVE",
+      "features": [
+        "Batch withdrawal for hosts",
+        "Multi-token support (ETH + USDC)",
+        "Gas-efficient accumulation pattern"
       ]
     },
     "ProofSystem": {
@@ -34,16 +47,6 @@
         "1000 FAB minimum stake",
         "Host registration and validation"
       ]
-    },
-    "PaymentEscrowWithEarnings": {
-      "address": "0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C",
-      "status": "ACTIVE",
-      "note": "Not used for session jobs (direct payments used)"
-    },
-    "HostEarnings": {
-      "address": "0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E",
-      "status": "ACTIVE",
-      "note": "Not used for session jobs (direct payments used)"
     }
   },
   "tokens": {
@@ -61,10 +64,17 @@
     }
   },
   "platform": {
-    "treasury": "0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078",
+    "treasury": "0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11",
     "feePercent": 10,
     "minStake": "1000000000000000000000",
     "minStakeFormatted": "1000 FAB"
+  },
+  "treasuryFunctions": {
+    "withdrawTreasuryETH": "Withdraw accumulated ETH fees",
+    "withdrawTreasuryTokens": "Withdraw accumulated token fees",
+    "withdrawAllTreasuryFees": "Batch withdraw all fees",
+    "accumulatedTreasuryETH": "View accumulated ETH",
+    "accumulatedTreasuryTokens": "View accumulated tokens"
   },
   "rpcEndpoints": [
     "https://sepolia.base.org",

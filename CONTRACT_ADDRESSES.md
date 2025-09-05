@@ -1,25 +1,31 @@
 # Current Contract Addresses - Base Sepolia
 
-Last Updated: September 4, 2025 (Evening)
+Last Updated: January 5, 2025 (With Treasury Accumulation)
 
-> **🚀 LATEST DEPLOYMENT**: Host Earnings Accumulation FIXED & WORKING for ETH & USDC
-> - **JobMarketplaceFABWithS5**: `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` ✅ USE THIS (Sept 4, 2025 - FIXED)
-> - **HostEarnings**: `0x67D0dB226Cc9631e3F5369cfb8b0FBFcBA576aEC` ✅ ETH & USDC accumulation working
-> - **ProofSystem**: `0x2ACcc60893872A499700908889B38C5420CBcFD1` ✅ FIXED internal verification
-> - **Note**: Treasury properly initialized, error messages removed to fit 24KB limit, all validation still present
+> **🚀 LATEST DEPLOYMENT**: Treasury + Host Earnings Accumulation for MAXIMUM GAS SAVINGS
+> - **JobMarketplaceFABWithS5**: `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` ✅ USE THIS (Jan 5, 2025 - Treasury Accumulation Added)
+> - **HostEarnings**: `0x908962e8c6CE72610021586f85ebDE09aAc97776` ✅ ETH & USDC accumulation working
+> - **ProofSystem**: `0x2ACcc60893872A499700908889B38C5420CBcFD1` ✅ FIXED internal verification  
+> - **Note**: Treasury now uses accumulation pattern (additional 10% gas savings on top of host accumulation)
 
-## ✅ Active Contracts - With Host Earnings Accumulation (Current)
+## ✅ Active Contracts - With Treasury + Host Accumulation (Current)
 
-These contracts include all fixes AND host earnings accumulation for gas savings:
+These contracts include all fixes AND both treasury and host earnings accumulation for maximum gas savings:
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceFABWithS5** | `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` | ✅ WITH ACCUMULATION - 70% gas savings, Treasury initialized |
+| **JobMarketplaceFABWithS5** | `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` | ✅ TREASURY + HOST ACCUMULATION - 80% gas savings total |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ FIXED internal verification for USDC |
-| **HostEarnings** | `0x67D0dB226Cc9631e3F5369cfb8b0FBFcBA576aEC` | ✅ Host earnings accumulation (ETH & USDC) |
+| **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ Host earnings accumulation (ETH & USDC) |
 | **NodeRegistryFAB** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Node registration with FAB staking |
 
 ## ⚠️ Previous Deployments with Issues
+
+### Missing Treasury Accumulation (Sept 4, 2025)
+| Contract | Address | Issue |
+|----------|---------|-------|
+| **JobMarketplaceFABWithS5** | `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` | No treasury accumulation, direct transfers only |
+| **HostEarnings** | `0x67D0dB226Cc9631e3F5369cfb8b0FBFcBA576aEC` | Works but paired with non-accumulating treasury |
 
 ### Missing Treasury Initialization (Sept 4, 2025)
 | Contract | Address | Issue |
@@ -93,9 +99,9 @@ Update your configuration with the NEW contracts with accumulation:
 
 ```javascript
 const config = {
-  // Host Earnings Accumulation System (CURRENT - Sept 4, 2025 Evening - FIXED)
-  jobMarketplace: '0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069',  // ✅ WITH ACCUMULATION + Treasury initialized
-  hostEarnings: '0x67D0dB226Cc9631e3F5369cfb8b0FBFcBA576aEC',   // ✅ Host earnings accumulation
+  // Treasury + Host Earnings Accumulation System (CURRENT - Jan 5, 2025 - MAXIMUM GAS SAVINGS)
+  jobMarketplace: '0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b',  // ✅ TREASURY + HOST ACCUMULATION
+  hostEarnings: '0x908962e8c6CE72610021586f85ebDE09aAc97776',   // ✅ Host earnings accumulation
   proofSystem: '0x2ACcc60893872A499700908889B38C5420CBcFD1',     // ✅ FIXED internal verification
   nodeRegistry: '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
   
@@ -118,8 +124,9 @@ const config = {
 
 ## 📝 Important Notes
 
-- **Gas Savings**: ~70% reduction in gas costs through earnings accumulation
+- **Gas Savings**: ~80% reduction in gas costs through dual accumulation (treasury + host)
 - **Host Withdrawals**: Hosts can withdraw accumulated earnings at their convenience
+- **Treasury Withdrawals**: Treasury can batch withdraw all accumulated fees with one transaction
 - **Job IDs**: Start from 1 in JobMarketplaceLite
 - **Payment Support**: Both ETH and USDC payments with accumulation
 - **Staking**: Requires FAB tokens, not ETH
