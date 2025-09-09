@@ -894,7 +894,11 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
             session.pricePerToken
         );
         
-        _sendPayments(job, session.assignedHost, payment, treasuryFee, 0);
+        // Calculate refund for unused tokens (FIX: was hardcoded to 0)
+        uint256 totalCost = session.provenTokens * session.pricePerToken;
+        uint256 refund = session.depositAmount > totalCost ? session.depositAmount - totalCost : 0;
+        
+        _sendPayments(job, session.assignedHost, payment, treasuryFee, refund);
         
         session.status = SessionStatus.Completed;
         emit HostClaimedWithProof(jobId, msg.sender, session.provenTokens, payment);

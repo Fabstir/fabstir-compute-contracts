@@ -1,10 +1,12 @@
 # Withdrawal Process Guide - Two-Step Accumulation System
 
-**Last Updated: January 14, 2025**
+**Last Updated: January 14, 2025 (v2 - Refund Bug Fixed)**
 
 ## Overview
 
 The Fabstir marketplace uses a **two-step accumulation and withdrawal pattern** for maximum gas efficiency. Instead of direct payments on each job completion, funds accumulate in smart contracts and are withdrawn in batch operations, saving ~80% in gas costs.
+
+> **Important Update (Jan 14 v2)**: Fixed critical bug where users weren't receiving refunds for unused tokens when using `claimWithProof()`. Users now correctly receive automatic refunds for any unused deposit amount.
 
 ## The Two-Step Process
 
@@ -212,7 +214,7 @@ await marketplace.withdrawTreasuryTokens(usdcAddress);
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
-| **JobMarketplace** | `0xc5BACFC1d4399c161034bca106657c0e9A528256` | Treasury fee accumulation |
+| **JobMarketplace** | `0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0` | Treasury fee accumulation |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | Host earnings accumulation |
 | **USDC Token** | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Primary payment token |
 | **Treasury** | `0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11` | Platform fee recipient |

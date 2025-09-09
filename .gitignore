@@ -56,3 +56,7 @@ force-deploy.sh
 debug-*.js
 test-*.js
 check-*.js
+scripts/*.js
+scripts/*.sh
+verify-host-earnings.sh
+script/DeployOptimizedMarketplace.s.sol

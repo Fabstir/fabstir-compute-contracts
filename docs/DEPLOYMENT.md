@@ -8,7 +8,7 @@
 
 | Contract | Address | Status | Notes |
 |----------|---------|--------|-------|
-| **JobMarketplaceFABWithS5** | `0xc5BACFC1d4399c161034bca106657c0e9A528256` | ✅ LIVE | Fixed jobs mapping, authorized |
+| **JobMarketplaceFABWithS5** | `0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0` | ✅ LIVE | Refund bug fixed, authorized |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ LIVE | Internal verification fixed |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ LIVE | Accumulation working |
 | **NodeRegistryFAB** | `0x039AB5d5e8D5426f9963140202F506A2Ce6988F9` | ✅ LIVE | Re-registration fixed |
@@ -89,8 +89,8 @@ cast send $MARKETPLACE_ADDRESS \
 
 ```javascript
 const CONTRACTS = {
-  // Core Contracts (LATEST - Jan 14, 2025)
-  jobMarketplace: '0xc5BACFC1d4399c161034bca106657c0e9A528256',
+  // Core Contracts (LATEST - Jan 14, 2025 v2)
+  jobMarketplace: '0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0',
   proofSystem: '0x2ACcc60893872A499700908889B38C5420CBcFD1',
   hostEarnings: '0x908962e8c6CE72610021586f85ebDE09aAc97776',
   nodeRegistry: '0x039AB5d5e8D5426f9963140202F506A2Ce6988F9',
@@ -153,7 +153,7 @@ User → JobMarketplace → HostEarnings/Treasury
 
 ## 🔍 Verification Links
 
-- JobMarketplace: [View on BaseScan](https://sepolia.basescan.org/address/0xc5BACFC1d4399c161034bca106657c0e9A528256)
+- JobMarketplace: [View on BaseScan](https://sepolia.basescan.org/address/0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0)
 - ProofSystem: [View on BaseScan](https://sepolia.basescan.org/address/0x2ACcc60893872A499700908889B38C5420CBcFD1)
 - HostEarnings: [View on BaseScan](https://sepolia.basescan.org/address/0x908962e8c6CE72610021586f85ebDE09aAc97776)
 - NodeRegistry: [View on BaseScan](https://sepolia.basescan.org/address/0x039AB5d5e8D5426f9963140202F506A2Ce6988F9)
@@ -162,6 +162,7 @@ User → JobMarketplace → HostEarnings/Treasury
 
 | Date | Address | Issue |
 |------|---------|-------|
+| Jan 14, 2025 v1 | `0xc5BACFC1d4399c161034bca106657c0e9A528256` | Refund bug - users lose unused deposits |
 | Jan 9, 2025 | `0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6` | Jobs mapping bug |
 | Jan 5, 2025 | `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` | Wrong NodeRegistry |
 | Sept 4, 2024 | `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` | No accumulation |

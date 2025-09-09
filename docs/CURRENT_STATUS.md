@@ -8,17 +8,18 @@ This document provides the current state of the Fabstir P2P LLM marketplace smar
 
 The system is now fully functional with all major issues resolved:
 
-### ✅ Latest Fixes (January 14, 2025)
+### ✅ Latest Fixes (January 14, 2025 - v2)
 - **Jobs Mapping**: Fixed initialization for session jobs
 - **HostEarnings Authorization**: New marketplace properly authorized
 - **Session Completion**: Successfully tested with Job ID 28
 - **Gas Optimization**: 80% reduction through dual accumulation
+- **User Refunds**: Fixed critical bug where users weren't receiving refunds for unused tokens in claimWithProof flow
 
 ## 📍 Active Contract Addresses (Base Sepolia)
 
 | Contract | Address | Status | Notes |
 |----------|---------|--------|-------|
-| **JobMarketplaceFABWithS5** | `0xc5BACFC1d4399c161034bca106657c0e9A528256` | ✅ LIVE | Fixed version (Jan 14) |
+| **JobMarketplaceFABWithS5** | `0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0` | ✅ LIVE | Refund fix (Jan 14 v2) |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ LIVE | Internal verification fixed |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ LIVE | Authorized for new marketplace |
 | **NodeRegistryFAB** | `0x039AB5d5e8D5426f9963140202F506A2Ce6988F9` | ✅ LIVE | Re-registration bug fixed |
@@ -71,6 +72,7 @@ const tokens = await marketplace.getProvenTokens(jobId);
 
 | Contract | Address | Issue |
 |----------|---------|-------|
+| JobMarketplaceFABWithS5 | `0xc5BACFC1d4399c161034bca106657c0e9A528256` | Refund bug - users lose deposits |
 | JobMarketplaceFABWithS5 | `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` | Wrong NodeRegistry |
 | JobMarketplaceFABWithS5 | `0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6` | Jobs mapping bug (Jan 9) |
 | JobMarketplaceFABWithS5 | `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` | No treasury accumulation |
