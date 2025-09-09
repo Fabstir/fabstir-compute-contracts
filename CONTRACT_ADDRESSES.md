@@ -1,12 +1,13 @@
 # Current Contract Addresses - Base Sepolia
 
-Last Updated: January 5, 2025 (With Treasury Accumulation)
+Last Updated: January 9, 2025 (New JobMarketplace with Fixed NodeRegistry)
 
-> **🚀 LATEST DEPLOYMENT**: Treasury + Host Earnings Accumulation for MAXIMUM GAS SAVINGS
-> - **JobMarketplaceFABWithS5**: `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` ✅ USE THIS (Jan 5, 2025 - Treasury Accumulation Added)
+> **🚀 LATEST DEPLOYMENT**: Fixed NodeRegistry Integration + Treasury/Host Accumulation
+> - **JobMarketplaceFABWithS5**: `0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6` ✅ USE THIS (Jan 9, 2025 - Uses Fixed NodeRegistry)
 > - **HostEarnings**: `0x908962e8c6CE72610021586f85ebDE09aAc97776` ✅ ETH & USDC accumulation working
-> - **ProofSystem**: `0x2ACcc60893872A499700908889B38C5420CBcFD1` ✅ FIXED internal verification  
-> - **Note**: Treasury now uses accumulation pattern (additional 10% gas savings on top of host accumulation)
+> - **ProofSystem**: `0x2ACcc60893872A499700908889B38C5420CBcFD1` ✅ FIXED internal verification
+> - **NodeRegistryFAB**: `0x039AB5d5e8D5426f9963140202F506A2Ce6988F9` ✅ FIXED re-registration bug
+> - **Note**: This deployment uses the FIXED NodeRegistry where hosts can re-register after unregistering
 
 ## ✅ Active Contracts - With Treasury + Host Accumulation (Current)
 
@@ -14,12 +15,17 @@ These contracts include all fixes AND both treasury and host earnings accumulati
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceFABWithS5** | `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` | ✅ TREASURY + HOST ACCUMULATION - 80% gas savings total |
+| **JobMarketplaceFABWithS5** | `0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6` | ✅ OPTIMIZED + Fixed NodeRegistry - Jan 9, 2025 |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ FIXED internal verification for USDC |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ Host earnings accumulation (ETH & USDC) |
-| **NodeRegistryFAB** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Node registration with FAB staking |
+| **NodeRegistryFAB** | `0x039AB5d5e8D5426f9963140202F506A2Ce6988F9` | Node registration with FAB staking (fixed re-registration bug) |
 
 ## ⚠️ Previous Deployments with Issues
+
+### Wrong NodeRegistry (Jan 5, 2025)
+| Contract | Address | Issue |
+|----------|---------|-------|
+| **JobMarketplaceFABWithS5** | `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` | Uses old buggy NodeRegistry, hosts can't re-register |
 
 ### Missing Treasury Accumulation (Sept 4, 2025)
 | Contract | Address | Issue |
@@ -79,6 +85,7 @@ These contracts are from earlier deployments and are no longer compatible with t
 |----------|---------|-------|
 | JobMarketplaceFABWithEarnings | `0x1A173A3703858D2F5EA4Bf48dDEb53FD4278187D` | No S5 CID support - hosts receive placeholder text |
 | NodeRegistry (Original) | `0xF6420Cc8d44Ac92a6eE29A5E8D12D00aE91a73B3` | Used ETH staking instead of FAB |
+| NodeRegistryFAB (Buggy) | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Re-registration bug - couldn't register after unregister |
 | JobMarketplace (Original) | `0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6` | No earnings accumulation |
 | PaymentEscrow (Original) | `0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894` | No earnings support |
 
@@ -100,10 +107,10 @@ Update your configuration with the NEW contracts with accumulation:
 ```javascript
 const config = {
   // Treasury + Host Earnings Accumulation System (CURRENT - Jan 5, 2025 - MAXIMUM GAS SAVINGS)
-  jobMarketplace: '0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b',  // ✅ TREASURY + HOST ACCUMULATION
+  jobMarketplace: '0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6',  // ✅ NEW - Uses fixed NodeRegistry
   hostEarnings: '0x908962e8c6CE72610021586f85ebDE09aAc97776',   // ✅ Host earnings accumulation
   proofSystem: '0x2ACcc60893872A499700908889B38C5420CBcFD1',     // ✅ FIXED internal verification
-  nodeRegistry: '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
+  nodeRegistry: '0x039AB5d5e8D5426f9963140202F506A2Ce6988F9',  // ✅ FIXED re-registration bug
   
   // Tokens
   fabToken: '0xC78949004B4EB6dEf2D66e49Cd81231472612D62',

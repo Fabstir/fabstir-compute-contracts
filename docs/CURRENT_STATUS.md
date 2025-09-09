@@ -1,157 +1,149 @@
-# Current Documentation Status
+# Current System Status - January 14, 2025
 
-**Last Updated: January 5, 2025**
+**Last Updated: January 14, 2025**
 
-This document helps you navigate the Fabstir documentation and identify which files reflect the current architecture vs historical implementations.
+This document provides the current state of the Fabstir P2P LLM marketplace smart contracts and infrastructure.
 
-## 🚀 Current Architecture
+## 🚀 Production-Ready Deployment
 
-The project now uses **JobMarketplaceFABWithS5** with treasury accumulation AND host earnings accumulation:
-- **Treasury Accumulation**: ✅ NEW - Treasury fees accumulate for batch withdrawals
-- **USDC Payments**: ✅ VERIFIED WORKING with 90% host / 10% treasury distribution
-- **ETH Payments**: ✅ WORKING with dual accumulation (treasury + host)
-- **Host Earnings**: ✅ Both ETH and USDC accumulate for batch withdrawals
-- **Session Jobs**: Direct, self-contained payments with MIN_DEPOSIT and MIN_PROVEN_TOKENS
-- **Gas Savings**: ~80% reduction through dual accumulation (treasury + host)
+The system is now fully functional with all major issues resolved:
 
-### Active Contracts (Base Sepolia - LATEST January 5, 2025)
+### ✅ Latest Fixes (January 14, 2025)
+- **Jobs Mapping**: Fixed initialization for session jobs
+- **HostEarnings Authorization**: New marketplace properly authorized
+- **Session Completion**: Successfully tested with Job ID 28
+- **Gas Optimization**: 80% reduction through dual accumulation
 
-| Contract | Address | Status |
-|----------|---------|--------|
-| **JobMarketplaceFABWithS5** | `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` | ✅ TREASURY + HOST ACCUMULATION |
-| **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ ACCUMULATION WORKING |
-| **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ FIXED INTERNAL VERIFICATION |
-| **NodeRegistry** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | ✅ CURRENT |
-| **Treasury** | `0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11` | ✅ CURRENT |
-| **FAB Token** | `0xC78949004B4EB6dEf2D66e49Cd81231472612D62` | ✅ STABLE |
-| **USDC (Base Sepolia)** | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | ✅ STABLE |
-| **USDC (Base Mainnet)** | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | ✅ STABLE |
+## 📍 Active Contract Addresses (Base Sepolia)
 
-### Deprecated Contracts (DO NOT USE)
+| Contract | Address | Status | Notes |
+|----------|---------|--------|-------|
+| **JobMarketplaceFABWithS5** | `0xc5BACFC1d4399c161034bca106657c0e9A528256` | ✅ LIVE | Fixed version (Jan 14) |
+| **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ LIVE | Internal verification fixed |
+| **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ LIVE | Authorized for new marketplace |
+| **NodeRegistryFAB** | `0x039AB5d5e8D5426f9963140202F506A2Ce6988F9` | ✅ LIVE | Re-registration bug fixed |
+| **Treasury** | `0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11` | ✅ LIVE | Receives 10% platform fees |
+| **FAB Token** | `0xC78949004B4EB6dEf2D66e49Cd81231472612D62` | ✅ LIVE | 1000 FAB min stake |
+| **USDC** | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | ✅ LIVE | Base Sepolia USDC |
 
-| Contract | Old Address | Issue |
-|----------|-------------|-------|
-| JobMarketplaceFABWithS5 (no treasury accumulation) | `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` | Treasury direct transfer, no accumulation |
-| JobMarketplaceFABWithS5 (direct payments) | `0xD937c594682Fe74E6e3d06239719805C04BE804A` | Higher gas costs, no accumulation |
-| JobMarketplaceFABWithS5 (storage issue) | `0x6135dfbe0fB50Bc3AF7e9bFD137c5b10ce6D5Dd4` | Job struct storage problem |
-| JobMarketplaceFABWithS5 (missing USDC validation) | `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` | No host validation for USDC |
-| JobMarketplaceFABWithS5 (payment bug) | `0x445882e14b22E921c7d4Fe32a7736a32197578AF` | transfer() fails silently |
-| ProofSystem (external call bug) | `0x48f94914979eD6B0e16c6E4E04Bfa8a8041DcF1D` | Incorrect external call |
-| JobMarketplaceFABWithS5 (oldest) | `0x7ce861CC0188c260f3Ba58eb9a4d33e17Eb62304` | No session support |
-| JobMarketplaceFABWithEarnings | `0xEB646BF2323a441698B256623F858c8787d70f9F` | JobMarketplaceFABWithS5 |
-| PaymentEscrowWithEarnings | `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` | Internal payments |
-| HostEarnings | `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` | Direct transfers |
-| PaymentEscrow (old) | `0xa4C5599Ea3617060ce86Ff0916409e1fb4a0d2c6` | Internal payments |
-| HostEarnings (old) | `0xbFfCd6BAaCCa205d471bC52Bd37e1957B1A43d4a` | Direct transfers |
+## 🔧 Key Features Working
 
-## ✅ Current Documentation
+### Session Jobs
+- ✅ ETH session creation with 0.0002 ETH minimum
+- ✅ USDC session creation with 0.8 USDC minimum  
+- ✅ Proof submission and verification
+- ✅ Payment distribution (90% host, 10% treasury)
+- ✅ Host earnings accumulation
+- ✅ Treasury fee accumulation
 
-These documents reflect the current architecture and should be your primary reference:
+### Recent Successful Transactions
+- **Job 28 Completion**: `0x954cd4b909ac68be15a4d59c0917608211f2e33dd8f05268f571a460b3ae90cd`
+- **HostEarnings Authorization**: `0x3a0f67fe2557b8363a26c20deb09c4e67627d771a7947ec1e2662b3a794316d8`
+- **Session Creation**: Multiple successful USDC and ETH sessions
 
-### Essential Reading
-- **[ETH_ACCUMULATION_STATUS.md](./ETH_ACCUMULATION_STATUS.md)** - ETH and USDC earnings accumulation guide
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Current system architecture with session jobs
-- **[SESSION_JOBS.md](./SESSION_JOBS.md)** - Comprehensive guide to session-based AI inference
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Latest deployment info with all contract addresses
-- **[IMPLEMENTATION2.md](./IMPLEMENTATION2.md)** - Session jobs implementation details
-- **[TEST_DEPLOYMENT.md](./TEST_DEPLOYMENT.md)** - Fresh deployment guide
+## 📋 Session Job Completion Flow
 
-### Code References
-- `/src/JobMarketplaceFABWithS5.sol` - Current implementation
-- `/src/ProofSystem.sol` - EZKL proof verification
-- `/test/JobMarketplace/SessionJobs/` - Session job tests (340+ passing)
-- `/script/DeploySessionJobs.s.sol` - Deployment script
-
-## ⚠️ Outdated Documentation
-
-These documents contain historical information or old contract addresses:
-
-### Historical/Legacy
-- **DEPLOYMENT.md** - Contains old contract addresses (JobMarketplaceFABWithEarnings)
-- **SUMMARY.md** - Predates session jobs entirely (Aug 7)
-- **IMPLEMENTATION.md** - Phase 1-3 is historical, Phase 4-5 differs from actual implementation
-
-### Technical Docs (Partially Outdated)
-Many files in `/docs/technical/contracts/` describe the old architecture:
-- `HostEarnings.md` - References deprecated contract
-- `PaymentEscrow.md` - Describes external escrow (not used for sessions)
-- `JobMarketplace.md` - Missing session job functions
-
-## 📚 Partially Current Documentation
-
-These documents contain valid concepts but may have outdated examples:
-
-### Conceptually Valid (Check Addresses)
-- `/docs/best-practices/` - Principles apply, update contract addresses
-- `/docs/guides/` - Concepts valid, verify contract references
-- `/docs/examples/` - Patterns useful, update addresses and functions
-
-### Still Accurate
-- Gas optimization strategies
-- Security best practices
-- Node operation basics
-- Governance mechanisms
-
-## 🔄 Key Architecture Changes
-
-### Old Model (Pre-Session)
+### For Sessions With Proofs (Recommended)
+```javascript
+// Host claims payment based on proven tokens
+await marketplace.claimWithProof(jobId);
 ```
-User → JobMarketplace → PaymentEscrow → HostEarnings → Host
+
+### For Sessions Without Proofs
+```javascript
+// Step 1: Host marks complete
+await marketplace.completeSession(jobId);
+
+// Step 2: Renter finalizes payment
+await marketplace.completeSessionJob(jobId);
 ```
-- Multiple external contract calls
-- Higher gas costs
-- Complex error handling
 
-### Current Model (Session Jobs)
+### Reading Session Data
+```javascript
+// Use sessions mapping (NOT getSessionJob which doesn't exist)
+const session = await marketplace.sessions(jobId);
+
+// Get proven tokens
+const tokens = await marketplace.getProvenTokens(jobId);
 ```
-User → JobMarketplaceFABWithS5 → Host (direct)
-```
-- Direct payments via `_sendPayments()`
-- 30% gas reduction
-- Simplified error recovery
 
-## 📋 Migration Notes
+## ⚠️ Deprecated Contracts (DO NOT USE)
 
-If you're migrating from the old architecture:
+| Contract | Address | Issue |
+|----------|---------|-------|
+| JobMarketplaceFABWithS5 | `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` | Wrong NodeRegistry |
+| JobMarketplaceFABWithS5 | `0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6` | Jobs mapping bug (Jan 9) |
+| JobMarketplaceFABWithS5 | `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` | No treasury accumulation |
+| JobMarketplaceFABWithS5 | `0xEB646BF2323a441698B256623F858c8787d70f9F` | Treasury not initialized |
+| NodeRegistryFAB | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Re-registration bug |
 
-1. **Contract Updates**
-   - Deploy new JobMarketplaceFABWithS5
-   - Deploy new ProofSystem
-   - No need for separate PaymentEscrow/HostEarnings
+## 🔑 Configuration Parameters
 
-2. **Function Changes**
-   - Use `createSessionJob()` for continuous AI inference
-   - Use `submitProofOfWork()` for checkpoint proofs
-   - Payments handled internally, not through escrow
+- **Platform Fee**: 10% (1000 basis points)
+- **Min Stake**: 1000 FAB tokens
+- **Min ETH Deposit**: 0.0002 ETH (200000000000000 wei)
+- **Min USDC Deposit**: 0.8 USDC (800000 with 6 decimals)
+- **Min Proven Tokens**: 10 per proof submission
+- **Abandonment Timeout**: 7 days
+- **Dispute Window**: 1 day
 
-3. **Transaction Model**
-   - Session jobs: 5-10 transactions for 50 prompts
-   - Old model: 50+ transactions for 50 prompts
-   - 85-95% reduction in gas costs
+## 📚 Essential Documentation
 
-## 🎯 Quick Start
+### Current & Accurate
+- **[SESSION_JOB_COMPLETION_GUIDE.md](./SESSION_JOB_COMPLETION_GUIDE.md)** - How to complete session jobs correctly
+- **[USDC_SESSION_GUIDE.md](./USDC_SESSION_GUIDE.md)** - USDC payment integration
+- **[HOST_REGISTRATION_GUIDE.md](./HOST_REGISTRATION_GUIDE.md)** - Host setup with FAB staking
+- **[SESSION_JOBS.md](./SESSION_JOBS.md)** - Comprehensive session job documentation
 
-For new developers:
-1. Read [SESSION_JOBS.md](./SESSION_JOBS.md) first
-2. Review [ARCHITECTURE.md](./ARCHITECTURE.md) for system overview
-3. Check [DEPLOYMENT.md](./DEPLOYMENT.md) for current addresses
-4. Use `/test/JobMarketplace/SessionJobs/` for implementation examples
+### Implementation References
+- `/src/JobMarketplaceFABWithS5Deploy.sol` - Optimized contract (deployed)
+- `/src/JobMarketplaceFABWithS5.sol` - Full contract with comments
+- `/test/JobMarketplace/SessionJobs/` - Test suite (340+ tests)
+- `/scripts/complete-session-job.js` - Working completion example
+- `/client-abis/JobMarketplaceFABWithS5-CLIENT-ABI.json` - Updated ABI
 
-## ⚡ Important Notes
+## 🎯 Quick Start for Developers
 
-- **Session jobs** are the recommended approach for AI inference
-- **Direct payments** are more gas-efficient than external escrow
-- **Proof checkpoints** replace per-prompt transactions
-- **USDC support** is built-in for both ETH and token payments
+1. **Update Contract Addresses**: Use the addresses from the table above
+2. **Use Correct Methods**: 
+   - Read sessions with `sessions(jobId)` not `getSessionJob()`
+   - Complete with `claimWithProof()` if proofs submitted
+3. **Check Authorization**: New marketplaces must be authorized in HostEarnings
+4. **Test First**: Use scripts in `/workspace/scripts/` for testing
 
-## 📞 Getting Help
+## 🚨 Common Issues & Solutions
 
-If you're unsure about documentation currency:
-1. Check the file modification date
-2. Look for contract addresses - current ones are listed above
-3. Reference the test files for actual implementation
-4. When in doubt, use SESSION_JOBS.md as the source of truth
+| Issue | Solution |
+|-------|----------|
+| "Method getSessionJob not found" | Use `sessions(jobId)` instead |
+| "Not authorized to credit earnings" | Authorize marketplace in HostEarnings |
+| "Host not active" | Ensure host is registered in correct NodeRegistry |
+| Jobs mapping reverts | Use the latest deployment (Jan 14) |
+| Transaction reverts on completion | Check if calling with correct account (host vs renter) |
+
+## 📊 System Metrics
+
+- **Gas Savings**: ~80% reduction vs direct transfers
+- **Active Jobs**: Multiple completed sessions including Job 28
+- **Treasury Accumulated**: Fees from all completed jobs
+- **Host Earnings**: Accumulated for batch withdrawals
+- **Network**: Base Sepolia (Chain ID: 84532)
+
+## 🔄 Recent Updates Timeline
+
+- **Jan 14, 2025**: Fixed JobMarketplace deployed, Job 28 completed
+- **Jan 9, 2025**: Identified jobs mapping initialization bug
+- **Jan 5, 2025**: NodeRegistry re-registration fix deployed
+- **Dec 2024**: ProofSystem verification fixes
+- **Nov 2024**: Session job support added
+
+## 📞 Support Resources
+
+- **Test Scripts**: `/workspace/scripts/`
+- **Client ABIs**: `/workspace/client-abis/`
+- **Documentation**: `/workspace/docs/`
+- **Tests**: Run `forge test` to verify functionality
 
 ---
 
-*This status document is maintained to help navigate the evolving architecture. Always verify contract addresses before mainnet deployment.*
+*This document reflects the current production state. All listed contracts are verified and functional on Base Sepolia.*

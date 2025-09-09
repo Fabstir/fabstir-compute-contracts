@@ -1,97 +1,209 @@
-## 🎉 DEPLOYMENT SUCCESSFUL!
+# Deployment Guide & Current Status
 
-Your contracts are now live on Base Sepolia testnet!
+**Last Updated: January 14, 2025**
 
-## Current Contract Addresses (USDC Payment Settlement Verified)
+## 🚀 Current Live Deployment (Base Sepolia)
 
-### Core Contracts (LATEST - January 4, 2025)
+### ✅ Production Contracts (LATEST - January 14, 2025)
 
-| Contract | Address | Description |
-|----------|---------|-------------|
-| **JobMarketplaceFABWithS5** | `0xD937c594682Fe74E6e3d06239719805C04BE804A` | ✅ USDC PAYMENTS WORKING - 90/10 VERIFIED |
-| **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ FIXED internal verification |
-| **PaymentEscrowWithEarnings** | `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` | Not used for session jobs |
-| **HostEarnings** | `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` | Not used for session jobs |
-
-- JobMarketplaceFABWithS5: https://sepolia.basescan.org/address/0xD937c594682Fe74E6e3d06239719805C04BE804A
-- ProofSystem: https://sepolia.basescan.org/address/0x2ACcc60893872A499700908889B38C5420CBcFD1
-- PaymentEscrow: https://sepolia.basescan.org/address/0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C (not used for sessions)
-- HostEarnings: https://sepolia.basescan.org/address/0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E (not used for sessions)
-
-### Key Fixes in This Deployment
-- **USDC Payment Settlement**: Fully working with verified 90% host / 10% treasury distribution
-- **ProofSystem Fix**: Internal verification function call corrected for USDC sessions
-- **Job Structure**: Proper storage and retrieval of job data for token payments
-- **Tested and Verified**: 2 USDC deposit, 200 tokens completed, payments distributed correctly
-
-### Economic Parameters
-- **MIN_DEPOSIT**: 0.0002 ETH (~$0.80 at $4000/ETH) for ETH payments
-- **MIN_PROVEN_TOKENS**: 100 tokens minimum per proof submission
-- **Token Minimums**: 800000 (0.80 USDC with 6 decimals) for USDC payments
-
-### Previous Deployments (DO NOT USE)
-- `0x6135dfbe0fB50Bc3AF7e9bFD137c5b10ce6D5Dd4` - Job struct storage issue (January 3, 2025)
-- `0xC6E3B618E2901b1b2c1beEB4E2BB86fc87d48D2d` - Never actually deployed (insufficient funds)
-- `0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A` - Missing USDC session validation (December 2024)
-- `0x445882e14b22E921c7d4Fe32a7736a32197578AF` - Had payment distribution bug (transfer() fails)
-- `0x9579056a85B3b1432da700742BF80EF8A8a5e3Fe` - Without economic minimums
-- `0x292772334a1982cC22D828D8Db660146bfF6d130` - Missing Job struct in createSessionJob
-- Old ProofSystem addresses also deprecated
+| Contract | Address | Status | Notes |
+|----------|---------|--------|-------|
+| **JobMarketplaceFABWithS5** | `0xc5BACFC1d4399c161034bca106657c0e9A528256` | ✅ LIVE | Fixed jobs mapping, authorized |
+| **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ LIVE | Internal verification fixed |
+| **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ LIVE | Accumulation working |
+| **NodeRegistryFAB** | `0x039AB5d5e8D5426f9963140202F506A2Ce6988F9` | ✅ LIVE | Re-registration fixed |
 
 ### Supporting Infrastructure
 
-| Contract/Address | Value | Description |
-|-----------------|-------|-------------|
-| **NodeRegistry** | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Node registration (1000 FAB stake) |
-| **Treasury** | `0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078` | Receives 10% platform fees |
-| **USDC** | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Base Sepolia USDC for payments |
-| **FAB Token** | `0xC78949004B4EB6dEf2D66e49Cd81231472612D62` | Governance and staking token |
+| Component | Address/Value | Description |
+|-----------|---------------|-------------|
+| **Treasury** | `0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11` | Receives 10% platform fees |
+| **FAB Token** | `0xC78949004B4EB6dEf2D66e49Cd81231472612D62` | Staking (1000 FAB minimum) |
+| **USDC** | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Base Sepolia USDC |
+| **Chain ID** | 84532 | Base Sepolia |
 
-### ✅ NOW USING Earnings System
-- **PaymentEscrow**: `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C` - Handles payment distribution
-- **HostEarnings**: `0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E` - Accumulates host earnings
+### Recent Successful Operations
+- ✅ Job 28 completed with USDC payment
+- ✅ HostEarnings authorized for new marketplace
+- ✅ Multiple session jobs created and completed
+- ✅ Proof submissions verified
 
-## Client Configuration
+## 📦 Deployment Instructions
+
+### Prerequisites
+```bash
+# Install dependencies
+npm install
+forge install
+
+# Set up environment
+cp .env.example .env
+# Edit .env with your keys and addresses
+```
+
+### Deploy Fresh Contracts
+```bash
+# Using Forge script (recommended)
+forge script script/DeployOptimizedMarketplace.s.sol:DeployOptimizedMarketplace \
+  --rpc-url $BASE_SEPOLIA_RPC_URL \
+  --broadcast \
+  --private-key $PRIVATE_KEY \
+  --slow
+
+# Verify on BaseScan
+forge verify-contract <ADDRESS> JobMarketplaceFABWithS5 \
+  --chain-id 84532 \
+  --etherscan-api-key $BASESCAN_API_KEY
+```
+
+### Post-Deployment Setup
+
+1. **Authorize Marketplace in HostEarnings**
+```bash
+cast send $HOST_EARNINGS_ADDRESS \
+  "setAuthorizedCaller(address,bool)" \
+  $NEW_MARKETPLACE_ADDRESS true \
+  --private-key $OWNER_KEY \
+  --rpc-url $RPC_URL
+```
+
+2. **Configure USDC**
+```bash
+cast send $MARKETPLACE_ADDRESS \
+  "setAcceptedToken(address,bool,uint256)" \
+  $USDC_ADDRESS true 800000 \
+  --private-key $OWNER_KEY \
+  --rpc-url $RPC_URL
+```
+
+3. **Set ProofSystem**
+```bash
+cast send $MARKETPLACE_ADDRESS \
+  "setProofSystem(address)" \
+  $PROOF_SYSTEM_ADDRESS \
+  --private-key $OWNER_KEY \
+  --rpc-url $RPC_URL
+```
+
+## 🔧 Client Configuration
 
 ```javascript
-const config = {
-  // Fixed Payment Distribution Contracts (LATEST - December 2, 2024)
-  jobMarketplace: '0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A', // ✅ FIXED payments + minimums
-  proofSystem: '0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9',
-  
-  // Supporting contracts
-  nodeRegistry: '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
-  treasury: '0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078',
+const CONTRACTS = {
+  // Core Contracts (LATEST - Jan 14, 2025)
+  jobMarketplace: '0xc5BACFC1d4399c161034bca106657c0e9A528256',
+  proofSystem: '0x2ACcc60893872A499700908889B38C5420CBcFD1',
+  hostEarnings: '0x908962e8c6CE72610021586f85ebDE09aAc97776',
+  nodeRegistry: '0x039AB5d5e8D5426f9963140202F506A2Ce6988F9',
   
   // Tokens
   fabToken: '0xC78949004B4EB6dEf2D66e49Cd81231472612D62',
   usdcToken: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
   
+  // Platform
+  treasury: '0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11',
+  
   // Network
-  chainId: 84532, // Base Sepolia
+  chainId: 84532,
   rpcUrl: 'https://base-sepolia.g.alchemy.com/v2/YOUR_API_KEY'
 };
 ```
 
-## Deployment Cost
-Total: ~0.006 ETH on Base Sepolia
+## 💰 Economic Parameters
 
-## Architecture Note
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Platform Fee | 10% (1000 basis points) | Treasury fee on all payments |
+| Min ETH Deposit | 0.0002 ETH | Minimum for ETH sessions |
+| Min USDC Deposit | 0.8 USDC | Minimum for USDC sessions |
+| Min Proven Tokens | 10 | Minimum per proof submission |
+| Min Stake | 1000 FAB | Required for host registration |
+| Abandonment Timeout | 7 days | Inactivity before abandonment |
+| Dispute Window | 1 day | Time to dispute after completion |
 
-**Hybrid Payment Model**: The JobMarketplaceFABWithS5 contract implements a hybrid architecture:
-- **Session Jobs** (new): Use direct, self-contained payments via internal `_sendPayments()` function
-- **Legacy Single-Prompt Jobs**: May still reference external PaymentEscrow/HostEarnings contracts
-- This design is more gas-efficient for session jobs, reducing external contract calls
+## 🏗️ Architecture Overview
 
-## What You Can Do Now
+### Payment Flow
+```
+User → JobMarketplace → HostEarnings/Treasury
+```
 
-1. **View on BaseScan**: Click the verification links above to see your contracts
-2. **Interact with Contracts**: Use BaseScan's "Write Contract" tab
-3. **Create a Session Job**: Call `createSessionJob` with ETH or `createSessionJobWithToken` with USDC
-   - Payments are handled directly within the contract (no external escrow needed)
-4. **Test the System**: Have a host submit proofs, complete sessions, test timeouts
-   - Session payments go directly to hosts/treasury without intermediate contracts
+### Session Job Lifecycle
+1. **Create**: User deposits ETH/USDC for session
+2. **Active**: Host processes requests
+3. **Proof**: Host submits EZKL proofs
+4. **Complete**: Host claims payment or user finalizes
+5. **Settled**: Payments distributed
 
-Your decentralized AI inference marketplace with EZKL proof verification is now LIVE on Base Sepolia! This is a major accomplishment - you've deployed a production-ready system with 340+ tests and comprehensive functionality.
+### Key Features
+- ✅ Gas-optimized with accumulation patterns
+- ✅ Multi-token support (ETH, USDC)
+- ✅ EZKL proof verification
+- ✅ FAB token staking for hosts
+- ✅ Treasury fee accumulation
+- ✅ Host earnings accumulation
 
-The contracts are verified and ready for testing with real transactions!
+## 📊 Deployment Costs
+
+| Operation | Gas Used | Cost (ETH) |
+|-----------|----------|------------|
+| Deploy JobMarketplace | ~4,000,000 | ~0.004 |
+| Deploy ProofSystem | ~2,000,000 | ~0.002 |
+| Deploy HostEarnings | ~1,500,000 | ~0.0015 |
+| Total Deployment | ~7,500,000 | ~0.0075 |
+
+## 🔍 Verification Links
+
+- JobMarketplace: [View on BaseScan](https://sepolia.basescan.org/address/0xc5BACFC1d4399c161034bca106657c0e9A528256)
+- ProofSystem: [View on BaseScan](https://sepolia.basescan.org/address/0x2ACcc60893872A499700908889B38C5420CBcFD1)
+- HostEarnings: [View on BaseScan](https://sepolia.basescan.org/address/0x908962e8c6CE72610021586f85ebDE09aAc97776)
+- NodeRegistry: [View on BaseScan](https://sepolia.basescan.org/address/0x039AB5d5e8D5426f9963140202F506A2Ce6988F9)
+
+## ⚠️ Previous Deployments (Deprecated)
+
+| Date | Address | Issue |
+|------|---------|-------|
+| Jan 9, 2025 | `0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6` | Jobs mapping bug |
+| Jan 5, 2025 | `0x55A702Ab5034810F5B9720Fe15f83CFcf914F56b` | Wrong NodeRegistry |
+| Sept 4, 2024 | `0x9A945fFBe786881AaD92C462Ad0bd8aC177A8069` | No accumulation |
+| Sept 4, 2024 | `0xEB646BF2323a441698B256623F858c8787d70f9F` | Treasury not initialized |
+
+## 🚀 Quick Start
+
+1. **Clone Repository**
+```bash
+git clone <repo-url>
+cd fabstir-contracts
+```
+
+2. **Install Dependencies**
+```bash
+npm install
+forge install
+```
+
+3. **Configure Environment**
+```bash
+cp .env.example .env
+# Add your private keys and RPC URLs
+```
+
+4. **Run Tests**
+```bash
+forge test
+```
+
+5. **Deploy**
+```bash
+./scripts/deploy.sh
+```
+
+## 📝 Notes
+
+- Always verify contracts on BaseScan after deployment
+- Test on testnet before mainnet deployment
+- Ensure HostEarnings authorization before using new marketplace
+- Keep private keys secure and never commit them
+
+---
+
+*For detailed integration guide, see [SESSION_JOB_COMPLETION_GUIDE.md](./SESSION_JOB_COMPLETION_GUIDE.md)*

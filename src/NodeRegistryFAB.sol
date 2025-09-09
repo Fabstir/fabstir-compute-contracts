@@ -56,9 +56,8 @@ contract NodeRegistryFAB is Ownable, ReentrancyGuard {
         
         uint256 stakedAmount = nodes[msg.sender].stakedAmount;
         
-        // Mark as inactive
-        nodes[msg.sender].active = false;
-        nodes[msg.sender].stakedAmount = 0;
+        // Clear all node data to allow re-registration
+        delete nodes[msg.sender];
         
         // Remove from active nodes list
         uint256 index = activeNodesIndex[msg.sender];
