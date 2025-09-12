@@ -14,6 +14,7 @@ contract NodeRegistryFAB is Ownable, ReentrancyGuard {
         uint256 stakedAmount;
         bool active;
         string metadata;
+        string apiUrl;  // API endpoint URL for host discovery
     }
     
     mapping(address => Node) public nodes;
@@ -21,9 +22,11 @@ contract NodeRegistryFAB is Ownable, ReentrancyGuard {
     mapping(address => uint256) public activeNodesIndex;
     
     event NodeRegistered(address indexed operator, uint256 stakedAmount, string metadata);
+    event NodeRegisteredWithUrl(address indexed operator, uint256 stakedAmount, string metadata, string apiUrl);
     event NodeUnregistered(address indexed operator, uint256 returnedAmount);
     event StakeAdded(address indexed operator, uint256 additionalAmount);
     event MetadataUpdated(address indexed operator, string newMetadata);
+    event ApiUrlUpdated(address indexed operator, string newApiUrl);
     
     constructor(address _fabToken) Ownable(msg.sender) {
         require(_fabToken != address(0), "Invalid token address");
@@ -41,7 +44,8 @@ contract NodeRegistryFAB is Ownable, ReentrancyGuard {
             operator: msg.sender,
             stakedAmount: MIN_STAKE,
             active: true,
-            metadata: metadata
+            metadata: metadata,
+            apiUrl: ""  // Empty by default for backward compatibility
         });
         
         activeNodesList.push(msg.sender);
@@ -89,6 +93,28 @@ contract NodeRegistryFAB is Ownable, ReentrancyGuard {
         emit StakeAdded(msg.sender, amount);
     }
     
+    function registerNodeWithUrl(string memory metadata, string memory apiUrl) external nonReentrant {
+        require(nodes[msg.sender].operator == address(0), "Already registered");
+        require(bytes(metadata).length > 0, "Empty metadata");
+        require(bytes(apiUrl).length > 0, "Empty API URL");
+        
+        // Transfer MIN_STAKE FAB tokens from sender to contract
+        require(fabToken.transferFrom(msg.sender, address(this), MIN_STAKE), "Transfer failed");
+        
+        nodes[msg.sender] = Node({
+            operator: msg.sender,
+            stakedAmount: MIN_STAKE,
+            active: true,
+            metadata: metadata,
+            apiUrl: apiUrl
+        });
+        
+        activeNodesList.push(msg.sender);
+        activeNodesIndex[msg.sender] = activeNodesList.length - 1;
+        
+        emit NodeRegisteredWithUrl(msg.sender, MIN_STAKE, metadata, apiUrl);
+    }
+    
     function updateMetadata(string memory newMetadata) external {
         require(nodes[msg.sender].operator != address(0), "Not registered");
         require(nodes[msg.sender].active, "Node not active");
@@ -96,6 +122,15 @@ contract NodeRegistryFAB is Ownable, ReentrancyGuard {
         
         nodes[msg.sender].metadata = newMetadata;
         emit MetadataUpdated(msg.sender, newMetadata);
+    }
+    
+    function updateApiUrl(string memory newApiUrl) external {
+        require(nodes[msg.sender].operator != address(0), "Not registered");
+        require(nodes[msg.sender].active, "Node not active");
+        require(bytes(newApiUrl).length > 0, "Empty API URL");
+        
+        nodes[msg.sender].apiUrl = newApiUrl;
+        emit ApiUrlUpdated(msg.sender, newApiUrl);
     }
     
     function getNodeStake(address operator) external view returns (uint256) {
@@ -108,6 +143,27 @@ contract NodeRegistryFAB is Ownable, ReentrancyGuard {
     
     function getNodeMetadata(address operator) external view returns (string memory) {
         return nodes[operator].metadata;
+    }
+    
+    function getNodeApiUrl(address operator) external view returns (string memory) {
+        return nodes[operator].apiUrl;
+    }
+    
+    function getNodeFullInfo(address operator) external view returns (
+        address nodeOperator,
+        uint256 stakedAmount,
+        bool active,
+        string memory metadata,
+        string memory apiUrl
+    ) {
+        Node memory node = nodes[operator];
+        return (
+            node.operator,
+            node.stakedAmount,
+            node.active,
+            node.metadata,
+            node.apiUrl
+        );
     }
     
     function minimumStake() external pure returns (uint256) {

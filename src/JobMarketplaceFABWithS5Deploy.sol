@@ -306,7 +306,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         }
         
         // Check if host is registered in NodeRegistryFAB
-        (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(msg.sender);
+        (address operator, uint256 stakedAmount, bool active, , ) = nodeRegistry.nodes(msg.sender);
         require(operator != address(0));
         require(active);
         require(stakedAmount >= nodeRegistry.MIN_STAKE());
@@ -439,7 +439,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         require(deposit <= 1000 ether);
         
         // Validate host
-        (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(host);
+        (address operator, uint256 stakedAmount, bool active, , ) = nodeRegistry.nodes(host);
         require(operator != address(0));
         require(active);
         require(stakedAmount >= nodeRegistry.MIN_STAKE());
@@ -745,7 +745,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         require(deposit <= 1000 ether);
         
         // Validate host registration
-        (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(host);
+        (address operator, uint256 stakedAmount, bool active, , ) = nodeRegistry.nodes(host);
         require(operator != address(0));
         require(active);
         require(stakedAmount >= nodeRegistry.MIN_STAKE());

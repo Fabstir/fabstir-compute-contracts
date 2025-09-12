@@ -306,7 +306,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         }
         
         // Check if host is registered in NodeRegistryFAB
-        (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(msg.sender);
+        (address operator, uint256 stakedAmount, bool active, , ) = nodeRegistry.nodes(msg.sender);
         require(operator != address(0), "Not a registered host");
         require(active, "Host not active");
         require(stakedAmount >= nodeRegistry.MIN_STAKE(), "Insufficient stake");
@@ -439,7 +439,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         require(deposit <= 1000 ether, "Deposit too large");
         
         // Validate host
-        (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(host);
+        (address operator, uint256 stakedAmount, bool active, , ) = nodeRegistry.nodes(host);
         require(operator != address(0), "Host not registered");
         require(active, "Host not active");
         require(stakedAmount >= nodeRegistry.MIN_STAKE(), "Host stake insufficient");
@@ -745,7 +745,7 @@ contract JobMarketplaceFABWithS5 is ReentrancyGuard {
         require(deposit <= 1000 ether, "Deposit too large");
         
         // Validate host registration
-        (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(host);
+        (address operator, uint256 stakedAmount, bool active, , ) = nodeRegistry.nodes(host);
         require(operator != address(0), "Host not registered");
         require(active, "Host not active");
         require(stakedAmount >= nodeRegistry.MIN_STAKE(), "Host stake insufficient");

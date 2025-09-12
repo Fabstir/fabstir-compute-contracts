@@ -114,8 +114,8 @@ contract JobMarketplaceFAB is ReentrancyGuard {
         require(block.timestamp <= job.deadline, "Job expired");
         
         // Check if host is registered in NodeRegistryFAB
-        // nodes() returns (operator, stakedAmount, active, metadata)
-        (address operator, uint256 stakedAmount, bool active, ) = nodeRegistry.nodes(msg.sender);
+        // nodes() returns (operator, stakedAmount, active, metadata, apiUrl)
+        (address operator, uint256 stakedAmount, bool active, , ) = nodeRegistry.nodes(msg.sender);
         require(operator != address(0), "Not a registered host");
         require(active, "Host not active");
         require(stakedAmount >= nodeRegistry.MIN_STAKE(), "Insufficient stake");
