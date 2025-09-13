@@ -13,7 +13,8 @@ const config = {
   // Contract addresses
   hostEarnings: '0x4050FaDdd250dB75B0B4242B0748EB8681C72F41', // Already deployed
   treasury: '0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078',
-  nodeRegistry: '0x87516C13Ea2f99de598665e14cab64E191A0f8c4',
+  nodeRegistry: '0xb212F4e62a2F3BA36048054Fe75e3d0b0d61EB44', // Latest NodeRegistry with API URL support
+  jobMarketplace: '0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0', // Latest JobMarketplace
   usdcAddress: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
   
   // Constructor args
@@ -227,6 +228,7 @@ async function main() {
     console.log('');
     console.log('🔗 Existing Contracts:');
     console.log(`   NodeRegistry:                   ${config.nodeRegistry}`);
+    console.log(`   JobMarketplace (existing):      ${config.jobMarketplace}`);
     console.log(`   USDC Token:                     ${config.usdcAddress}`);
     console.log(`   FAB Token:                      0x6Bd8C52a1ceC5a00Df973FD60143EFaC13d30E42`);
     console.log('');

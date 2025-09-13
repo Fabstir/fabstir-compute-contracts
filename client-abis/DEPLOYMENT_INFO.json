@@ -23,10 +23,10 @@
       ]
     },
     "NodeRegistryFAB": {
-      "address": "0x2B745E45818e1dE570f253259dc46b91A82E3204",
-      "previousAddress": "0x87516C13Ea2f99de598665e14cab64E191A0f8c4",
+      "address": "0xb212F4e62a2F3BA36048054Fe75e3d0b0d61EB44",
+      "previousAddress": "0x039AB5d5e8D5426f9963140202F506A2Ce6988F9",
       "deploymentDate": "2025-01-12",
-      "status": "ACTIVE - API DISCOVERY ADDED",
+      "status": "ACTIVE - API URL SUPPORT",
       "features": [
         "API endpoint discovery (NEW)",
         "registerNodeWithUrl() function (NEW)",
