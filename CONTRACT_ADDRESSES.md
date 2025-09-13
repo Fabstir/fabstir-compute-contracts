@@ -1,24 +1,33 @@
 # Current Contract Addresses - Base Sepolia
 
-Last Updated: January 9, 2025 (New JobMarketplace with Fixed NodeRegistry)
+Last Updated: January 13, 2025 (Model Governance System Added)
 
-> **🚀 LATEST DEPLOYMENT**: Fixed NodeRegistry Integration + Treasury/Host Accumulation
-> - **JobMarketplaceFABWithS5**: `0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6` ✅ USE THIS (Jan 9, 2025 - Uses Fixed NodeRegistry)
-> - **HostEarnings**: `0x908962e8c6CE72610021586f85ebDE09aAc97776` ✅ ETH & USDC accumulation working
+> **🚀 LATEST DEPLOYMENT**: Model Governance System + USDC Support Fixed (2025-09-13)
+> - **JobMarketplace**: `0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0` ✅ CURRENT - USDC support fixed
+> - **ModelRegistry**: `0x92b2De840bB2171203011A6dBA928d855cA8183E` ✅ Model governance - ONLY 2 approved models
+> - **NodeRegistryWithModels**: `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218` ✅ Model-validated registration
+> - **HostEarnings**: `0x908962e8c6CE72610021586f85ebDE09aAc97776` ✅ ETH & USDC accumulation
 > - **ProofSystem**: `0x2ACcc60893872A499700908889B38C5420CBcFD1` ✅ FIXED internal verification
-> - **NodeRegistryFAB**: `0x039AB5d5e8D5426f9963140202F506A2Ce6988F9` ✅ FIXED re-registration bug
-> - **Note**: This deployment uses the FIXED NodeRegistry where hosts can re-register after unregistering
+> - **Note**: Model governance ensures only approved models can be used in the marketplace
 
-## ✅ Active Contracts - With Treasury + Host Accumulation (Current)
+## ✅ Active Contracts - With Model Governance + Treasury/Host Accumulation (Current)
 
-These contracts include all fixes AND both treasury and host earnings accumulation for maximum gas savings:
+These contracts include model governance, all fixes, AND both treasury and host earnings accumulation for maximum gas savings:
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceFABWithS5** | `0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6` | ✅ OPTIMIZED + Fixed NodeRegistry - Jan 9, 2025 |
+| **JobMarketplace** | `0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0` | ✅ CURRENT - USDC support fixed |
+| **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | ✅ Model governance - ONLY 2 approved models |
+| **NodeRegistryWithModels** | `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218` | ✅ Node registration with model validation |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ FIXED internal verification for USDC |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ Host earnings accumulation (ETH & USDC) |
-| **NodeRegistryFAB** | `0x039AB5d5e8D5426f9963140202F506A2Ce6988F9` | Node registration with FAB staking (fixed re-registration bug) |
+
+### 🎯 Approved Models for MVP Testing
+
+| Model | HuggingFace Repo | File | SHA256 Hash |
+|-------|------------------|------|-------------|
+| **TinyVicuna-1B** | CohereForAI/TinyVicuna-1B-32k-GGUF | tiny-vicuna-1b.q4_k_m.gguf | 0x329d002bc20d4e7baae25df802c9678b5a4340b3ce91f23e6a0644975e95935f |
+| **TinyLlama-1.1B** | TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF | tinyllama-1b.Q4_K_M.gguf | 0x45b71fe98efe5f530b825dce6f5049d738e9c16869f10be4370ab81a9912d4a6 |
 
 ## ⚠️ Previous Deployments with Issues
 
@@ -85,6 +94,7 @@ These contracts are from earlier deployments and are no longer compatible with t
 |----------|---------|-------|
 | JobMarketplaceFABWithEarnings | `0x1A173A3703858D2F5EA4Bf48dDEb53FD4278187D` | No S5 CID support - hosts receive placeholder text |
 | NodeRegistry (Original) | `0xF6420Cc8d44Ac92a6eE29A5E8D12D00aE91a73B3` | Used ETH staking instead of FAB |
+| NodeRegistryFAB (Old) | `0x039AB5d5e8D5426f9963140202F506A2Ce6988F9` | Deprecated - no model validation, use NodeRegistryWithModels |
 | NodeRegistryFAB (Buggy) | `0x87516C13Ea2f99de598665e14cab64E191A0f8c4` | Re-registration bug - couldn't register after unregister |
 | JobMarketplace (Original) | `0x6C4283A2aAee2f94BcD2EB04e951EfEa1c35b0B6` | No earnings accumulation |
 | PaymentEscrow (Original) | `0x3b96fBD7b463e94463Ae4d0f2629e08cf1F25894` | No earnings support |
@@ -106,32 +116,43 @@ Update your configuration with the NEW contracts with accumulation:
 
 ```javascript
 const config = {
-  // Treasury + Host Earnings Accumulation System (CURRENT - Jan 5, 2025 - MAXIMUM GAS SAVINGS)
-  jobMarketplace: '0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6',  // ✅ NEW - Uses fixed NodeRegistry
-  hostEarnings: '0x908962e8c6CE72610021586f85ebDE09aAc97776',   // ✅ Host earnings accumulation
-  proofSystem: '0x2ACcc60893872A499700908889B38C5420CBcFD1',     // ✅ FIXED internal verification
-  nodeRegistry: '0x039AB5d5e8D5426f9963140202F506A2Ce6988F9',  // ✅ FIXED re-registration bug
-  
+  // Model Governance + USDC Support Fixed (CURRENT - 2025-09-13)
+  jobMarketplace: '0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0',  // ✅ CURRENT - USDC support fixed
+  modelRegistry: '0x92b2De840bB2171203011A6dBA928d855cA8183E',   // ✅ Model governance - ONLY 2 approved models
+  nodeRegistry: '0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218',    // ✅ NodeRegistryWithModels - Use this
+  proofSystem: '0x2ACcc60893872A499700908889B38C5420CBcFD1',      // ✅ FIXED internal verification
+  hostEarnings: '0x908962e8c6CE72610021586f85ebDE09aAc97776',    // ✅ Host earnings accumulation
+
   // Tokens
   fabToken: '0xC78949004B4EB6dEf2D66e49Cd81231472612D62',
   usdcToken: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-  
+
   // Platform
   treasury: '0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11',
-  
+
+  // Approved Models (MVP Testing Only)
+  approvedModels: {
+    tinyVicuna: {
+      repo: 'CohereForAI/TinyVicuna-1B-32k-GGUF',
+      file: 'tiny-vicuna-1b.q4_k_m.gguf'
+    },
+    tinyLlama: {
+      repo: 'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF',
+      file: 'tinyllama-1b.Q4_K_M.gguf'
+    }
+  },
+
   // Network
   chainId: 84532, // Base Sepolia
   rpcUrl: 'https://base-sepolia.g.alchemy.com/v2/YOUR_API_KEY'
-  
-  // NOT NEEDED for session jobs:
-  // - paymentEscrow (direct payments used)
-  // - hostEarnings (direct transfers used)
 };
 ```
 
 ## 📝 Important Notes
 
+- **Model Governance**: Only approved GGUF models can be used (TinyVicuna-1B and TinyLlama-1.1B for MVP)
 - **Gas Savings**: ~80% reduction in gas costs through dual accumulation (treasury + host)
+- **Host Registration**: Will require approved model IDs once NodeRegistryWithModels is deployed
 - **Host Withdrawals**: Hosts can withdraw accumulated earnings at their convenience
 - **Treasury Withdrawals**: Treasury can batch withdraw all accumulated fees with one transaction
 - **Job IDs**: Start from 1 in JobMarketplaceLite
