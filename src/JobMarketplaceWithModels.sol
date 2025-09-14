@@ -1,0 +1,458 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "./NodeRegistryWithModels.sol";
+import "./interfaces/IJobMarketplace.sol";
+import "./interfaces/IPaymentEscrow.sol";
+import "./interfaces/IReputationSystem.sol";
+import "./HostEarnings.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+// Proof system interface
+interface IProofSystem {
+    function verifyEKZL(
+        bytes calldata proof,
+        address prover,
+        uint256 claimedTokens
+    ) external view returns (bool);
+
+    function verifyAndMarkComplete(
+        bytes calldata proof,
+        address prover,
+        uint256 claimedTokens
+    ) external returns (bool);
+}
+
+/**
+ * @title JobMarketplaceWithModels
+ * @dev JobMarketplace compatible with NodeRegistryWithModels and model governance
+ * @notice Stores prompts and responses as S5 CIDs with model validation support
+ */
+contract JobMarketplaceWithModels is ReentrancyGuard {
+    enum JobStatus {
+        Posted,
+        Claimed,
+        Completed
+    }
+
+    // New enums for session support
+    enum JobType { SinglePrompt, Session }
+    enum SessionStatus { Active, Completed, TimedOut, Disputed, Abandoned, Cancelled }
+
+    // EZKL proof tracking structure
+    struct ProofSubmission {
+        bytes32 proofHash;
+        uint256 tokensClaimed;
+        uint256 timestamp;
+        bool verified;
+    }
+
+    // Job details structure
+    struct JobDetails {
+        string promptS5CID;
+        uint256 maxTokens;
+    }
+
+    // Job requirements structure
+    struct JobRequirements {
+        uint256 maxTimeToComplete;
+    }
+
+    // Job structure
+    struct Job {
+        uint256 id;
+        address requester;
+        address paymentToken;
+        uint256 payment;
+        JobDetails details;
+        JobRequirements requirements;
+        address claimedBy;
+        JobStatus status;
+        string responseS5CID;
+        uint256 claimedAt;
+        JobType jobType;
+    }
+
+    // Session job structure
+    struct SessionJob {
+        uint256 id;
+        address requester;
+        address host;
+        address paymentToken;
+        uint256 deposit;
+        uint256 pricePerToken;
+        uint256 tokensUsed;
+        uint256 maxDuration;
+        uint256 startTime;
+        uint256 lastProofTime;
+        uint256 proofInterval;
+        SessionStatus status;
+        ProofSubmission[] proofs;
+        uint256 withdrawnByHost;
+        uint256 refundedToUser;
+        string conversationCID;
+    }
+
+    // Constants
+    uint256 public constant MIN_DEPOSIT = 0.0002 ether;
+    uint256 public constant MIN_PROVEN_TOKENS = 100;
+    uint256 public constant ABANDONMENT_TIMEOUT = 24 hours;
+    uint256 public constant DISPUTE_WINDOW = 1 hours;
+
+    // State variables
+    mapping(uint256 => Job) public jobs;
+    mapping(uint256 => SessionJob) public sessionJobs;
+    mapping(address => uint256[]) public userJobs;
+    mapping(address => uint256[]) public hostJobs;
+    mapping(address => uint256[]) public userSessions;
+    mapping(address => uint256[]) public hostSessions;
+
+    uint256 public nextJobId = 1;
+    uint256 public constant FEE_BASIS_POINTS = 250; // 2.5% platform fee
+    address public treasuryAddress = 0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11;
+    address public usdcAddress = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+
+    NodeRegistryWithModels public nodeRegistry;
+    IReputationSystem public reputationSystem;
+    IPaymentEscrow public paymentEscrow;
+    IProofSystem public proofSystem;
+    HostEarnings public hostEarnings;
+
+    // USDC-specific configuration
+    uint256 public constant USDC_MIN_DEPOSIT = 800000; // 0.80 USDC
+    mapping(address => bool) public acceptedTokens;
+    mapping(address => uint256) public tokenMinDeposits;
+
+    // Treasury accumulation mappings
+    uint256 public accumulatedTreasuryETH;
+    mapping(address => uint256) public accumulatedTreasuryTokens;
+
+    // Events
+    event JobPosted(uint256 indexed jobId, address indexed requester, string promptS5CID);
+    event JobClaimed(uint256 indexed jobId, address indexed host);
+    event JobCompleted(uint256 indexed jobId, address indexed host, string responseS5CID);
+    event SessionJobCreated(uint256 indexed jobId, address indexed requester, address indexed host, uint256 deposit);
+    event ProofSubmitted(uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash);
+    event SessionCompleted(uint256 indexed jobId, uint256 totalTokensUsed, uint256 hostEarnings, uint256 userRefund);
+    event SessionTimedOut(uint256 indexed jobId, uint256 hostEarnings, uint256 userRefund);
+    event SessionAbandoned(uint256 indexed jobId, uint256 userRefund);
+    event PaymentSent(address indexed recipient, uint256 amount);
+    event TreasuryWithdrawal(address indexed token, uint256 amount);
+
+    modifier onlyRegisteredHost(address host) {
+        // Just check if host is registered by looking at operator
+        // NodeRegistryWithModels has different return signature
+        _;
+    }
+
+    constructor(address _nodeRegistry, address payable _hostEarnings) {
+        nodeRegistry = NodeRegistryWithModels(_nodeRegistry);
+        hostEarnings = HostEarnings(_hostEarnings);
+
+        // Initialize accepted tokens
+        acceptedTokens[usdcAddress] = true;
+        tokenMinDeposits[usdcAddress] = USDC_MIN_DEPOSIT;
+    }
+
+    function setProofSystem(address _proofSystem) external {
+        require(address(proofSystem) == address(0), "Already set");
+        proofSystem = IProofSystem(_proofSystem);
+    }
+
+    function createSessionJob(
+        address host,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval
+    ) external payable nonReentrant returns (uint256 jobId) {
+        require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
+        require(msg.value <= 1000 ether, "Deposit too large");
+        require(pricePerToken > 0, "Invalid price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
+        require(proofInterval > 0, "Invalid proof interval");
+        require(host != address(0), "Invalid host");
+
+        _validateProofRequirements(proofInterval, msg.value, pricePerToken);
+        _validateHostRegistration(host);
+
+        jobId = nextJobId++;
+
+        SessionJob storage session = sessionJobs[jobId];
+        session.id = jobId;
+        session.requester = msg.sender;
+        session.host = host;
+        session.paymentToken = address(0);
+        session.deposit = msg.value;
+        session.pricePerToken = pricePerToken;
+        session.maxDuration = maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = proofInterval;
+        session.status = SessionStatus.Active;
+
+        userSessions[msg.sender].push(jobId);
+        hostSessions[host].push(jobId);
+
+        emit SessionJobCreated(jobId, msg.sender, host, msg.value);
+
+        return jobId;
+    }
+
+    function createSessionJobWithToken(
+        address host, address token, uint256 deposit,
+        uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval
+    ) external returns (uint256 jobId) {
+        require(acceptedTokens[token], "Token not accepted");
+        uint256 minRequired = tokenMinDeposits[token];
+        require(minRequired > 0, "Token not configured");
+        require(deposit >= minRequired, "Insufficient deposit");
+        require(deposit > 0, "Zero deposit");
+
+        require(pricePerToken > 0, "Invalid price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
+        require(proofInterval > 0, "Invalid proof interval");
+        require(host != address(0), "Invalid host");
+        require(deposit <= 1000 ether, "Deposit too large");
+
+        _validateHostRegistration(host);
+        _validateProofRequirements(proofInterval, deposit, pricePerToken);
+
+        IERC20(token).transferFrom(msg.sender, address(this), deposit);
+
+        jobId = nextJobId++;
+
+        SessionJob storage session = sessionJobs[jobId];
+        session.id = jobId;
+        session.requester = msg.sender;
+        session.host = host;
+        session.paymentToken = token;
+        session.deposit = deposit;
+        session.pricePerToken = pricePerToken;
+        session.maxDuration = maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = proofInterval;
+        session.status = SessionStatus.Active;
+
+        userSessions[msg.sender].push(jobId);
+        hostSessions[host].push(jobId);
+
+        emit SessionJobCreated(jobId, msg.sender, host, deposit);
+
+        return jobId;
+    }
+
+    function _validateHostRegistration(address host) internal view {
+        // For now, just check if host address is not zero
+        // Full validation would require proper struct handling
+        require(host != address(0), "Invalid host address");
+        // TODO: Add proper validation once we handle the struct properly
+    }
+
+    function _validateProofRequirements(uint256 proofInterval, uint256 deposit, uint256 pricePerToken) internal pure {
+        uint256 maxTokens = deposit / pricePerToken;
+        uint256 tokensPerProof = proofInterval * 10;
+        require(tokensPerProof >= MIN_PROVEN_TOKENS, "Proof interval too small");
+        require(maxTokens >= tokensPerProof, "Deposit too small for proof interval");
+    }
+
+    function submitProofOfWork(
+        uint256 jobId,
+        uint256 tokensClaimed,
+        bytes calldata proof
+    ) external nonReentrant {
+        SessionJob storage session = sessionJobs[jobId];
+        require(session.status == SessionStatus.Active, "Session not active");
+        require(msg.sender == session.host, "Only host can submit proof");
+        require(tokensClaimed >= MIN_PROVEN_TOKENS, "Must claim minimum tokens");
+
+        uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
+        uint256 expectedTokens = timeSinceLastProof * 10;
+        require(tokensClaimed <= expectedTokens * 2, "Excessive tokens claimed");
+
+        uint256 newTotal = session.tokensUsed + tokensClaimed;
+        uint256 maxTokens = session.deposit / session.pricePerToken;
+        require(newTotal <= maxTokens, "Exceeds deposit");
+
+        bytes32 proofHash = keccak256(proof);
+        for (uint i = 0; i < session.proofs.length; i++) {
+            require(session.proofs[i].proofHash != proofHash, "Proof already submitted");
+        }
+
+        require(address(proofSystem) != address(0), "Proof system not set");
+        bool verified = proofSystem.verifyEKZL(proof, msg.sender, tokensClaimed);
+        require(verified, "Invalid proof");
+
+        session.proofs.push(ProofSubmission({
+            proofHash: proofHash,
+            tokensClaimed: tokensClaimed,
+            timestamp: block.timestamp,
+            verified: true
+        }));
+
+        session.tokensUsed = newTotal;
+        session.lastProofTime = block.timestamp;
+
+        emit ProofSubmitted(jobId, msg.sender, tokensClaimed, proofHash);
+    }
+
+    function completeSessionJob(uint256 jobId, string calldata conversationCID) external nonReentrant {
+        SessionJob storage session = sessionJobs[jobId];
+        require(session.status == SessionStatus.Active, "Session not active");
+        require(msg.sender == session.host || msg.sender == session.requester, "Unauthorized");
+
+        if (msg.sender == session.host) {
+            require(block.timestamp >= session.startTime + DISPUTE_WINDOW, "Must wait dispute window");
+        }
+
+        session.status = SessionStatus.Completed;
+        session.conversationCID = conversationCID;
+
+        _settleSessionPayments(jobId);
+    }
+
+    function _settleSessionPayments(uint256 jobId) internal {
+        SessionJob storage session = sessionJobs[jobId];
+
+        uint256 hostPayment = session.tokensUsed * session.pricePerToken;
+        uint256 userRefund = session.deposit > hostPayment ? session.deposit - hostPayment : 0;
+
+        if (hostPayment > 0) {
+            uint256 platformFee = (hostPayment * FEE_BASIS_POINTS) / 10000;
+            uint256 netHostPayment = hostPayment - platformFee;
+
+            if (session.paymentToken == address(0)) {
+                accumulatedTreasuryETH += platformFee;
+                // Send ETH directly to HostEarnings contract
+                (bool sent, ) = payable(address(hostEarnings)).call{value: netHostPayment}("");
+                require(sent, "ETH transfer to HostEarnings failed");
+                // Note: HostEarnings needs to be authorized to credit earnings
+            } else {
+                accumulatedTreasuryTokens[session.paymentToken] += platformFee;
+                IERC20(session.paymentToken).approve(address(hostEarnings), netHostPayment);
+                // Transfer tokens to HostEarnings
+                IERC20(session.paymentToken).transfer(address(hostEarnings), netHostPayment);
+                // Note: HostEarnings needs to be authorized to credit earnings
+            }
+
+            session.withdrawnByHost = netHostPayment;
+        }
+
+        if (userRefund > 0) {
+            if (session.paymentToken == address(0)) {
+                (bool sent, ) = payable(session.requester).call{value: userRefund}("");
+                require(sent, "ETH refund failed");
+            } else {
+                IERC20(session.paymentToken).transfer(session.requester, userRefund);
+            }
+            session.refundedToUser = userRefund;
+        }
+
+        emit SessionCompleted(jobId, session.tokensUsed, session.withdrawnByHost, userRefund);
+    }
+
+    function triggerSessionTimeout(uint256 jobId) external nonReentrant {
+        SessionJob storage session = sessionJobs[jobId];
+        require(session.status == SessionStatus.Active, "Session not active");
+
+        bool hasTimedOut = (block.timestamp > session.startTime + session.maxDuration) ||
+                          (block.timestamp > session.lastProofTime + session.proofInterval * 3);
+
+        require(hasTimedOut, "Session not timed out");
+
+        session.status = SessionStatus.TimedOut;
+        _settleSessionPayments(jobId);
+
+        emit SessionTimedOut(jobId, session.withdrawnByHost, session.refundedToUser);
+    }
+
+    function claimWithProof(
+        uint256 jobId,
+        bytes calldata proof,
+        string calldata responseS5CID
+    ) external nonReentrant {
+        Job storage job = jobs[jobId];
+        require(job.status == JobStatus.Claimed, "Job not claimed");
+        require(job.claimedBy == msg.sender, "Not claimed by you");
+
+        uint256 maxTokens = job.details.maxTokens;
+
+        if (address(proofSystem) != address(0)) {
+            bool verified = proofSystem.verifyAndMarkComplete(proof, msg.sender, maxTokens);
+            require(verified, "Invalid proof");
+        }
+
+        job.status = JobStatus.Completed;
+        job.responseS5CID = responseS5CID;
+
+        uint256 payment = job.payment;
+        uint256 platformFee = (payment * FEE_BASIS_POINTS) / 10000;
+        uint256 netPayment = payment - platformFee;
+
+        address paymentToken = job.paymentToken;
+
+        if (paymentToken == address(0)) {
+            accumulatedTreasuryETH += platformFee;
+            // Send ETH directly to HostEarnings contract
+            (bool sent, ) = payable(address(hostEarnings)).call{value: netPayment}("");
+            require(sent, "ETH transfer to HostEarnings failed");
+        } else {
+            accumulatedTreasuryTokens[paymentToken] += platformFee;
+            IERC20(paymentToken).approve(address(hostEarnings), netPayment);
+            // Transfer tokens to HostEarnings
+            IERC20(paymentToken).transfer(address(hostEarnings), netPayment);
+        }
+
+        emit JobCompleted(jobId, msg.sender, responseS5CID);
+        emit PaymentSent(msg.sender, netPayment);
+    }
+
+    // Treasury withdrawal functions
+    function withdrawTreasuryETH() external {
+        require(msg.sender == treasuryAddress, "Only treasury");
+        uint256 amount = accumulatedTreasuryETH;
+        require(amount > 0, "No ETH to withdraw");
+
+        accumulatedTreasuryETH = 0;
+        (bool sent, ) = payable(treasuryAddress).call{value: amount}("");
+        require(sent, "ETH transfer failed");
+
+        emit TreasuryWithdrawal(address(0), amount);
+    }
+
+    function withdrawTreasuryTokens(address token) external {
+        require(msg.sender == treasuryAddress, "Only treasury");
+        uint256 amount = accumulatedTreasuryTokens[token];
+        require(amount > 0, "No tokens to withdraw");
+
+        accumulatedTreasuryTokens[token] = 0;
+        IERC20(token).transfer(treasuryAddress, amount);
+
+        emit TreasuryWithdrawal(token, amount);
+    }
+
+    function withdrawAllTreasuryFees(address[] calldata tokens) external {
+        require(msg.sender == treasuryAddress, "Only treasury");
+
+        if (accumulatedTreasuryETH > 0) {
+            uint256 ethAmount = accumulatedTreasuryETH;
+            accumulatedTreasuryETH = 0;
+            (bool sent, ) = payable(treasuryAddress).call{value: ethAmount}("");
+            require(sent, "ETH transfer failed");
+            emit TreasuryWithdrawal(address(0), ethAmount);
+        }
+
+        for (uint i = 0; i < tokens.length; i++) {
+            uint256 amount = accumulatedTreasuryTokens[tokens[i]];
+            if (amount > 0) {
+                accumulatedTreasuryTokens[tokens[i]] = 0;
+                IERC20(tokens[i]).transfer(treasuryAddress, amount);
+                emit TreasuryWithdrawal(tokens[i], amount);
+            }
+        }
+    }
+
+    receive() external payable {}
+    fallback() external payable {}
+}

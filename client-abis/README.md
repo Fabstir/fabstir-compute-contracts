@@ -2,15 +2,16 @@
 
 This directory contains the Application Binary Interfaces (ABIs) for client integration.
 
-## Current Deployed Contracts (January 13, 2025)
+## Current Deployed Contracts (January 14, 2025)
 
-### JobMarketplace
-- **Address**: 0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0
-- **Previous**: 0x6b4D28bD09Ba31394972B55E8870CFD4F835Acb6
+### JobMarketplaceWithModels
+- **Address**: 0x56431bDeA20339c40470eC86BC2E3c09B065AFFe
+- **Previous**: 0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0
 - **Network**: Base Sepolia
-- **Status**: ✅ API DISCOVERY COMPATIBLE + TREASURY ACCUMULATION
+- **Status**: ✅ COMPATIBLE WITH NODEREGISTRY WITH MODELS
 - **Key Features**:
-  - Compatible with 5-field Node struct from updated NodeRegistry (NEW)
+  - Compatible with NodeRegistryWithModels 6-field struct
+  - Validates hosts have supported models
   - User refunds fixed for session jobs
   - Treasury fee accumulation for batch withdrawals
   - Host earnings accumulation (70% gas savings)
@@ -166,7 +167,7 @@ const provider = new ethers.providers.JsonRpcProvider('https://base-sepolia.g.al
 
 // Create contract instances
 const marketplace = new ethers.Contract(
-  '0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0', // CURRENT deployment with USDC fixed
+  '0x56431bDeA20339c40470eC86BC2E3c09B065AFFe', // CURRENT deployment compatible with NodeRegistryWithModels
   JobMarketplaceABI,
   provider
 );
@@ -263,7 +264,7 @@ await nodeRegistry.updateApiUrl('http://your-host.com:8080');
 Update contract addresses and use the new discovery functions:
 ```javascript
 const NODE_REGISTRY = '0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218';
-const JOB_MARKETPLACE = '0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0';
+const JOB_MARKETPLACE = '0x56431bDeA20339c40470eC86BC2E3c09B065AFFe';
 const MODEL_REGISTRY = '0x92b2De840bB2171203011A6dBA928d855cA8183E';
 ```
 

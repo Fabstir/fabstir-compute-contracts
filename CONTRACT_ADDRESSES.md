@@ -2,8 +2,8 @@
 
 Last Updated: January 13, 2025 (Model Governance System Added)
 
-> **🚀 LATEST DEPLOYMENT**: Model Governance System + USDC Support Fixed (2025-09-13)
-> - **JobMarketplace**: `0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0` ✅ CURRENT - USDC support fixed
+> **🚀 LATEST DEPLOYMENT**: JobMarketplace Compatible with NodeRegistryWithModels (2025-09-14)
+> - **JobMarketplaceWithModels**: `0x56431bDeA20339c40470eC86BC2E3c09B065AFFe` ✅ CURRENT - Compatible with model governance
 > - **ModelRegistry**: `0x92b2De840bB2171203011A6dBA928d855cA8183E` ✅ Model governance - ONLY 2 approved models
 > - **NodeRegistryWithModels**: `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218` ✅ Model-validated registration
 > - **HostEarnings**: `0x908962e8c6CE72610021586f85ebDE09aAc97776` ✅ ETH & USDC accumulation
@@ -16,7 +16,7 @@ These contracts include model governance, all fixes, AND both treasury and host 
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplace** | `0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0` | ✅ CURRENT - USDC support fixed |
+| **JobMarketplaceWithModels** | `0x56431bDeA20339c40470eC86BC2E3c09B065AFFe` | ✅ CURRENT - Compatible with NodeRegistryWithModels |
 | **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | ✅ Model governance - ONLY 2 approved models |
 | **NodeRegistryWithModels** | `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218` | ✅ Node registration with model validation |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ FIXED internal verification for USDC |
@@ -30,6 +30,11 @@ These contracts include model governance, all fixes, AND both treasury and host 
 | **TinyLlama-1.1B** | TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF | tinyllama-1b.Q4_K_M.gguf | 0x45b71fe98efe5f530b825dce6f5049d738e9c16869f10be4370ab81a9912d4a6 |
 
 ## ⚠️ Previous Deployments with Issues
+
+### Incompatible with NodeRegistryWithModels (Jan 13, 2025)
+| Contract | Address | Issue |
+|----------|---------|-------|
+| **JobMarketplace** | `0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0` | Uses old NodeRegistryFAB, incompatible with model governance |
 
 ### Wrong NodeRegistry (Jan 5, 2025)
 | Contract | Address | Issue |
@@ -117,7 +122,7 @@ Update your configuration with the NEW contracts with accumulation:
 ```javascript
 const config = {
   // Model Governance + USDC Support Fixed (CURRENT - 2025-09-13)
-  jobMarketplace: '0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0',  // ✅ CURRENT - USDC support fixed
+  jobMarketplace: '0x56431bDeA20339c40470eC86BC2E3c09B065AFFe',  // ✅ CURRENT - Compatible with NodeRegistryWithModels
   modelRegistry: '0x92b2De840bB2171203011A6dBA928d855cA8183E',   // ✅ Model governance - ONLY 2 approved models
   nodeRegistry: '0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218',    // ✅ NodeRegistryWithModels - Use this
   proofSystem: '0x2ACcc60893872A499700908889B38C5420CBcFD1',      // ✅ FIXED internal verification
