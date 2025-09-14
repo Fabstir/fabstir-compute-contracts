@@ -156,7 +156,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     }
 
     function setProofSystem(address _proofSystem) external {
-        require(address(proofSystem) == address(0), "Already set");
+        require(msg.sender == treasuryAddress, "Only treasury");
         proofSystem = IProofSystem(_proofSystem);
     }
 
@@ -324,16 +324,17 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
 
             if (session.paymentToken == address(0)) {
                 accumulatedTreasuryETH += platformFee;
-                // Send ETH directly to HostEarnings contract
+                // Send ETH to HostEarnings contract
                 (bool sent, ) = payable(address(hostEarnings)).call{value: netHostPayment}("");
                 require(sent, "ETH transfer to HostEarnings failed");
-                // Note: HostEarnings needs to be authorized to credit earnings
+                // Credit the host's earnings
+                hostEarnings.creditEarnings(session.host, netHostPayment, address(0));
             } else {
                 accumulatedTreasuryTokens[session.paymentToken] += platformFee;
-                IERC20(session.paymentToken).approve(address(hostEarnings), netHostPayment);
                 // Transfer tokens to HostEarnings
                 IERC20(session.paymentToken).transfer(address(hostEarnings), netHostPayment);
-                // Note: HostEarnings needs to be authorized to credit earnings
+                // Credit the host's earnings
+                hostEarnings.creditEarnings(session.host, netHostPayment, session.paymentToken);
             }
 
             session.withdrawnByHost = netHostPayment;
@@ -394,14 +395,17 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
 
         if (paymentToken == address(0)) {
             accumulatedTreasuryETH += platformFee;
-            // Send ETH directly to HostEarnings contract
+            // Send ETH to HostEarnings contract
             (bool sent, ) = payable(address(hostEarnings)).call{value: netPayment}("");
             require(sent, "ETH transfer to HostEarnings failed");
+            // Credit the host's earnings
+            hostEarnings.creditEarnings(msg.sender, netPayment, address(0));
         } else {
             accumulatedTreasuryTokens[paymentToken] += platformFee;
-            IERC20(paymentToken).approve(address(hostEarnings), netPayment);
             // Transfer tokens to HostEarnings
             IERC20(paymentToken).transfer(address(hostEarnings), netPayment);
+            // Credit the host's earnings
+            hostEarnings.creditEarnings(msg.sender, netPayment, paymentToken);
         }
 
         emit JobCompleted(jobId, msg.sender, responseS5CID);

@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "forge-std/Script.sol";
+import "../src/JobMarketplaceWithModels.sol";
+
+contract DeployJobMarketplace is Script {
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address nodeRegistry = 0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218;
+        address payable hostEarnings = payable(0x908962e8c6CE72610021586f85ebDE09aAc97776);
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        JobMarketplaceWithModels marketplace = new JobMarketplaceWithModels(
+            nodeRegistry,
+            hostEarnings
+        );
+
+        console.log("JobMarketplace deployed to:", address(marketplace));
+
+        // Configure ProofSystem
+        marketplace.setProofSystem(0x2ACcc60893872A499700908889B38C5420CBcFD1);
+        console.log("ProofSystem configured");
+
+        // Note: HostEarnings authorization must be done separately by HostEarnings owner
+        console.log("IMPORTANT: Authorize this in HostEarnings:", address(marketplace));
+
+        vm.stopBroadcast();
+    }
+}

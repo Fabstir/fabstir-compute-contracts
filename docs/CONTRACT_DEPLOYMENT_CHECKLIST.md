@@ -6,6 +6,38 @@ This document provides step-by-step instructions for deploying or redeploying an
 
 ---
 
+## 🚨 CRITICAL: Post-Deployment Configuration Requirements
+
+**⚠️ WARNING: These configuration steps are ESSENTIAL and often forgotten!**
+**Missing these causes hours of debugging "mysterious" payment failures!**
+
+After deploying JobMarketplace, you MUST:
+
+1. **Configure ProofSystem** (without this, session jobs FAIL):
+   ```bash
+   cast send <MARKETPLACE_ADDRESS> "setProofSystem(address)" <PROOF_SYSTEM_ADDRESS> \
+     --private-key $PRIVATE_KEY --rpc-url $BASE_SEPOLIA_RPC_URL --legacy
+   ```
+
+2. **Authorize in HostEarnings** (without this, hosts get NOTHING):
+   ```bash
+   cast send <HOST_EARNINGS_ADDRESS> "setAuthorizedCaller(address,bool)" \
+     <MARKETPLACE_ADDRESS> true \
+     --private-key $PRIVATE_KEY --rpc-url $BASE_SEPOLIA_RPC_URL --legacy
+   ```
+
+**VERIFY both configurations:**
+```bash
+# Should return ProofSystem address, NOT 0x000...
+cast call <MARKETPLACE_ADDRESS> "proofSystem()" --rpc-url $BASE_SEPOLIA_RPC_URL
+
+# Should return 0x0000...0001 (true), NOT 0x0000...0000 (false)
+cast call <HOST_EARNINGS_ADDRESS> "authorizedCallers(address)" <MARKETPLACE_ADDRESS> \
+  --rpc-url $BASE_SEPOLIA_RPC_URL
+```
+
+---
+
 ## 🚨 Pre-Deployment Checks
 
 Before deploying ANY contract:
@@ -112,11 +144,30 @@ Before deploying ANY contract:
      --broadcast -vvv
    ```
 
-2. **Set ProofSystem** (if needed)
+2. **CRITICAL: Configure ProofSystem**
    ```bash
+   # This MUST be done for session jobs to work properly!
+   # Without this, hosts can't submit proofs and payments won't distribute correctly
+
+   # First, verify ProofSystem is not set (should return 0x000...)
+   cast call <MARKETPLACE_ADDRESS> "proofSystem()" --rpc-url $BASE_SEPOLIA_RPC_URL
+
+   # Set the ProofSystem address
    cast send <MARKETPLACE_ADDRESS> "setProofSystem(address)" \
-     <PROOF_SYSTEM_ADDRESS>
+     <PROOF_SYSTEM_ADDRESS> \
+     --private-key $PRIVATE_KEY \
+     --rpc-url $BASE_SEPOLIA_RPC_URL \
+     --legacy
+
+   # Verify it was set correctly (should return the ProofSystem address)
+   cast call <MARKETPLACE_ADDRESS> "proofSystem()" --rpc-url $BASE_SEPOLIA_RPC_URL
    ```
+
+   **⚠️ WARNING**: If ProofSystem is not configured:
+   - Session jobs will fail to distribute payments
+   - Hosts won't be able to submit proofs of work
+   - Users will get full refunds instead of proper payment distribution
+   - This is a common deployment mistake that causes SDK integration failures
 
 3. **Update All References**
    - [ ] Update `CONTRACT_ADDRESSES.md`
@@ -127,14 +178,18 @@ Before deploying ANY contract:
 
 4. **Authorize in HostEarnings** (if new deployment)
    ```bash
-   cast send <HOST_EARNINGS_ADDRESS> "authorizeCaller(address,bool)" \
-     <NEW_MARKETPLACE_ADDRESS> true
+   cast send <HOST_EARNINGS_ADDRESS> "setAuthorizedCaller(address,bool)" \
+     <NEW_MARKETPLACE_ADDRESS> true \
+     --private-key $PRIVATE_KEY \
+     --rpc-url $BASE_SEPOLIA_RPC_URL \
+     --legacy
    ```
 
 5. **SDK Updates Required**
    - Update contract address in SDK config
    - Update ABI reference if changed
    - Test all job creation functions
+   - Verify session job payments work correctly
 
 ---
 
@@ -190,6 +245,57 @@ Before deploying ANY contract:
    - [ ] Update `CONTRACT_ADDRESSES.md`
    - [ ] Update `.env` - `PROOF_SYSTEM_ADDRESS`
    - [ ] Update `client-abis/DEPLOYMENT_INFO.json`
+
+---
+
+## 🚀 Quick Deployment Script
+
+For JobMarketplace deployments, use this script to avoid missing critical steps:
+
+```bash
+#!/bin/bash
+# deploy-and-configure-marketplace.sh
+
+# Deploy JobMarketplace
+echo "Deploying JobMarketplace..."
+MARKETPLACE_ADDRESS=$(forge create src/JobMarketplaceWithModels.sol:JobMarketplaceWithModels \
+  --rpc-url $BASE_SEPOLIA_RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --constructor-args $NODE_REGISTRY $HOST_EARNINGS $TREASURY $PLATFORM_FEE \
+  --legacy --json | jq -r '.deployedTo')
+
+echo "Deployed at: $MARKETPLACE_ADDRESS"
+
+# CRITICAL CONFIG 1: Set ProofSystem
+echo "Configuring ProofSystem..."
+cast send $MARKETPLACE_ADDRESS "setProofSystem(address)" $PROOF_SYSTEM_ADDRESS \
+  --private-key $PRIVATE_KEY --rpc-url $BASE_SEPOLIA_RPC_URL --legacy
+
+# CRITICAL CONFIG 2: Authorize in HostEarnings
+echo "Authorizing in HostEarnings..."
+cast send $HOST_EARNINGS_ADDRESS "setAuthorizedCaller(address,bool)" \
+  $MARKETPLACE_ADDRESS true \
+  --private-key $PRIVATE_KEY --rpc-url $BASE_SEPOLIA_RPC_URL --legacy
+
+# Verify configurations
+echo "Verifying configurations..."
+PROOF_CHECK=$(cast call $MARKETPLACE_ADDRESS "proofSystem()" --rpc-url $BASE_SEPOLIA_RPC_URL)
+AUTH_CHECK=$(cast call $HOST_EARNINGS_ADDRESS "authorizedCallers(address)" $MARKETPLACE_ADDRESS --rpc-url $BASE_SEPOLIA_RPC_URL)
+
+if [ "$PROOF_CHECK" = "0x0000000000000000000000000000000000000000000000000000000000000000" ]; then
+  echo "❌ ERROR: ProofSystem not configured!"
+  exit 1
+fi
+
+if [ "$AUTH_CHECK" = "0x0000000000000000000000000000000000000000000000000000000000000000" ]; then
+  echo "❌ ERROR: Not authorized in HostEarnings!"
+  exit 1
+fi
+
+echo "✅ JobMarketplace deployed and configured at: $MARKETPLACE_ADDRESS"
+echo "✅ ProofSystem configured: $PROOF_CHECK"
+echo "✅ HostEarnings authorized: true"
+```
 
 ---
 
@@ -411,6 +517,77 @@ cast code [ADDRESS] --rpc-url $BASE_SEPOLIA_RPC_URL
 3. Generated new ABI
 4. Verified all connections
 5. Created this checklist to prevent future occurrences
+
+### January 14, 2025 - Missing ProofSystem Configuration
+
+**What Happened**:
+1. Deployed JobMarketplaceWithModels at `0x56431bDeA20339c40470eC86BC2E3c09B065AFFe`
+2. SDK developer reported session jobs failing - payments not distributing correctly
+3. Investigation revealed `proofSystem()` returned zero address (0x000...)
+4. Hosts couldn't submit proofs, causing full refunds instead of proper payment distribution
+
+**Root Cause**:
+- JobMarketplace was deployed but `setProofSystem()` was never called
+- This critical configuration step was missing from deployment process
+- Without ProofSystem, the contract can't validate work completion
+
+**Time Lost**:
+- Hours of SDK debugging
+- Developer traced through entire payment flow before identifying issue
+- Could have been prevented with one configuration call
+
+**Lesson**:
+- ProofSystem configuration is CRITICAL for session jobs
+- Must be set immediately after JobMarketplace deployment
+- Should be verified as part of deployment checklist
+
+**Fix Applied**:
+```bash
+# Set the ProofSystem address
+cast send 0x56431bDeA20339c40470eC86BC2E3c09B065AFFe "setProofSystem(address)" \
+  0x2ACcc60893872A499700908889B38C5420CBcFD1 \
+  --private-key $PRIVATE_KEY \
+  --rpc-url $BASE_SEPOLIA_RPC_URL \
+  --legacy
+```
+
+### January 14, 2025 - Missing HostEarnings Authorization
+
+**What Happened**:
+1. Same deployment as above - JobMarketplaceWithModels at `0x56431bDeA20339c40470eC86BC2E3c09B065AFFe`
+2. After fixing ProofSystem, treasury was receiving fees but hosts got NOTHING
+3. Investigation revealed JobMarketplace wasn't authorized in HostEarnings contract
+4. `authorizedCallers(marketplace)` returned false (0x000...000)
+
+**Root Cause**:
+- JobMarketplace was deployed but never authorized in HostEarnings
+- Without authorization, calls to credit host earnings silently fail
+- Treasury gets paid but hosts receive nothing for their work
+
+**Time Lost**:
+- More hours of debugging after "fixing" the ProofSystem issue
+- SDK developer thought payment logic was broken
+- Two separate configuration issues compounded the debugging time
+
+**Lesson**:
+- BOTH ProofSystem AND HostEarnings authorization are required
+- Missing either causes different payment failures
+- Must verify ALL contract connections after deployment
+
+**Fix Applied**:
+```bash
+# Authorize JobMarketplace in HostEarnings
+cast send 0x908962e8c6CE72610021586f85ebDE09aAc97776 "setAuthorizedCaller(address,bool)" \
+  0x56431bDeA20339c40470eC86BC2E3c09B065AFFe true \
+  --private-key $PRIVATE_KEY \
+  --rpc-url $BASE_SEPOLIA_RPC_URL \
+  --legacy
+```
+
+**Combined Impact**:
+- Total debugging time: 4+ hours across multiple developers
+- Root cause: 2 missing configuration calls that take 30 seconds each
+- These configurations are NOT automatic - they MUST be done manually
 
 ---
 
