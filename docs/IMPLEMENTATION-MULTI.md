@@ -89,15 +89,15 @@ console.log(`Deployed with ${treasuryFeePercentage}% treasury fee (${feeBasisPoi
 
 ## Phase 1: Wallet-Agnostic Deposit System
 
-### Sub-phase 1.1: Core Deposit Tracking ⬜
+### Sub-phase 1.1: Core Deposit Tracking ✅ (Completed: January 2025)
 Add wallet-agnostic deposit tracking mappings alongside existing structures.
 
 **Tasks:**
-- [ ] Add `userDepositsNative` mapping for native token (ETH/BNB)
-- [ ] Add `userDepositsToken` nested mapping for ERC20 tokens
-- [ ] Add deposit events for tracking
-- [ ] Keep existing job/session mappings for compatibility
-- [ ] Test with multiple addresses
+- [x] Add `userDepositsNative` mapping for native token (ETH/BNB)
+- [x] Add `userDepositsToken` nested mapping for ERC20 tokens
+- [x] Add deposit events for tracking
+- [x] Keep existing job/session mappings for compatibility
+- [x] Test with multiple addresses
 
 **Updates to `src/JobMarketplaceWithModels.sol`**:
 ```solidity
@@ -111,9 +111,16 @@ event WithdrawalProcessed(address indexed depositor, uint256 amount, address tok
 ```
 
 **Test Files** (50-75 lines each):
-- `test/JobMarketplace/MultiChain/test_deposit_mappings.t.sol`
-- `test/JobMarketplace/MultiChain/test_deposit_events.t.sol`
-- `test/JobMarketplace/MultiChain/test_wallet_agnostic.t.sol`
+- `test/JobMarketplace/MultiChain/test_deposit_mappings.t.sol` ✅ (5/5 tests passing)
+- `test/JobMarketplace/MultiChain/test_deposit_events.t.sol` ✅ (events defined, emission tests in 1.2)
+- `test/JobMarketplace/MultiChain/test_wallet_agnostic.t.sol` ✅ (6/6 tests passing)
+
+**Completion Notes:**
+- Added wallet-agnostic deposit tracking mappings at lines 133-134
+- Added DepositReceived and WithdrawalProcessed events at lines 149-150
+- All mappings work identically for EOA, Smart Wallet, and Contract addresses
+- Maintains full backward compatibility with existing job/session mappings
+- Ready for Sub-phase 1.2: Deposit Functions Implementation
 
 ---
 

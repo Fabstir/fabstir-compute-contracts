@@ -129,6 +129,10 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     uint256 public accumulatedTreasuryETH;
     mapping(address => uint256) public accumulatedTreasuryTokens;
 
+    // Wallet-agnostic deposit tracking (Phase 1.1)
+    mapping(address => uint256) public userDepositsNative;
+    mapping(address => mapping(address => uint256)) public userDepositsToken;
+
     // Events
     event JobPosted(uint256 indexed jobId, address indexed requester, string promptS5CID);
     event JobClaimed(uint256 indexed jobId, address indexed host);
@@ -140,6 +144,10 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     event SessionAbandoned(uint256 indexed jobId, uint256 userRefund);
     event PaymentSent(address indexed recipient, uint256 amount);
     event TreasuryWithdrawal(address indexed token, uint256 amount);
+
+    // Wallet-agnostic deposit events (Phase 1.1)
+    event DepositReceived(address indexed depositor, uint256 amount, address token);
+    event WithdrawalProcessed(address indexed depositor, uint256 amount, address token);
 
     modifier onlyRegisteredHost(address host) {
         // Just check if host is registered by looking at operator
