@@ -22,20 +22,20 @@ fabstir-compute-contracts
 
 ---
 
-## Phase 0: Environment Variable Configuration ⬜
+## Phase 0: Environment Variable Configuration ✅
 
 Make contract parameters configurable from environment variables at deployment time.
 
-### Sub-phase 0.1: Configurable Treasury Fee ⬜
+### Sub-phase 0.1: Configurable Treasury Fee ✅ (Completed: January 2025)
 Make FEE_BASIS_POINTS configurable from TREASURY_FEE_PERCENTAGE environment variable.
 
 **Tasks:**
-- [ ] Change FEE_BASIS_POINTS from constant to immutable in JobMarketplaceWithModels
-- [ ] Update constructor to accept _feeBasisPoints parameter
-- [ ] Add validation: require(_feeBasisPoints <= 10000, "Fee cannot exceed 100%")
-- [ ] Create deployment script that reads TREASURY_FEE_PERCENTAGE from .env
-- [ ] Convert percentage to basis points (multiply by 100)
-- [ ] Update deployment documentation
+- [x] Change FEE_BASIS_POINTS from constant to immutable in JobMarketplaceWithModels
+- [x] Update constructor to accept _feeBasisPoints parameter
+- [x] Add validation: require(_feeBasisPoints <= 10000, "Fee cannot exceed 100%")
+- [x] Create deployment script that reads TREASURY_FEE_PERCENTAGE from .env
+- [x] Convert percentage to basis points (multiply by 100)
+- [x] Update deployment documentation
 
 **Implementation:**
 ```solidity
@@ -72,10 +72,18 @@ console.log(`Deployed with ${treasuryFeePercentage}% treasury fee (${feeBasisPoi
 ```
 
 **Tests:**
-- [ ] `test/JobMarketplace/Config/test_fee_configuration.t.sol`
-- [ ] Test deployment with various fee percentages
-- [ ] Test fee calculation with configured values
-- [ ] Test validation (reject > 100% fees)
+- [x] `test/JobMarketplace/Config/test_fee_configuration.t.sol`
+- [x] Test deployment with various fee percentages
+- [x] Test fee calculation with configured values
+- [x] Test validation (reject > 100% fees)
+
+**Completion Notes:**
+- Implemented in January 2025
+- Created `script/DeployWithEnvConfig.s.sol` for environment-based deployment
+- Created `scripts/deploy-with-env-config.sh` shell wrapper
+- Updated all existing deployment scripts with fee parameter
+- All 8 tests passing including fuzz tests for fee validation
+- Treasury fee now fully configurable via `TREASURY_FEE_PERCENTAGE` env var
 
 ---
 
