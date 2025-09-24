@@ -1,10 +1,20 @@
-# Current Contract Addresses - Base Sepolia
+# Current Contract Addresses - Multi-Chain Support
 
-Last Updated: January 24, 2025
+Last Updated: January 25, 2025
+
+## 🌐 Multi-Chain Deployment Status
+
+| Chain | Network | Status | Native Token | Contract Address |
+|-------|---------|--------|--------------|------------------|
+| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f` |
+| **opBNB** | Testnet | ⏳ PLANNED | BNB | Post-MVP deployment |
+| **Base** | Mainnet | ⏳ FUTURE | ETH | TBD |
+| **opBNB** | Mainnet | ⏳ FUTURE | BNB | TBD |
 
 > **🚀 LATEST DEPLOYMENT**: Multi-Chain/Multi-Wallet Support
 >
 > - **JobMarketplaceWithModels**: `0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f` ✅ NEW - Multi-chain support with deposit/withdrawal functions (Jan 24, 2025)
+> - **Features**: Native token agnostic, wallet agnostic, anyone-can-complete pattern
 
 ## Active Contracts
 
@@ -40,17 +50,40 @@ Last Updated: January 24, 2025
 | **Min Deposit (ETH)** | 0.0002 ETH |
 | **Min Deposit (USDC)** | 0.80 USDC |
 
-## Configuration Example
+## Chain-Specific Configuration
 
+### Base Sepolia (ETH)
 ```javascript
-const contracts = {
-  jobMarketplace: "0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f", // NEW - Multi-chain support
-  modelRegistry: "0x92b2De840bB2171203011A6dBA928d855cA8183E",
-  nodeRegistry: "0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218",
-  proofSystem: "0x2ACcc60893872A499700908889B38C5420CBcFD1",
-  hostEarnings: "0x908962e8c6CE72610021586f85ebDE09aAc97776",
-  fabToken: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
-  usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+const baseSepoliaConfig = {
+  chainId: 84532,
+  nativeToken: "ETH",
+  contracts: {
+    jobMarketplace: "0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f", // Multi-chain support
+    modelRegistry: "0x92b2De840bB2171203011A6dBA928d855cA8183E",
+    nodeRegistry: "0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218",
+    proofSystem: "0x2ACcc60893872A499700908889B38C5420CBcFD1",
+    hostEarnings: "0x908962e8c6CE72610021586f85ebDE09aAc97776",
+    fabToken: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
+    usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    weth: "0x4200000000000000000000000000000000000006"
+  },
+  rpcUrl: "https://sepolia.base.org",
+  explorer: "https://sepolia.basescan.org"
+};
+```
+
+### opBNB Testnet (BNB) - Future Deployment
+```javascript
+const opBNBConfig = {
+  chainId: 5611, // opBNB testnet
+  nativeToken: "BNB",
+  contracts: {
+    // To be deployed post-MVP
+    jobMarketplace: "TBD",
+    // Supporting contracts will need deployment
+  },
+  rpcUrl: "https://opbnb-testnet-rpc.bnbchain.org",
+  explorer: "https://testnet.opbnbscan.com"
 };
 ```
 
