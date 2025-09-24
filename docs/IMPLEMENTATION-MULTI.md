@@ -459,14 +459,14 @@ function completeSessionJob(uint256 jobId) external nonReentrant {
 
 ---
 
-### Sub-phase 3.2: Host Payment with Configurable Split ⬜
+### Sub-phase 3.2: Host Payment with Configurable Split ✅ **(Completed: 2025-01-24)**
 Ensure host receives HOST_EARNINGS_PERCENTAGE and treasury gets TREASURY_FEE_PERCENTAGE.
 
 **Tasks:**
-- [ ] Update FEE_BASIS_POINTS to match TREASURY_FEE_PERCENTAGE from env
-- [ ] Verify host payment calculations
-- [ ] Test treasury accumulation
-- [ ] Verify with multiple payment amounts
+- [x] Update FEE_BASIS_POINTS to match TREASURY_FEE_PERCENTAGE from env
+- [x] Verify host payment calculations
+- [x] Test treasury accumulation
+- [x] Verify with multiple payment amounts
 
 **Update constant**:
 ```solidity
