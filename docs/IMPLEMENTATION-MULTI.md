@@ -399,14 +399,14 @@ userDepositsToken[msg.sender][token] += deposit;
 
 ## Phase 3: Payment Processing Updates
 
-### Sub-phase 3.1: Anyone-Can-Complete Pattern ⬜
+### Sub-phase 3.1: Anyone-Can-Complete Pattern ✅ **(Completed: 2025-01-24)**
 Update `completeSessionJob` to allow anyone to call it.
 
 **Tasks:**
-- [ ] Remove caller restrictions from completeSessionJob
-- [ ] Add completedBy tracking in event
-- [ ] Ensure refunds go to depositor
-- [ ] Test with various callers
+- [x] Remove caller restrictions from completeSessionJob
+- [x] Add completedBy tracking in event
+- [x] Ensure refunds go to depositor
+- [x] Test with various callers
 
 **Update completeSessionJob**:
 ```solidity

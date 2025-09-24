@@ -141,6 +141,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     event SessionJobCreated(uint256 indexed jobId, address indexed requester, address indexed host, uint256 deposit);
     event ProofSubmitted(uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash);
     event SessionCompleted(uint256 indexed jobId, uint256 totalTokensUsed, uint256 hostEarnings, uint256 userRefund);
+    // New event that tracks who completed the session (Phase 3.1 - Anyone-can-complete pattern)
+    event SessionCompleted(uint256 indexed jobId, address indexed completedBy, uint256 tokensUsed, uint256 paymentAmount, uint256 refundAmount);
     event SessionTimedOut(uint256 indexed jobId, uint256 hostEarnings, uint256 userRefund);
     event SessionAbandoned(uint256 indexed jobId, uint256 userRefund);
     event PaymentSent(address indexed recipient, uint256 amount);
@@ -330,19 +332,21 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     function completeSessionJob(uint256 jobId, string calldata conversationCID) external nonReentrant {
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
-        require(msg.sender == session.host || msg.sender == session.requester, "Unauthorized");
+        // REMOVED: Authorization check - anyone can complete (enables gasless ending pattern)
+        // This allows hosts to complete on behalf of users, reducing gas costs for users
 
-        if (msg.sender == session.host) {
+        // Dispute window only waived for the original requester
+        if (msg.sender != session.requester) {
             require(block.timestamp >= session.startTime + DISPUTE_WINDOW, "Must wait dispute window");
         }
 
         session.status = SessionStatus.Completed;
         session.conversationCID = conversationCID;
 
-        _settleSessionPayments(jobId);
+        _settleSessionPayments(jobId, msg.sender);
     }
 
-    function _settleSessionPayments(uint256 jobId) internal {
+    function _settleSessionPayments(uint256 jobId, address completedBy) internal {
         SessionJob storage session = sessionJobs[jobId];
 
         uint256 hostPayment = session.tokensUsed * session.pricePerToken;
@@ -381,7 +385,10 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
             session.refundedToUser = userRefund;
         }
 
+        // Emit both events for backward compatibility
         emit SessionCompleted(jobId, session.tokensUsed, session.withdrawnByHost, userRefund);
+        // Emit new event showing who completed it (Phase 3.1)
+        emit SessionCompleted(jobId, completedBy, session.tokensUsed, hostPayment, userRefund);
     }
 
     function triggerSessionTimeout(uint256 jobId) external nonReentrant {
@@ -394,7 +401,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         require(hasTimedOut, "Session not timed out");
 
         session.status = SessionStatus.TimedOut;
-        _settleSessionPayments(jobId);
+        _settleSessionPayments(jobId, msg.sender);
 
         emit SessionTimedOut(jobId, session.withdrawnByHost, session.refundedToUser);
     }
