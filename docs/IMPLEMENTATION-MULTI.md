@@ -550,14 +550,14 @@ function initializeChainConfig(ChainConfig memory _config) external {
 
 ---
 
-### Sub-phase 4.2: Native Token Handling ⬜
+### Sub-phase 4.2: Native Token Handling ✅ **(Completed: 2025-01-24)**
 Ensure proper handling of ETH on Base and BNB on opBNB.
 
 **Tasks:**
-- [ ] Test native token deposits on both chains
-- [ ] Verify withdrawal of native tokens
-- [ ] Test wrapped token interactions
-- [ ] Ensure chain-agnostic function names
+- [x] Test native token deposits on both chains
+- [x] Verify withdrawal of native tokens
+- [x] Test wrapped token interactions
+- [x] Ensure chain-agnostic function names
 
 **Test Files** (50-75 lines each):
 - `test/JobMarketplace/MultiChain/test_eth_on_base.t.sol`
