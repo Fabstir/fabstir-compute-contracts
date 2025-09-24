@@ -76,7 +76,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     // Session job structure
     struct SessionJob {
         uint256 id;
-        address requester;
+        address depositor;      // NEW: tracks who deposited (EOA or Smart Account)
+        address requester;      // DEPRECATED but kept for backward compatibility
         address host;
         address paymentToken;
         uint256 deposit;
@@ -149,6 +150,14 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     event DepositReceived(address indexed depositor, uint256 amount, address token);
     event WithdrawalProcessed(address indexed depositor, uint256 amount, address token);
 
+    // Session events using depositor terminology (Phase 2.1)
+    event SessionCreatedByDepositor(
+        uint256 indexed sessionId,
+        address indexed depositor,
+        address indexed host,
+        uint256 deposit
+    );
+
     modifier onlyRegisteredHost(address host) {
         // Just check if host is registered by looking at operator
         // NodeRegistryWithModels has different return signature
@@ -191,7 +200,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
 
         SessionJob storage session = sessionJobs[jobId];
         session.id = jobId;
-        session.requester = msg.sender;
+        session.depositor = msg.sender;  // NEW: track depositor (wallet-agnostic)
+        session.requester = msg.sender;  // DEPRECATED: keep for compatibility
         session.host = host;
         session.paymentToken = address(0);
         session.deposit = msg.value;
@@ -206,6 +216,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         hostSessions[host].push(jobId);
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
+        emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value);  // NEW event
 
         return jobId;
     }
@@ -235,7 +246,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
 
         SessionJob storage session = sessionJobs[jobId];
         session.id = jobId;
-        session.requester = msg.sender;
+        session.depositor = msg.sender;  // NEW: track depositor (wallet-agnostic)
+        session.requester = msg.sender;  // DEPRECATED: keep for compatibility
         session.host = host;
         session.paymentToken = token;
         session.deposit = deposit;
@@ -250,6 +262,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         hostSessions[host].push(jobId);
 
         emit SessionJobCreated(jobId, msg.sender, host, deposit);
+        emit SessionCreatedByDepositor(jobId, msg.sender, host, deposit);  // NEW event
 
         return jobId;
     }

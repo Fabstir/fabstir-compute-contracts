@@ -263,19 +263,19 @@ function getDepositBalances(address account, address[] calldata tokens)
 
 ## Phase 2: Session Management Updates
 
-### Sub-phase 2.1: Update SessionJob Structure ⬜
+### Sub-phase 2.1: Update SessionJob Structure ✅ (Completed: 2025-01-24)
 Add depositor field to track session owner regardless of wallet type.
 
 **Tasks:**
-- [ ] Add `depositor` field to SessionJob struct
-- [ ] Update struct initialization
-- [ ] Maintain backward compatibility
-- [ ] Test struct updates
+- [x] Add `depositor` field to SessionJob struct
+- [x] Update struct initialization
+- [x] Maintain backward compatibility
+- [x] Test struct updates
 
 **Updates to SessionJob struct**:
 ```solidity
 struct SessionJob {
-    uint256 jobId;
+    uint256 id;
     address depositor;      // NEW: tracks who deposited (EOA or Smart Account)
     address requester;      // DEPRECATED but kept for compatibility
     address host;
@@ -286,8 +286,15 @@ struct SessionJob {
 ```
 
 **Test Files** (50-75 lines each):
-- `test/JobMarketplace/MultiChain/test_session_struct_update.t.sol`
-- `test/JobMarketplace/MultiChain/test_depositor_field.t.sol`
+- `test/JobMarketplace/MultiChain/test_session_struct_update.t.sol` ✅ (2/2 tests passing)
+- `test/JobMarketplace/MultiChain/test_depositor_field.t.sol` ✅ (4/4 tests passing)
+
+**Completion Notes:**
+- Added depositor field to SessionJob struct at line 79
+- Updated createSessionJob and createSessionJobWithToken to set depositor field
+- Added SessionCreatedByDepositor event for wallet-agnostic tracking
+- Maintained backward compatibility by keeping requester field
+- All 6 tests passing across both test files
 
 ---
 
