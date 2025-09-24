@@ -149,8 +149,18 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     event TreasuryWithdrawal(address indexed token, uint256 amount);
 
     // Wallet-agnostic deposit events (Phase 1.1)
-    event DepositReceived(address indexed depositor, uint256 amount, address token);
-    event WithdrawalProcessed(address indexed depositor, uint256 amount, address token);
+    // Deposit/Withdrawal events (Phase 1.4 - now properly indexed in Phase 3.3)
+    event DepositReceived(
+        address indexed depositor,
+        uint256 amount,
+        address indexed token  // address(0) for native
+    );
+
+    event WithdrawalProcessed(
+        address indexed depositor,
+        uint256 amount,
+        address indexed token  // address(0) for native
+    );
 
     // Session events using depositor terminology (Phase 2.1)
     event SessionCreatedByDepositor(

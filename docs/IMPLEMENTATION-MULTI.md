@@ -481,14 +481,14 @@ uint256 public constant FEE_BASIS_POINTS = 1000; // Should match TREASURY_FEE_PE
 
 ---
 
-### Sub-phase 3.3: Update Event Signatures ⬜
+### Sub-phase 3.3: Update Event Signatures ✅ **(Completed: 2025-01-24)**
 Add new events with depositor terminology.
 
 **Tasks:**
-- [ ] Add SessionCreatedByDepositor event
-- [ ] Update SessionCompleted to include completedBy
-- [ ] Add deposit/withdrawal events
-- [ ] Maintain old events for compatibility
+- [x] Add SessionCreatedByDepositor event
+- [x] Update SessionCompleted to include completedBy
+- [x] Add deposit/withdrawal events
+- [x] Maintain old events for compatibility
 
 **New Events**:
 ```solidity
