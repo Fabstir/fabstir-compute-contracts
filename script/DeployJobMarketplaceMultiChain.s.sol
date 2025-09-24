@@ -18,11 +18,13 @@ contract DeployJobMarketplaceMultiChain is Script {
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
 
         // Step 1: Deploy new JobMarketplaceWithModels
         console.log("Deploying JobMarketplaceWithModels...");
+        console.log("Deployer:", deployer);
         uint256 feeBasisPoints = 1000; // 10% treasury fee
 
         JobMarketplaceWithModels marketplace = new JobMarketplaceWithModels(
@@ -33,18 +35,37 @@ contract DeployJobMarketplaceMultiChain is Script {
 
         console.log("JobMarketplaceWithModels deployed to:", address(marketplace));
 
-        // Step 2: Configure ProofSystem
-        console.log("Configuring ProofSystem...");
-        marketplace.setProofSystem(PROOF_SYSTEM);
-        console.log("ProofSystem configured");
+        vm.stopBroadcast();
 
-        // Step 3: Authorize in HostEarnings
-        console.log("Authorizing marketplace in HostEarnings...");
-        HostEarnings(HOST_EARNINGS).setAuthorizedCaller(address(marketplace), true);
-        console.log("Marketplace authorized in HostEarnings");
+        // Step 2: Configure ProofSystem (requires treasury to set)
+        console.log("\n=== POST-DEPLOYMENT CONFIGURATION ===");
+        console.log("IMPORTANT: The following steps must be executed by the treasury address:");
+        console.log("Treasury:", TREASURY);
+        console.log("");
+        console.log("1. Set ProofSystem:");
+        console.log("Run this command:");
+        console.log("cast send <MARKETPLACE> \"setProofSystem(address)\" <PROOF_SYSTEM>");
+        console.log("   Replace <MARKETPLACE> with:", address(marketplace));
+        console.log("   Replace <PROOF_SYSTEM> with:", PROOF_SYSTEM);
+        console.log("");
 
-        // Step 4: Initialize ChainConfig for Base
-        console.log("Initializing ChainConfig for Base Sepolia...");
+        // Step 3: Authorize in HostEarnings (can be done by deployer if owner)
+        console.log("2. Authorize marketplace in HostEarnings:");
+        console.log("cast send <HOST_EARNINGS> \"setAuthorizedCaller(address,bool)\" <MARKETPLACE> true");
+        console.log("   Replace <HOST_EARNINGS> with:", HOST_EARNINGS);
+        console.log("   Replace <MARKETPLACE> with:", address(marketplace));
+        console.log("");
+
+        // Step 4: Initialize ChainConfig (can be done by deployer)
+        console.log("3. Initialize ChainConfig for Base:");
+        console.log("cast send <MARKETPLACE> \"initializeChainConfig((address,address,uint256,string))\"");
+        console.log("   Replace <MARKETPLACE> with:", address(marketplace));
+        console.log("   With tuple: (WETH, USDC, minDeposit, \"ETH\")");
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        // Try to initialize ChainConfig if deployer has permission
+        console.log("\nAttempting to initialize ChainConfig...");
         JobMarketplaceWithModels.ChainConfig memory baseConfig =
             JobMarketplaceWithModels.ChainConfig({
                 nativeWrapper: WETH_ON_BASE,
@@ -53,8 +74,11 @@ contract DeployJobMarketplaceMultiChain is Script {
                 nativeTokenSymbol: "ETH"
             });
 
-        marketplace.initializeChainConfig(baseConfig);
-        console.log("ChainConfig initialized for Base with ETH");
+        try marketplace.initializeChainConfig(baseConfig) {
+            console.log("ChainConfig initialized for Base with ETH");
+        } catch {
+            console.log("ChainConfig initialization failed - may require specific permissions");
+        }
 
         vm.stopBroadcast();
 
