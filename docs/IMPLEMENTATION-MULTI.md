@@ -298,15 +298,15 @@ struct SessionJob {
 
 ---
 
-### Sub-phase 2.2: createSessionFromDeposit Function ⬜
+### Sub-phase 2.2: createSessionFromDeposit Function ✅ (Completed: 2025-01-24)
 Implement session creation using pre-deposited funds.
 
 **Tasks:**
-- [ ] Implement `createSessionFromDeposit()` function
-- [ ] Deduct from deposit balance
-- [ ] Set depositor field correctly
-- [ ] Validate sufficient deposit
-- [ ] Support both native and token payments
+- [x] Implement `createSessionFromDeposit()` function
+- [x] Deduct from deposit balance
+- [x] Set depositor field correctly
+- [x] Validate sufficient deposit
+- [x] Support both native and token payments
 
 **New Function**:
 ```solidity
@@ -317,7 +317,7 @@ function createSessionFromDeposit(
     uint256 pricePerToken,
     uint256 maxDuration,
     uint256 proofInterval
-) external returns (uint256 sessionId) {
+) external nonReentrant returns (uint256 sessionId) {
     // Check and deduct deposit
     if (paymentToken == address(0)) {
         require(userDepositsNative[msg.sender] >= deposit, "Insufficient native deposit");
@@ -330,7 +330,7 @@ function createSessionFromDeposit(
     // Create session with msg.sender as depositor
     sessionId = nextJobId++;
     SessionJob storage session = sessionJobs[sessionId];
-    session.jobId = sessionId;
+    session.id = sessionId;
     session.depositor = msg.sender;  // Wallet-agnostic
     session.requester = msg.sender;  // Keep for compatibility
     session.host = host;
@@ -346,9 +346,18 @@ function createSessionFromDeposit(
 ```
 
 **Test Files** (50-75 lines each):
-- `test/JobMarketplace/MultiChain/test_create_from_deposit.t.sol`
-- `test/JobMarketplace/MultiChain/test_deposit_deduction.t.sol`
-- `test/JobMarketplace/MultiChain/test_session_creation_events.t.sol`
+- `test/JobMarketplace/MultiChain/test_create_from_deposit.t.sol` ✅ (3/3 tests passing)
+- `test/JobMarketplace/MultiChain/test_deposit_deduction.t.sol` ✅ (4/4 tests passing)
+- `test/JobMarketplace/MultiChain/test_session_creation_events.t.sol` ✅ (4/4 tests passing)
+
+**Completion Notes:**
+- Implemented createSessionFromDeposit function at lines 589-647
+- Function deducts from pre-deposited funds (userDepositsNative or userDepositsToken)
+- Validates deposit minimums (MIN_DEPOSIT for native, token-specific for ERC20)
+- Sets both depositor and requester fields for backward compatibility
+- Emits both SessionJobCreated and SessionCreatedByDepositor events
+- All 11 tests passing across three test files
+- Supports both native token (ETH/BNB) and ERC20 token deposits
 
 ---
 
