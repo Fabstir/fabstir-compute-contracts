@@ -497,6 +497,37 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         emit DepositReceived(msg.sender, amount, token);
     }
 
+    // Wallet-agnostic withdrawal functions (Phase 1.3)
+
+    /**
+     * @notice Withdraw deposited native token (ETH on Base, BNB on opBNB)
+     * @dev Returns funds to depositor (EOA or Smart Account)
+     * @param amount Amount to withdraw
+     */
+    function withdrawNative(uint256 amount) external nonReentrant {
+        require(userDepositsNative[msg.sender] >= amount, "Insufficient balance");
+
+        userDepositsNative[msg.sender] -= amount;
+        payable(msg.sender).transfer(amount);
+
+        emit WithdrawalProcessed(msg.sender, amount, address(0));
+    }
+
+    /**
+     * @notice Withdraw deposited tokens
+     * @dev Returns tokens to depositor (EOA or Smart Account)
+     * @param token Token address
+     * @param amount Amount to withdraw
+     */
+    function withdrawToken(address token, uint256 amount) external nonReentrant {
+        require(userDepositsToken[msg.sender][token] >= amount, "Insufficient balance");
+
+        userDepositsToken[msg.sender][token] -= amount;
+        IERC20(token).transfer(msg.sender, amount);
+
+        emit WithdrawalProcessed(msg.sender, amount, token);
+    }
+
     receive() external payable {}
     fallback() external payable {}
 }

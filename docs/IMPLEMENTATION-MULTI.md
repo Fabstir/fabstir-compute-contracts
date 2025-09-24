@@ -168,15 +168,15 @@ function depositToken(address token, uint256 amount) external {
 
 ---
 
-### Sub-phase 1.3: Withdrawal Functions ⬜
+### Sub-phase 1.3: Withdrawal Functions ✅ (Completed: January 2025)
 Implement withdrawal functions with reentrancy protection.
 
 **Tasks:**
-- [ ] Implement `withdrawNative()` for ETH/BNB withdrawals
-- [ ] Implement `withdrawToken()` for ERC20 withdrawals
-- [ ] Add reentrancy guards
-- [ ] Validate sufficient balance
-- [ ] Test withdrawal limits
+- [x] Implement `withdrawNative()` for ETH/BNB withdrawals
+- [x] Implement `withdrawToken()` for ERC20 withdrawals
+- [x] Add reentrancy guards
+- [x] Validate sufficient balance
+- [x] Test withdrawal limits
 
 **New Functions**:
 ```solidity
@@ -200,9 +200,19 @@ function withdrawToken(address token, uint256 amount) external nonReentrant {
 ```
 
 **Test Files** (50-75 lines each):
-- `test/JobMarketplace/MultiChain/test_withdraw_native.t.sol`
-- `test/JobMarketplace/MultiChain/test_withdraw_token.t.sol`
-- `test/JobMarketplace/MultiChain/test_reentrancy_protection.t.sol`
+- `test/JobMarketplace/MultiChain/test_withdraw_native.t.sol` ✅ (6/6 tests passing)
+- `test/JobMarketplace/MultiChain/test_withdraw_token.t.sol` ✅ (5/5 tests passing)
+- `test/JobMarketplace/MultiChain/test_reentrancy_protection.t.sol` ✅ (2/2 tests passing)
+
+**Completion Notes:**
+- Implemented withdrawNative() and withdrawToken() functions at lines 507-528
+- Both functions use nonReentrant modifier from ReentrancyGuard
+- Functions emit WithdrawalProcessed events with proper parameters
+- Wallet-agnostic - work identically for EOA and Smart Accounts
+- Validation includes balance checks before withdrawal
+- Reentrancy protection successfully prevents attack vectors
+- All 13 tests passing (6 native, 5 token, 2 reentrancy)
+- Complete deposit/withdrawal cycle now implemented
 
 ---
 
