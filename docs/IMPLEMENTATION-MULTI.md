@@ -124,15 +124,15 @@ event WithdrawalProcessed(address indexed depositor, uint256 amount, address tok
 
 ---
 
-### Sub-phase 1.2: Deposit Functions Implementation ⬜
+### Sub-phase 1.2: Deposit Functions Implementation ✅ (Completed: January 2025)
 Implement deposit and withdrawal functions for native and ERC20 tokens.
 
 **Tasks:**
-- [ ] Implement `depositNative()` for ETH/BNB deposits
-- [ ] Implement `depositToken()` for ERC20 deposits
-- [ ] Add balance validation checks
-- [ ] Emit proper events
-- [ ] Test with zero amounts (should revert)
+- [x] Implement `depositNative()` for ETH/BNB deposits
+- [x] Implement `depositToken()` for ERC20 deposits
+- [x] Add balance validation checks
+- [x] Emit proper events
+- [x] Test with zero amounts (should revert)
 
 **New Functions**:
 ```solidity
@@ -153,9 +153,18 @@ function depositToken(address token, uint256 amount) external {
 ```
 
 **Test Files** (50-75 lines each):
-- `test/JobMarketplace/MultiChain/test_deposit_native.t.sol`
-- `test/JobMarketplace/MultiChain/test_deposit_token.t.sol`
-- `test/JobMarketplace/MultiChain/test_deposit_validation.t.sol`
+- `test/JobMarketplace/MultiChain/test_deposit_native.t.sol` ✅ (5/5 tests passing)
+- `test/JobMarketplace/MultiChain/test_deposit_token.t.sol` ✅ (4/4 tests passing)
+- `test/JobMarketplace/MultiChain/test_deposit_validation.t.sol` ✅ (5/5 tests passing)
+
+**Completion Notes:**
+- Implemented depositNative() and depositToken() functions at lines 479-498
+- Both functions emit DepositReceived events with proper parameters
+- Functions are wallet-agnostic - work identically for EOA and Smart Accounts
+- Validation includes zero deposit check and invalid token address check
+- Token deposits use transferFrom with proper allowance handling
+- All 14 tests passing (5 native, 4 token, 5 validation)
+- Ready for Sub-phase 1.3: Withdrawal Functions
 
 ---
 

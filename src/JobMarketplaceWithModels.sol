@@ -470,6 +470,33 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         }
     }
 
+    // Wallet-agnostic deposit functions (Phase 1.2)
+
+    /**
+     * @notice Deposit native token (ETH on Base, BNB on opBNB) to user's account
+     * @dev Works identically for EOA and Smart Account wallets
+     */
+    function depositNative() external payable {
+        require(msg.value > 0, "Zero deposit");
+        userDepositsNative[msg.sender] += msg.value;
+        emit DepositReceived(msg.sender, msg.value, address(0));
+    }
+
+    /**
+     * @notice Deposit ERC20 tokens to user's account
+     * @dev msg.sender can be EOA or Smart Account
+     * @param token Token address (USDC, etc.)
+     * @param amount Amount to deposit
+     */
+    function depositToken(address token, uint256 amount) external {
+        require(amount > 0, "Zero deposit");
+        require(token != address(0), "Invalid token");
+
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        userDepositsToken[msg.sender][token] += amount;
+        emit DepositReceived(msg.sender, amount, token);
+    }
+
     receive() external payable {}
     fallback() external payable {}
 }
