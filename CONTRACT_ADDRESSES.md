@@ -2,11 +2,15 @@
 
 Last Updated: January 24, 2025
 
+> **🚀 LATEST DEPLOYMENT**: Multi-Chain/Multi-Wallet Support
+>
+> - **JobMarketplaceWithModels**: `0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f` ✅ NEW - Multi-chain support with deposit/withdrawal functions (Jan 24, 2025)
+
 ## Active Contracts
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceWithModels** | `0x1273E6358aa52Bb5B160c34Bf2e617B745e4A944` | Session jobs with model validation |
+| **JobMarketplaceWithModels** | `0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f` | ✅ NEW - Multi-chain support, deposit/withdrawal, anyone-can-complete |
 | **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | Model governance (2 approved models) |
 | **NodeRegistryWithModels** | `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218` | Host registration with model validation |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | EZKL proof verification |
@@ -40,7 +44,7 @@ Last Updated: January 24, 2025
 
 ```javascript
 const contracts = {
-  jobMarketplace: "0x1273E6358aa52Bb5B160c34Bf2e617B745e4A944",
+  jobMarketplace: "0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f", // NEW - Multi-chain support
   modelRegistry: "0x92b2De840bB2171203011A6dBA928d855cA8183E",
   nodeRegistry: "0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218",
   proofSystem: "0x2ACcc60893872A499700908889B38C5420CBcFD1",
@@ -49,6 +53,12 @@ const contracts = {
   usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 };
 ```
+
+## Deprecated Contracts
+
+| Contract | Address | Description | Deprecated Date |
+|----------|---------|-------------|-----------------|
+| **JobMarketplaceWithModels** | `0x1273E6358aa52Bb5B160c34Bf2e617B745e4A944` | ⚠️ DEPRECATED - Replaced with multi-chain version | Jan 24, 2025 |
 
 ## Network Information
 
