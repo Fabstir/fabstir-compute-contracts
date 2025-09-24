@@ -108,10 +108,10 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     mapping(address => uint256[]) public hostSessions;
 
     uint256 public nextJobId = 1;
-    // NOTE: This constant should match TREASURY_FEE_PERCENTAGE from .env during deployment
+    // NOTE: This immutable value is set from TREASURY_FEE_PERCENTAGE env var during deployment
     // FEE_BASIS_POINTS = TREASURY_FEE_PERCENTAGE * 100 (e.g., 10% = 1000 basis points)
     // Host receives (10000 - FEE_BASIS_POINTS) / 100 percent (e.g., 90% with 10% treasury fee)
-    uint256 public constant FEE_BASIS_POINTS = 1000; // Treasury fee in basis points
+    uint256 public immutable FEE_BASIS_POINTS; // Treasury fee in basis points
     address public treasuryAddress = 0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11;
     address public usdcAddress = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 
@@ -147,7 +147,9 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         _;
     }
 
-    constructor(address _nodeRegistry, address payable _hostEarnings) {
+    constructor(address _nodeRegistry, address payable _hostEarnings, uint256 _feeBasisPoints) {
+        require(_feeBasisPoints <= 10000, "Fee cannot exceed 100%");
+        FEE_BASIS_POINTS = _feeBasisPoints;
         nodeRegistry = NodeRegistryWithModels(_nodeRegistry);
         hostEarnings = HostEarnings(_hostEarnings);
 

@@ -12,9 +12,13 @@ contract DeployJobMarketplace is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
+        // Default to 10% treasury fee (1000 basis points)
+        uint256 feeBasisPoints = 1000;
+
         JobMarketplaceWithModels marketplace = new JobMarketplaceWithModels(
             nodeRegistry,
-            hostEarnings
+            hostEarnings,
+            feeBasisPoints
         );
 
         console.log("JobMarketplace deployed to:", address(marketplace));
