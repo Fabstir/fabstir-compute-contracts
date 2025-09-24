@@ -4,7 +4,8 @@
 
 The Governance system provides decentralized decision-making for the Fabstir marketplace through proposal creation, voting, and execution mechanisms. It works in tandem with the GovernanceToken, an ERC20 token with voting capabilities.
 
-**Contract Addresses**: To be deployed  
+**Contract Addresses**: Not yet deployed (Governance system pending)
+**Network**: Base Sepolia (planned)
 **Sources**: 
 - [`src/Governance.sol`](../../../src/Governance.sol)
 - [`src/GovernanceToken.sol`](../../../src/GovernanceToken.sol)

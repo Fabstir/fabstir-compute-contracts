@@ -1,18 +1,29 @@
 # Model Registry Deployment Guide
 
+*Last Updated: January 2025*
+
 ## Clean Deployment for MVP Testing
 
-This guide shows how to deploy the ModelRegistry with ONLY the two approved models for testing.
+This guide shows the deployed ModelRegistry with ONLY the two approved models for testing.
 
 ## Deployed Contracts (Current - January 2025)
 
+### Core Contracts
+
 - **ModelRegistry**: `0x92b2De840bB2171203011A6dBA928d855cA8183E`
   - ✅ **Status**: Deployed and active with exactly 2 approved models
-  - Owner: `0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11`
+  - **Owner**: `0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11`
+  - **Network**: Base Sepolia
 
 - **NodeRegistryWithModels**: `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218`
   - ✅ **Status**: Deployed and integrated with ModelRegistry
-  - Enforces model validation for all node registrations
+  - **Features**: Enforces model validation, API URL discovery, FAB staking
+  - **Min Stake**: 1000 FAB tokens
+
+- **JobMarketplaceWithModels**: `0x1273E6358aa52Bb5B160c34Bf2e617B745e4A944`
+  - ✅ **Status**: Active and using model validation
+  - **Features**: Session jobs with proof checkpoints
+  - **Integration**: Validates hosts have required models
 
 ## Approved Models for Testing (ONLY THESE TWO)
 
@@ -182,12 +193,32 @@ await nodeRegistry.registerNode(
 3. **No Additional Models**: Do not add Llama-2, Mistral, or any other models until after MVP
 4. **Structured Metadata**: Use JSON format for node metadata, not comma-separated strings
 
-## Current Issue
+## Integration with JobMarketplace
 
-The currently deployed ModelRegistry at `0xA1F2FCf756551cbEE90D4224f30C887B36c08d6D` has 4 models instead of 2:
-- ❌ Llama-2-7B-GGUF (should not be there)
-- ❌ Mistral-7B-Instruct (should not be there)
-- ✅ TinyVicuna-1B-32k
-- ✅ TinyLlama-1.1B
+The **JobMarketplaceWithModels** at `0x1273E6358aa52Bb5B160c34Bf2e617B745e4A944` is fully integrated with this ModelRegistry:
+- Validates that hosts have registered with supported models
+- Ensures only approved models can be used in the marketplace
+- Prevents job creation with hosts that don't support required models
 
-**Recommendation**: Deploy a fresh ModelRegistry with only the two approved models.
+## Quick Reference: Model IDs
+
+```
+TinyVicuna-1B: 0x0b75a2061e70e736924a30c0a327db7ab719402129f76f631adbd7b7a5a5bced
+TinyLlama-1.1B: 0x14843424179fbcb9aeb7fd446fa97143300609757bd49ffb3ec7fb2f75aed1ca
+```
+
+## Useful Query Commands
+
+```bash
+# Get all approved models
+cast call 0x92b2De840bB2171203011A6dBA928d855cA8183E "getAllModels()" --rpc-url "$BASE_SEPOLIA_RPC_URL"
+
+# Check if a specific model is approved
+cast call 0x92b2De840bB2171203011A6dBA928d855cA8183E "isModelApproved(bytes32)" <MODEL_ID> --rpc-url "$BASE_SEPOLIA_RPC_URL"
+
+# Get model details
+cast call 0x92b2De840bB2171203011A6dBA928d855cA8183E "getModel(bytes32)" <MODEL_ID> --rpc-url "$BASE_SEPOLIA_RPC_URL"
+
+# Check which models a host supports
+cast call 0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218 "getNodeSupportedModels(address)" <HOST_ADDRESS> --rpc-url "$BASE_SEPOLIA_RPC_URL"
+```

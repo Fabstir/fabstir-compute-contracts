@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import "./NodeRegistryWithModels.sol";
 import "./interfaces/IJobMarketplace.sol";
-import "./interfaces/IPaymentEscrow.sol";
 import "./interfaces/IReputationSystem.sol";
 import "./HostEarnings.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -109,13 +108,12 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     mapping(address => uint256[]) public hostSessions;
 
     uint256 public nextJobId = 1;
-    uint256 public constant FEE_BASIS_POINTS = 250; // 2.5% platform fee
+    uint256 public constant FEE_BASIS_POINTS = 1000; // 10% platform fee
     address public treasuryAddress = 0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11;
     address public usdcAddress = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 
     NodeRegistryWithModels public nodeRegistry;
     IReputationSystem public reputationSystem;
-    IPaymentEscrow public paymentEscrow;
     IProofSystem public proofSystem;
     HostEarnings public hostEarnings;
 

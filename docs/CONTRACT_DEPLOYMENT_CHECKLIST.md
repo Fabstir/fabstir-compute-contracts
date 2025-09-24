@@ -494,7 +494,7 @@ cast code [ADDRESS] --rpc-url $BASE_SEPOLIA_RPC_URL
 **What Happened**:
 1. Deployed ModelRegistry and NodeRegistryWithModels
 2. Host registered in NodeRegistryWithModels (6-field struct with model support)
-3. JobMarketplace was still using old NodeRegistryFAB (5-field struct)
+3. JobMarketplace was still using old NodeRegistry (5-field struct)
 4. SDK tried to create session job → Transaction failed with "require(false)"
 
 **Root Cause**:

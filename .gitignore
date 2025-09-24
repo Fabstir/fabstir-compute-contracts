@@ -60,3 +60,5 @@ scripts/*.js
 scripts/*.sh
 verify-host-earnings.sh
 script/DeployOptimizedMarketplace.s.sol
+
+images/

@@ -170,7 +170,7 @@ async function registerHost(privateKey, metadata, apiUrl) {
   
   // Contract addresses
   const FAB_TOKEN = '0xC78949004B4EB6dEf2D66e49Cd81231472612D62';
-  const NODE_REGISTRY = '0x039AB5d5e8D5426f9963140202F506A2Ce6988F9';
+  const NODE_REGISTRY = '0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218';
   
   // ABIs
   const fabTokenAbi = [
@@ -459,14 +459,14 @@ Once registered, you can:
 3. Earn payments for completed inference tasks
 4. Build reputation in the system
 
-The JobMarketplace contract (`0x001A47Bb8C6CaD9995639b8776AB5816Ab9Ac4E0`) verifies your registration before allowing you to claim jobs.
+The JobMarketplace contract (`0x1273E6358aa52Bb5B160c34Bf2e617B745e4A944`) verifies your registration and model support before allowing you to claim jobs.
 
 ## Support
 
 For technical support:
 - GitHub Issues: https://github.com/fabstir/fabstir-llm-marketplace
 - Documentation: [Technical Docs](./technical/contracts/NodeRegistry.md)
-- Contract Source: [NodeRegistryFAB.sol](../src/NodeRegistryFAB.sol)
+- Contract Source: [NodeRegistryWithModels.sol](../src/NodeRegistryWithModels.sol)
 
 ## Next Steps
 

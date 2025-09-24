@@ -1,13 +1,16 @@
-# NodeRegistryFAB Contract Documentation
+# NodeRegistry Contract Documentation
 
-## Current Implementation
+## Current Implementation: NodeRegistryWithModels
 
-**Contract Address (Base Sepolia)**: `0x87516C13Ea2f99de598665e14cab64E191A0f8c4`  
-**Source**: [`src/NodeRegistryFAB.sol`](../../../src/NodeRegistryFAB.sol)
+**Contract Address**: `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218`
+**Network**: Base Sepolia
+**Status**: ✅ ACTIVE - Node registration with model validation
+**Last Updated**: January 13, 2025
+**Source**: [`src/NodeRegistryWithModels.sol`](../../../src/NodeRegistryWithModels.sol)
 
 ### Overview
 
-The NodeRegistryFAB contract manages GPU host registration using FAB token staking. It replaced the earlier ETH-based NodeRegistry to provide more accessible entry for hosts.
+The NodeRegistryWithModels contract manages GPU host registration with integrated model validation. Hosts must specify which approved models they support during registration.
 
 ### Key Features
 - **FAB Token Staking**: 1000 FAB minimum stake (vs 100 ETH in old version)

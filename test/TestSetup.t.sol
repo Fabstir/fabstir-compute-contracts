@@ -3,14 +3,12 @@ pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 import {JobMarketplaceMock} from "./mocks/JobMarketplaceMock.sol";
-import {PaymentEscrowMock} from "./mocks/PaymentEscrowMock.sol";
 import {NodeRegistryMock} from "./mocks/NodeRegistryMock.sol";
 import {ReputationSystemMock} from "./mocks/ReputationSystemMock.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 
 contract TestSetup is Test {
     JobMarketplaceMock public jobMarketplace;
-    PaymentEscrowMock public paymentEscrow;
     NodeRegistryMock public nodeRegistry;
     ReputationSystemMock public reputationSystem;
     ERC20Mock public token;
@@ -26,7 +24,6 @@ contract TestSetup is Test {
         nodeRegistry = new NodeRegistryMock();
         jobMarketplace = new JobMarketplaceMock();
         reputationSystem = new ReputationSystemMock();
-        paymentEscrow = new PaymentEscrowMock();
         
         // Deploy mock token
         token = new ERC20Mock("Test Token", "TEST");

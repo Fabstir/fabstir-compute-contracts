@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./JobMarketplaceFABWithS5.sol";
+import "./interfaces/IProofSystem.sol";
 
 contract ProofSystem is IProofSystem {
     // Track verified proofs to prevent replay

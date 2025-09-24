@@ -289,10 +289,12 @@ Smart contracts for the Fabstir P2P LLM marketplace on Base L2, enabling direct 
 **Status: DEPLOYED TO BASE SEPOLIA** 🚀
 
 **Deployed Contracts (Latest with Economic Minimums):**
-- ProofSystem: 0xE7dfB24117a525fCEA51718B1D867a2D779A7Bb9 (Fixed deployment - Dec 2, 2024)
-- JobMarketplaceFABWithS5: 0xebD3bbc24355d05184C7Af753d9d631E2b3aAF7A (Fixed payment distribution)
-- NodeRegistryFAB: 0x87516C13Ea2f99de598665e14cab64E191A0f8c4
-- Treasury: 0x4e770e723B95A0d8923Db006E49A8a3cb0BAA078
+- ProofSystem: 0x2ACcc60893872A499700908889B38C5420CBcFD1 (EZKL proof verification)
+- JobMarketplaceWithModels: 0x1273E6358aa52Bb5B160c34Bf2e617B745e4A944 (Session jobs with model validation)
+- NodeRegistryWithModels: 0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218 (Model-validated host registration)
+- ModelRegistry: 0x92b2De840bB2171203011A6dBA928d855cA8183E (AI model governance)
+- HostEarnings: 0x908962e8c6CE72610021586f85ebDE09aAc97776 (Batch withdrawal system)
+- Treasury: 0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11
 - USDC (Base Sepolia): 0x036CbD53842c5426634e7929541eC2318f3dCF7e
 
 ## Progress Summary

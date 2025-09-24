@@ -1,15 +1,17 @@
 # PaymentEscrow Contract Documentation
 
-> ⚠️ **NOTE**: PaymentEscrow is **NOT USED** for session jobs in the current JobMarketplaceFABWithS5 implementation.  
-> Session jobs use internal `_sendPayments()` for direct, gas-efficient transfers.  
+> ⚠️ **NOTE**: PaymentEscrow is **NOT USED** in the current JobMarketplaceWithModels implementation.
+> The current marketplace uses internal payment settlement within the contract itself.
 > This documentation is maintained for reference and potential future use cases.
 
 ## Overview
 
-The PaymentEscrowWithEarnings contract provides a secure multi-token escrow system for potential future use cases or legacy job types. It is not part of the current session job flow.
+The PaymentEscrow contract provides a secure multi-token escrow system for potential future use cases or alternative marketplace implementations.
 
-**Contract Address (Base Sepolia)**: `0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C`  
-**Status**: Deployed but not actively used for session jobs
+**Contract Address**: Not actively deployed for current system
+**Network**: Base Sepolia (when deployed)
+**Status**: ⚠️ Not used in current architecture
+**Last Updated**: January 13, 2025
 
 ### Why Not Used for Session Jobs?
 

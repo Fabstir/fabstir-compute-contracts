@@ -4,7 +4,10 @@
 
 The ReputationSystem contract tracks host performance and reputation across the Fabstir marketplace. It enables quality-based routing, incentive mechanisms, and maintains a decaying reputation score to ensure recent performance is weighted appropriately.
 
-**Contract Address**: To be deployed  
+**Contract Address**: Not yet deployed (Reputation system pending)
+**Network**: Base Sepolia (planned)
+**Status**: ⚠️ Pending deployment
+**Last Updated**: January 13, 2025
 **Source**: [`src/ReputationSystem.sol`](../../../src/ReputationSystem.sol)
 
 ### Key Features
