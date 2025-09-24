@@ -94,6 +94,14 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         string conversationCID;
     }
 
+    // Chain configuration structure (Phase 4.1)
+    struct ChainConfig {
+        address nativeWrapper;     // WETH on Base, WBNB on opBNB
+        address stablecoin;        // USDC address per chain
+        uint256 minDeposit;        // Chain-specific minimum
+        string nativeTokenSymbol;  // "ETH" or "BNB"
+    }
+
     // Constants
     uint256 public constant MIN_DEPOSIT = 0.0002 ether;
     uint256 public constant MIN_PROVEN_TOKENS = 100;
@@ -133,6 +141,9 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     // Wallet-agnostic deposit tracking (Phase 1.1)
     mapping(address => uint256) public userDepositsNative;
     mapping(address => mapping(address => uint256)) public userDepositsToken;
+
+    // Chain configuration storage (Phase 4.1)
+    ChainConfig public chainConfig;
 
     // Events
     event JobPosted(uint256 indexed jobId, address indexed requester, string promptS5CID);
@@ -190,6 +201,13 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     function setProofSystem(address _proofSystem) external {
         require(msg.sender == treasuryAddress, "Only treasury");
         proofSystem = IProofSystem(_proofSystem);
+    }
+
+    // Initialize chain configuration (Phase 4.1)
+    function initializeChainConfig(ChainConfig memory _config) external {
+        require(msg.sender == treasuryAddress, "Only owner");
+        require(chainConfig.nativeWrapper == address(0), "Already initialized");
+        chainConfig = _config;
     }
 
     function createSessionJob(
