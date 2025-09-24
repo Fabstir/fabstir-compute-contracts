@@ -361,43 +361,39 @@ function createSessionFromDeposit(
 
 ---
 
-### Sub-phase 2.3: Update Existing Session Creation ⬜
-Update existing `postJobWithToken` to track depositor.
+### Sub-phase 2.3: Update Existing Session Creation ✅ (Completed: 2025-01-24)
+Update existing session creation functions to track inline deposits.
 
 **Tasks:**
-- [ ] Update `postJobWithToken` to set depositor field
-- [ ] Track inline deposits in userDepositsToken
-- [ ] Maintain backward compatibility
-- [ ] Test with existing integrations
+- [x] Update `createSessionJob` to track native deposits
+- [x] Update `createSessionJobWithToken` to track token deposits
+- [x] Maintain backward compatibility
+- [x] Test with existing integrations
 
-**Update existing function**:
+**Updated functions**:
 ```solidity
-function postJobWithToken(
-    JobDetails memory details,
-    JobRequirements memory requirements,
-    address paymentToken,
-    uint256 paymentAmount
-) external returns (bytes32) {
-    // ... existing validation ...
+// In createSessionJob (native):
+// Track inline deposit (Phase 2.3)
+userDepositsNative[msg.sender] += msg.value;
 
-    // Track deposit for msg.sender
-    if (paymentToken == address(0)) {
-        userDepositsNative[msg.sender] += paymentAmount;
-    } else {
-        userDepositsToken[msg.sender][paymentToken] += paymentAmount;
-    }
-
-    // ... rest of existing logic ...
-
-    // Set depositor when creating session
-    session.depositor = msg.sender;  // NEW
-    session.requester = msg.sender;  // Keep for compatibility
-}
+// In createSessionJobWithToken (token):
+// Track inline token deposit (Phase 2.3)
+userDepositsToken[msg.sender][token] += deposit;
 ```
 
 **Test Files** (50-75 lines each):
-- `test/JobMarketplace/MultiChain/test_backward_compatibility.t.sol`
-- `test/JobMarketplace/MultiChain/test_inline_deposit_tracking.t.sol`
+- `test/JobMarketplace/MultiChain/test_backward_compatibility.t.sol` ✅ (3/3 tests passing)
+- `test/JobMarketplace/MultiChain/test_inline_deposit_tracking.t.sol` ✅ (6/6 tests passing)
+
+**Completion Notes:**
+- Note: postJobWithToken function mentioned in spec doesn't exist; updated createSessionJob and createSessionJobWithToken instead
+- Added inline deposit tracking to createSessionJob (line 216)
+- Added inline token deposit tracking to createSessionJobWithToken (line 265)
+- Deposits from direct session creation are now tracked in userDepositsNative/userDepositsToken
+- Users can query total deposits including inline ones
+- Users can withdraw unused deposits after sessions complete
+- Maintains full backward compatibility - existing functionality unchanged
+- All 9 tests passing (3 backward compatibility, 6 inline tracking)
 
 ---
 

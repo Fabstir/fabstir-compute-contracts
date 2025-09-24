@@ -212,6 +212,9 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         session.proofInterval = proofInterval;
         session.status = SessionStatus.Active;
 
+        // Track inline deposit (Phase 2.3)
+        userDepositsNative[msg.sender] += msg.value;
+
         userSessions[msg.sender].push(jobId);
         hostSessions[host].push(jobId);
 
@@ -257,6 +260,9 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         session.lastProofTime = block.timestamp;
         session.proofInterval = proofInterval;
         session.status = SessionStatus.Active;
+
+        // Track inline token deposit (Phase 2.3)
+        userDepositsToken[msg.sender][token] += deposit;
 
         userSessions[msg.sender].push(jobId);
         hostSessions[host].push(jobId);
