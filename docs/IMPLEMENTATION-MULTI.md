@@ -22,6 +22,63 @@ fabstir-compute-contracts
 
 ---
 
+## Phase 0: Environment Variable Configuration ⬜
+
+Make contract parameters configurable from environment variables at deployment time.
+
+### Sub-phase 0.1: Configurable Treasury Fee ⬜
+Make FEE_BASIS_POINTS configurable from TREASURY_FEE_PERCENTAGE environment variable.
+
+**Tasks:**
+- [ ] Change FEE_BASIS_POINTS from constant to immutable in JobMarketplaceWithModels
+- [ ] Update constructor to accept _feeBasisPoints parameter
+- [ ] Add validation: require(_feeBasisPoints <= 10000, "Fee cannot exceed 100%")
+- [ ] Create deployment script that reads TREASURY_FEE_PERCENTAGE from .env
+- [ ] Convert percentage to basis points (multiply by 100)
+- [ ] Update deployment documentation
+
+**Implementation:**
+```solidity
+// Change from:
+uint256 public constant FEE_BASIS_POINTS = 1000;
+
+// To:
+uint256 public immutable FEE_BASIS_POINTS;
+
+constructor(address _nodeRegistry, address payable _hostEarnings, uint256 _feeBasisPoints) {
+    require(_feeBasisPoints <= 10000, "Fee cannot exceed 100%");
+    FEE_BASIS_POINTS = _feeBasisPoints;
+    nodeRegistry = NodeRegistryWithModels(_nodeRegistry);
+    hostEarnings = HostEarnings(_hostEarnings);
+    // ... rest of constructor
+}
+```
+
+**Deployment Script:**
+```javascript
+// scripts/deploy-with-env-config.js
+require('dotenv').config();
+
+const treasuryFeePercentage = process.env.TREASURY_FEE_PERCENTAGE || 10;
+const feeBasisPoints = treasuryFeePercentage * 100;
+
+const marketplace = await deploy("JobMarketplaceWithModels", [
+    nodeRegistryAddress,
+    hostEarningsAddress,
+    feeBasisPoints
+]);
+
+console.log(`Deployed with ${treasuryFeePercentage}% treasury fee (${feeBasisPoints} basis points)`);
+```
+
+**Tests:**
+- [ ] `test/JobMarketplace/Config/test_fee_configuration.t.sol`
+- [ ] Test deployment with various fee percentages
+- [ ] Test fee calculation with configured values
+- [ ] Test validation (reject > 100% fees)
+
+---
+
 ## Phase 1: Wallet-Agnostic Deposit System
 
 ### Sub-phase 1.1: Core Deposit Tracking ⬜
@@ -347,11 +404,11 @@ function completeSessionJob(uint256 jobId) external nonReentrant {
 
 ---
 
-### Sub-phase 3.2: Host Payment with 90/10 Split ⬜
-Ensure host receives 90% and treasury gets 10%.
+### Sub-phase 3.2: Host Payment with Configurable Split ⬜
+Ensure host receives HOST_EARNINGS_PERCENTAGE and treasury gets TREASURY_FEE_PERCENTAGE.
 
 **Tasks:**
-- [ ] Update FEE_BASIS_POINTS to 1000 (10%)
+- [ ] Update FEE_BASIS_POINTS to match TREASURY_FEE_PERCENTAGE from env
 - [ ] Verify host payment calculations
 - [ ] Test treasury accumulation
 - [ ] Verify with multiple payment amounts
@@ -359,7 +416,7 @@ Ensure host receives 90% and treasury gets 10%.
 **Update constant**:
 ```solidity
 // Line 112 in JobMarketplaceWithModels.sol
-uint256 public constant FEE_BASIS_POINTS = 1000; // 10% platform fee
+uint256 public constant FEE_BASIS_POINTS = 1000; // Should match TREASURY_FEE_PERCENTAGE from env
 ```
 
 **Test Files** (50-75 lines each):
@@ -504,9 +561,9 @@ function emergencyWithdraw(address token, uint256 amount) external onlyOwner {
 
 ---
 
-## Phase 6: Final Deployment and Documentation
+## Phase 7: Final Deployment and Documentation
 
-### Sub-phase 6.1: Deployment Scripts ⬜
+### Sub-phase 7.1: Deployment Scripts ⬜
 Create deployment scripts for both chains.
 
 **Tasks:**
@@ -522,7 +579,7 @@ Create deployment scripts for both chains.
 
 ---
 
-### Sub-phase 6.2: Documentation Update ⬜
+### Sub-phase 7.2: Documentation Update ⬜
 Update all documentation for multi-chain support.
 
 **Tasks:**

@@ -43,7 +43,7 @@ contract JobMarketplaceWithModels {
 1. **Creation**: User creates session with deposit
 2. **Active**: Host submits periodic proofs of work
 3. **Completion**: User or host completes, payments distributed
-4. **Settlement**: 90% to host (accumulated), 10% to treasury (accumulated)
+4. **Settlement**: HOST_EARNINGS_PERCENTAGE to host (accumulated), TREASURY_FEE_PERCENTAGE to treasury (accumulated)
 
 ### Key Functions
 
@@ -101,7 +101,7 @@ function accumulatedTreasuryTokens(address token) external view returns (uint256
 |-----------|-------|-------------|
 | MIN_DEPOSIT | 0.0002 ETH | Minimum session deposit |
 | MIN_PROVEN_TOKENS | 100 | Minimum tokens per proof |
-| TREASURY_FEE_PERCENT | 10% | Platform fee |
+| TREASURY_FEE_PERCENT | Configurable via env | Treasury fee percentage |
 | MIN_SESSION_DURATION | 600 seconds | Minimum session length |
 | ABANDONMENT_TIMEOUT | 24 hours | Timeout for inactive sessions |
 | DISPUTE_WINDOW | 1 hour | Time to dispute after completion |

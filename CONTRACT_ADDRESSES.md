@@ -31,7 +31,7 @@ Last Updated: January 24, 2025
 | Parameter | Value |
 |-----------|-------|
 | **Treasury** | `0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11` |
-| **Platform Fee** | 10% (1000 basis points) |
+| **Treasury Fee** | Configurable via TREASURY_FEE_PERCENTAGE env var |
 | **Min Stake** | 1000 FAB tokens |
 | **Min Deposit (ETH)** | 0.0002 ETH |
 | **Min Deposit (USDC)** | 0.80 USDC |

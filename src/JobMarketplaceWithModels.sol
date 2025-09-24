@@ -108,7 +108,10 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     mapping(address => uint256[]) public hostSessions;
 
     uint256 public nextJobId = 1;
-    uint256 public constant FEE_BASIS_POINTS = 1000; // 10% platform fee
+    // NOTE: This constant should match TREASURY_FEE_PERCENTAGE from .env during deployment
+    // FEE_BASIS_POINTS = TREASURY_FEE_PERCENTAGE * 100 (e.g., 10% = 1000 basis points)
+    // Host receives (10000 - FEE_BASIS_POINTS) / 100 percent (e.g., 90% with 10% treasury fee)
+    uint256 public constant FEE_BASIS_POINTS = 1000; // Treasury fee in basis points
     address public treasuryAddress = 0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11;
     address public usdcAddress = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 
@@ -317,18 +320,19 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         uint256 userRefund = session.deposit > hostPayment ? session.deposit - hostPayment : 0;
 
         if (hostPayment > 0) {
-            uint256 platformFee = (hostPayment * FEE_BASIS_POINTS) / 10000;
-            uint256 netHostPayment = hostPayment - platformFee;
+            // Calculate fees based on FEE_BASIS_POINTS (which should match TREASURY_FEE_PERCENTAGE from env)
+            uint256 treasuryFee = (hostPayment * FEE_BASIS_POINTS) / 10000;
+            uint256 netHostPayment = hostPayment - treasuryFee; // Host gets remainder (HOST_EARNINGS_PERCENTAGE)
 
             if (session.paymentToken == address(0)) {
-                accumulatedTreasuryETH += platformFee;
+                accumulatedTreasuryETH += treasuryFee;
                 // Send ETH to HostEarnings contract
                 (bool sent, ) = payable(address(hostEarnings)).call{value: netHostPayment}("");
                 require(sent, "ETH transfer to HostEarnings failed");
                 // Credit the host's earnings
                 hostEarnings.creditEarnings(session.host, netHostPayment, address(0));
             } else {
-                accumulatedTreasuryTokens[session.paymentToken] += platformFee;
+                accumulatedTreasuryTokens[session.paymentToken] += treasuryFee;
                 // Transfer tokens to HostEarnings
                 IERC20(session.paymentToken).transfer(address(hostEarnings), netHostPayment);
                 // Credit the host's earnings
@@ -386,20 +390,21 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         job.responseS5CID = responseS5CID;
 
         uint256 payment = job.payment;
-        uint256 platformFee = (payment * FEE_BASIS_POINTS) / 10000;
-        uint256 netPayment = payment - platformFee;
+        // Calculate fees based on FEE_BASIS_POINTS (which should match TREASURY_FEE_PERCENTAGE from env)
+        uint256 treasuryFee = (payment * FEE_BASIS_POINTS) / 10000;
+        uint256 netPayment = payment - treasuryFee; // Host gets remainder (HOST_EARNINGS_PERCENTAGE)
 
         address paymentToken = job.paymentToken;
 
         if (paymentToken == address(0)) {
-            accumulatedTreasuryETH += platformFee;
+            accumulatedTreasuryETH += treasuryFee;
             // Send ETH to HostEarnings contract
             (bool sent, ) = payable(address(hostEarnings)).call{value: netPayment}("");
             require(sent, "ETH transfer to HostEarnings failed");
             // Credit the host's earnings
             hostEarnings.creditEarnings(msg.sender, netPayment, address(0));
         } else {
-            accumulatedTreasuryTokens[paymentToken] += platformFee;
+            accumulatedTreasuryTokens[paymentToken] += treasuryFee;
             // Transfer tokens to HostEarnings
             IERC20(paymentToken).transfer(address(hostEarnings), netPayment);
             // Credit the host's earnings
