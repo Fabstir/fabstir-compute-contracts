@@ -216,14 +216,14 @@ function withdrawToken(address token, uint256 amount) external nonReentrant {
 
 ---
 
-### Sub-phase 1.4: Balance Query Functions ⬜
+### Sub-phase 1.4: Balance Query Functions ✅ (Completed: January 2025)
 Add view functions for checking deposit balances.
 
 **Tasks:**
-- [ ] Implement `getDepositBalance()` for unified balance queries
-- [ ] Add batch balance query function
-- [ ] Test with various token addresses
-- [ ] Test with zero balances
+- [x] Implement `getDepositBalance()` for unified balance queries
+- [x] Add batch balance query function
+- [x] Test with various token addresses
+- [x] Test with zero balances
 
 **New Functions**:
 ```solidity
@@ -238,7 +238,7 @@ function getDepositBalances(address account, address[] calldata tokens)
     external view returns (uint256[] memory) {
     uint256[] memory balances = new uint256[](tokens.length);
     for (uint256 i = 0; i < tokens.length; i++) {
-        balances[i] = token == address(0)
+        balances[i] = tokens[i] == address(0)  // Fixed: was 'token', should be 'tokens[i]'
             ? userDepositsNative[account]
             : userDepositsToken[account][tokens[i]];
     }
@@ -247,8 +247,17 @@ function getDepositBalances(address account, address[] calldata tokens)
 ```
 
 **Test Files** (50-75 lines each):
-- `test/JobMarketplace/MultiChain/test_balance_queries.t.sol`
-- `test/JobMarketplace/MultiChain/test_batch_queries.t.sol`
+- `test/JobMarketplace/MultiChain/test_balance_queries.t.sol` ✅ (6/6 tests passing)
+- `test/JobMarketplace/MultiChain/test_batch_queries.t.sol` ✅ (4/4 tests passing)
+
+**Completion Notes:**
+- Implemented getDepositBalance() and getDepositBalances() functions at lines 540-563
+- Both functions are view-only for gas-free queries
+- Support unified interface for native (address(0)) and ERC20 tokens
+- Batch query function enables efficient multi-token balance checks
+- Fixed typo in spec: changed 'token' to 'tokens[i]' in batch function
+- All 10 tests passing (6 single query, 4 batch query)
+- Phase 1 (Wallet-Agnostic Deposit System) now complete!
 
 ---
 

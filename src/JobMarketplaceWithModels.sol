@@ -528,6 +528,40 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         emit WithdrawalProcessed(msg.sender, amount, token);
     }
 
+    // Balance query functions (Phase 1.4)
+
+    /**
+     * @notice Get deposit balance for an account
+     * @dev Works for any address type (EOA or Smart Account)
+     * @param account The account to query
+     * @param token Token address (address(0) for native)
+     * @return The deposit balance
+     */
+    function getDepositBalance(address account, address token) external view returns (uint256) {
+        if (token == address(0)) {
+            return userDepositsNative[account];
+        }
+        return userDepositsToken[account][token];
+    }
+
+    /**
+     * @notice Get multiple deposit balances for an account
+     * @dev Batch query for efficiency
+     * @param account The account to query
+     * @param tokens Array of token addresses (address(0) for native)
+     * @return Array of balances in same order as tokens
+     */
+    function getDepositBalances(address account, address[] calldata tokens)
+        external view returns (uint256[] memory) {
+        uint256[] memory balances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            balances[i] = tokens[i] == address(0)
+                ? userDepositsNative[account]
+                : userDepositsToken[account][tokens[i]];
+        }
+        return balances;
+    }
+
     receive() external payable {}
     fallback() external payable {}
 }
