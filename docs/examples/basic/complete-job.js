@@ -1,10 +1,12 @@
 /**
- * Example: Complete Job (FAB System with Earnings Accumulation)
- * Purpose: Demonstrates how to submit job results and accumulate USDC earnings in the FAB-based system
+ * Example: Complete Session (Multi-Chain with Earnings Accumulation)
+ * Purpose: Demonstrates how to complete sessions and accumulate earnings across chains
  * Prerequisites:
  *   - Host must be registered with 1000 FAB staked
- *   - Job must be claimed by your node
- *   - Results must be ready before deadline
+ *   - Session must be active
+ *   - Anyone can complete sessions (gasless for users)
+ *
+ * Last Updated: January 25, 2025
  */
 
 const { ethers } = require('ethers');
@@ -12,11 +14,12 @@ const fs = require('fs').promises;
 const readline = require('readline');
 require('dotenv').config({ path: '../.env' });
 
-// Contract ABIs - Updated for JobMarketplaceFAB
-const JOB_MARKETPLACE_FAB_ABI = [
-    'function completeJob(uint256 jobId, string memory resultHash, bytes memory proof)',
-    'function getJob(uint256 jobId) view returns (address renter, uint256 payment, uint8 status, address assignedHost, string memory resultHash, uint256 deadline)',
-    'event JobCompleted(uint256 indexed jobId, string resultHash)'
+// Contract ABIs - Updated for Multi-Chain JobMarketplaceWithModels
+const JOB_MARKETPLACE_ABI = [
+    'function completeSessionJob(uint256 jobId, string memory conversationCID)',
+    'function sessionJobs(uint256) view returns (uint256 id, address requester, address host, address model, uint256 pricePerToken, uint256 maxTokens, uint256 tokensUsed, uint256 paymentAmount, uint256 refundAmount, address depositor, uint256 sessionDeadline, uint8 status, uint256 proofInterval, uint256 lastProofTime, uint256 escrowAmount, uint256 disputeDeadline)',
+    'event SessionCompleted(uint256 indexed jobId, address indexed completedBy, uint256 tokensPaid, uint256 paymentAmount, uint256 refundAmount)',
+    'event SessionCompletedWithCompletedBy(uint256 indexed jobId, address indexed completedBy)'
 ];
 
 const USDC_ABI = [
@@ -24,26 +27,40 @@ const USDC_ABI = [
     'function decimals() view returns (uint8)'
 ];
 
-// Configuration - FAB system with earnings accumulation on Base Sepolia
+// Configuration - Multi-chain system with earnings accumulation
 const config = {
-    rpcUrl: process.env.RPC_URL || 'https://sepolia.base.org',
-    chainId: parseInt(process.env.CHAIN_ID || '84532'), // Base Sepolia
-    jobMarketplaceFAB: process.env.JOB_MARKETPLACE_FAB || '0xEB646BF2323a441698B256623F858c8787d70f9F', // LATEST with earnings
-    paymentEscrow: process.env.PAYMENT_ESCROW || '0x7abC91AF9E5aaFdc954Ec7a02238d0796Bbf9a3C', // LATEST with earnings
-    hostEarnings: process.env.HOST_EARNINGS || '0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E', // NEW earnings contract
-    usdc: process.env.USDC || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-    
+    // Base Sepolia (ETH)
+    baseSepolia: {
+        rpcUrl: process.env.BASE_RPC_URL || 'https://sepolia.base.org',
+        chainId: 84532,
+        nativeSymbol: 'ETH',
+        jobMarketplace: '0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f', // Multi-chain support
+        hostEarnings: '0x908962e8c6CE72610021586f85ebDE09aAc97776',
+        usdc: '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
+    },
+
+    // opBNB Testnet (BNB) - Future deployment
+    opBNB: {
+        rpcUrl: process.env.OPBNB_RPC_URL || 'https://opbnb-testnet-rpc.bnbchain.org',
+        chainId: 5611,
+        nativeSymbol: 'BNB',
+        jobMarketplace: 'TBD', // To be deployed post-MVP
+        hostEarnings: 'TBD',
+        usdc: 'TBD'
+    },
+
     // Gas settings
     gasLimit: 300000,
     maxFeePerGas: ethers.parseUnits('50', 'gwei'),
     maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei')
 };
 
-// Job status enum
-const JobStatus = {
-    Posted: 0,
-    Claimed: 1,
-    Completed: 2
+// Session status enum
+const SessionStatus = {
+    Active: 0,
+    Completed: 1,
+    Abandoned: 2,
+    Disputed: 3
 };
 
 // Parse command line arguments
@@ -109,52 +126,62 @@ async function uploadToIPFS(content) {
 
 async function main() {
     try {
-        console.log('✅ Fabstir Job Completion (FAB System)\n');
-        
+        console.log('✅ Fabstir Session Completion (Multi-Chain)\n');
+
         // 1. Parse arguments
         const params = parseArgs();
-        
+
         if (!params.jobId) {
-            throw new Error('Job ID is required. Use --id <jobId>');
+            throw new Error('Session ID is required. Use --id <sessionId>');
         }
-        
+
+        // Select chain (default to Base Sepolia)
+        const chainConfig = params.chain === 'opbnb' ? config.opBNB : config.baseSepolia;
+
         // 2. Setup connection
         console.log('1️⃣ Setting up connection...');
-        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+        const provider = new ethers.JsonRpcProvider(chainConfig.rpcUrl);
         const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-        
-        console.log(`   Host address: ${wallet.address}`);
-        console.log(`   Network: Base Sepolia`);
+
+        console.log(`   Address: ${wallet.address}`);
+        console.log(`   Network: ${params.chain === 'opbnb' ? 'opBNB' : 'Base Sepolia'} (${chainConfig.nativeSymbol})`);
         
         // 3. Initialize contracts
         console.log('\n2️⃣ Connecting to contracts...');
         const jobMarketplace = new ethers.Contract(
-            config.jobMarketplaceFAB,
-            JOB_MARKETPLACE_FAB_ABI,
+            chainConfig.jobMarketplace,
+            JOB_MARKETPLACE_ABI,
             wallet
         );
-        
+
         const usdc = new ethers.Contract(
-            config.usdc,
+            chainConfig.usdc,
             USDC_ABI,
             provider
         );
         
-        // 4. Get job details
-        console.log(`\n3️⃣ Fetching job #${params.jobId} details...`);
-        const [renter, payment, status, assignedHost, existingResultHash, deadline] = 
-            await jobMarketplace.getJob(params.jobId);
+        // 4. Get session details
+        console.log(`\n3️⃣ Fetching session #${params.jobId} details...`);
+        const session = await jobMarketplace.sessionJobs(params.jobId);
         
-        // Verify job status
-        if (status === JobStatus.Completed) {
-            throw new Error('Job is already completed');
-        } else if (status === JobStatus.Posted) {
-            throw new Error('Job has not been claimed yet');
+        // Parse session fields
+        const status = Number(session[11]); // status field
+        const host = session[2]; // host field
+        const requester = session[1]; // requester field
+        const disputeDeadline = session[15]; // disputeDeadline
+
+        // Verify session status
+        if (status === SessionStatus.Completed) {
+            throw new Error('Session is already completed');
+        } else if (status !== SessionStatus.Active) {
+            throw new Error('Session is not active');
         }
-        
-        // Verify we are the assigned host
-        if (assignedHost.toLowerCase() !== wallet.address.toLowerCase()) {
-            throw new Error(`Job is assigned to ${assignedHost}, not ${wallet.address}`);
+
+        // Check if dispute window has passed
+        const now = Math.floor(Date.now() / 1000);
+        if (now < Number(disputeDeadline)) {
+            console.log('   ⚠️ Waiting for dispute window to pass...');
+            // In real app, you might want to wait or return
         }
         
         console.log(`   ✅ Job is claimed by your node`);
@@ -202,14 +229,14 @@ async function main() {
         console.log(`   USDC balance: ${ethers.formatUnits(usdcBalanceBefore, 6)} USDC`);
         console.log(`   ETH balance: ${ethers.formatEther(ethBalance)} ETH (for gas)`);
         
-        // 7. Submit completion
-        console.log('\n6️⃣ Submitting job completion...');
-        console.log(`   Result hash: ${resultHash}`);
-        
-        const tx = await jobMarketplace.completeJob(
+        // 7. Submit completion (anyone can complete!)
+        console.log('\n6️⃣ Completing session...');
+        console.log(`   Conversation CID: ${resultHash}`);
+        console.log(`   💡 Note: Anyone can complete sessions - enabling gasless UX!`);
+
+        const tx = await jobMarketplace.completeSessionJob(
             params.jobId,
-            resultHash,
-            '0x', // Empty proof - can be added if needed
+            resultHash, // conversationCID
             {
                 gasLimit: config.gasLimit,
                 maxFeePerGas: config.maxFeePerGas,
@@ -233,7 +260,7 @@ async function main() {
                     return null;
                 }
             })
-            .find(e => e && e.name === 'JobCompleted');
+            .find(e => e && e.name === 'SessionCompleted');
         
         if (event) {
             console.log(`\n✅ Job Completed Successfully!`);
@@ -249,7 +276,7 @@ async function main() {
             'function getBalance(address host, address token) view returns (uint256)'
         ];
         const hostEarnings = new ethers.Contract(
-            config.hostEarnings,
+            chainConfig.hostEarnings,
             HOST_EARNINGS_ABI,
             provider
         );

@@ -3,9 +3,9 @@
 ## Current Implementation: NodeRegistryWithModels
 
 **Contract Address**: `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218`
-**Network**: Base Sepolia
-**Status**: ✅ ACTIVE - Node registration with model validation
-**Last Updated**: January 13, 2025
+**Network**: Base Sepolia | opBNB support planned post-MVP
+**Status**: ✅ ACTIVE - Node registration with model validation and API discovery
+**Last Updated**: January 25, 2025
 **Source**: [`src/NodeRegistryWithModels.sol`](../../../src/NodeRegistryWithModels.sol)
 
 ### Overview
@@ -13,11 +13,13 @@
 The NodeRegistryWithModels contract manages GPU host registration with integrated model validation. Hosts must specify which approved models they support during registration.
 
 ### Key Features
-- **FAB Token Staking**: 1000 FAB minimum stake (vs 100 ETH in old version)
-- **Automatic Staking**: Registration automatically stakes the minimum amount
+- **FAB Token Staking**: 1000 FAB minimum stake required
+- **Model Validation**: Hosts must support approved models from ModelRegistry
+- **API Discovery**: Hosts provide API endpoints for automatic discovery
 - **Metadata Storage**: Flexible string field for capabilities description
 - **Active Tracking**: Efficient enumeration of active nodes
 - **Non-Custodial**: Hosts can unregister and reclaim stake anytime
+- **Multi-Chain Ready**: Works across Base (ETH) and future opBNB (BNB)
 
 ## Contract Architecture
 
@@ -135,10 +137,10 @@ function getActiveNode(uint256 index) external view returns (address)
 
 ## Integration with JobMarketplace
 
-The JobMarketplace verifies host registration:
+The JobMarketplaceWithModels (`0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f`) verifies host registration:
 
 ```solidity
-// In JobMarketplaceFABWithS5
+// In JobMarketplaceWithModels
 Node memory node = nodeRegistry.nodes(host);
 require(node.operator != address(0), "Host not registered");
 require(node.active, "Host not active");

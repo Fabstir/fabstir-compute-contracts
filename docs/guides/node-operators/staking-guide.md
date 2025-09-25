@@ -2,11 +2,15 @@
 
 This guide covers everything about staking for Fabstir compute nodes, including requirements, strategies, and risk management.
 
+**Last Updated**: January 25, 2025
+
 ## Staking Mechanism
 
 Fabstir uses FAB token staking for node registration:
-- **FAB Token Staking**: 1000 FAB tokens via NodeRegistryFAB
-- **No ETH staking**: FAB is the exclusive staking token
+- **FAB Token Staking**: 1000 FAB tokens via NodeRegistryWithModels
+- **Multi-Chain Ready**: Works on Base Sepolia now, opBNB support coming
+- **Model Validation**: Must support approved models from ModelRegistry
+- **API Discovery**: Provide your API endpoint during registration
 
 ## Prerequisites
 
@@ -72,7 +76,7 @@ async function registerWithFAB() {
     
     // Contract addresses on Base Sepolia
     const FAB_TOKEN = "0xC78949004B4EB6dEf2D66e49Cd81231472612D62";
-    const NODE_REGISTRY_FAB = "0x87516C13Ea2f99de598665e14cab64E191A0f8c4";
+    const NODE_REGISTRY_WITH_MODELS = "0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218";
     
     // 1. Approve FAB tokens
     const fabToken = new ethers.Contract(FAB_TOKEN, [
@@ -168,7 +172,7 @@ async function monitorStake() {
     ];
     
     const nodeRegistry = new ethers.Contract(
-        "0x87516C13Ea2f99de598665e14cab64E191A0f8c4", // NodeRegistryFAB
+        "0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218", // NodeRegistryWithModels
         nodeRegistryFABABI,
         provider
     );
@@ -203,7 +207,7 @@ async function withdrawStake() {
     ];
     
     const nodeRegistry = new ethers.Contract(
-        "0x87516C13Ea2f99de598665e14cab64E191A0f8c4", // NodeRegistryFAB
+        "0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218", // NodeRegistryWithModels
         nodeRegistryFABABI,
         wallet
     );
@@ -342,7 +346,7 @@ async function checkEarnings() {
     const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
     
-    const HOST_EARNINGS = "0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E";
+    const HOST_EARNINGS = "0x908962e8c6CE72610021586f85ebDE09aAc97776";
     const USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
     
     const hostEarnings = new ethers.Contract(HOST_EARNINGS, [
@@ -360,7 +364,7 @@ async function withdrawEarnings() {
     const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL);
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
     
-    const HOST_EARNINGS = "0xcbD91249cC8A7634a88d437Eaa083496C459Ef4E";
+    const HOST_EARNINGS = "0x908962e8c6CE72610021586f85ebDE09aAc97776";
     const USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
     
     const hostEarnings = new ethers.Contract(HOST_EARNINGS, [
