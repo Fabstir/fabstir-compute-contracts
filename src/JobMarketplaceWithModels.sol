@@ -106,7 +106,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     uint256 public constant MIN_DEPOSIT = 0.0002 ether;
     uint256 public constant MIN_PROVEN_TOKENS = 100;
     uint256 public constant ABANDONMENT_TIMEOUT = 24 hours;
-    uint256 public constant DISPUTE_WINDOW = 1 hours;
+    uint256 public immutable DISPUTE_WINDOW; // Configurable via constructor
 
     // State variables
     mapping(uint256 => Job) public jobs;
@@ -187,9 +187,11 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         _;
     }
 
-    constructor(address _nodeRegistry, address payable _hostEarnings, uint256 _feeBasisPoints) {
+    constructor(address _nodeRegistry, address payable _hostEarnings, uint256 _feeBasisPoints, uint256 _disputeWindow) {
         require(_feeBasisPoints <= 10000, "Fee cannot exceed 100%");
+        require(_disputeWindow > 0 && _disputeWindow <= 7 days, "Invalid dispute window");
         FEE_BASIS_POINTS = _feeBasisPoints;
+        DISPUTE_WINDOW = _disputeWindow;
         nodeRegistry = NodeRegistryWithModels(_nodeRegistry);
         hostEarnings = HostEarnings(_hostEarnings);
 

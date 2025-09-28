@@ -17,13 +17,18 @@ contract DeployJobMarketplaceWithModels is Script {
         // Default to 10% treasury fee (1000 basis points) if not specified
         uint256 feeBasisPoints = 1000; // 10% treasury fee
 
+        // Get dispute window from env (default 30 seconds for testing)
+        uint256 disputeWindow = vm.envOr("DISPUTE_WINDOW", uint256(30));
+
         JobMarketplaceWithModels marketplace = new JobMarketplaceWithModels(
             nodeRegistryWithModels,
             hostEarnings,
-            feeBasisPoints
+            feeBasisPoints,
+            disputeWindow
         );
 
         console.log("JobMarketplaceWithModels deployed to:", address(marketplace));
+        console.log("Dispute window set to:", disputeWindow, "seconds");
 
         // Set proof system if needed (can be done later)
         // marketplace.setProofSystem(0x2ACcc60893872A499700908889B38C5420CBcFD1);
