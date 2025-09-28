@@ -1,26 +1,26 @@
 # Current Contract Addresses - Multi-Chain Support
 
-Last Updated: January 25, 2025
+Last Updated: January 28, 2025
 
 ## 🌐 Multi-Chain Deployment Status
 
 | Chain | Network | Status | Native Token | Contract Address |
 |-------|---------|--------|--------------|------------------|
-| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f` |
+| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0xdEa1B47872C27458Bb7331Ade99099761C4944Dc` |
 | **opBNB** | Testnet | ⏳ PLANNED | BNB | Post-MVP deployment |
 | **Base** | Mainnet | ⏳ FUTURE | ETH | TBD |
 | **opBNB** | Mainnet | ⏳ FUTURE | BNB | TBD |
 
-> **🚀 LATEST DEPLOYMENT**: Multi-Chain/Multi-Wallet Support
+> **🚀 LATEST DEPLOYMENT**: Multi-Chain Support & Bug Fixes
 >
-> - **JobMarketplaceWithModels**: `0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f` ✅ NEW - Multi-chain support with deposit/withdrawal functions (Jan 24, 2025)
-> - **Features**: Native token agnostic, wallet agnostic, anyone-can-complete pattern
+> - **JobMarketplaceWithModels**: `0xdEa1B47872C27458Bb7331Ade99099761C4944Dc` ✅ NEW - 30s dispute window, ETH/USDC deposit parity, native token naming (Jan 28, 2025)
+> - **Features**: Configurable dispute window, removed 10x ETH multiplier, accumulatedTreasuryNative for multi-chain
 
 ## Active Contracts
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceWithModels** | `0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f` | ✅ NEW - Multi-chain support, deposit/withdrawal, anyone-can-complete |
+| **JobMarketplaceWithModels** | `0xdEa1B47872C27458Bb7331Ade99099761C4944Dc` | ✅ NEW - Multi-chain native support, 30s dispute, ETH/USDC parity |
 | **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | Model governance (2 approved models) |
 | **NodeRegistryWithModels** | `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218` | Host registration with model validation |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | EZKL proof verification |

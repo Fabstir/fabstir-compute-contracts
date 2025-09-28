@@ -135,7 +135,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     mapping(address => uint256) public tokenMinDeposits;
 
     // Treasury accumulation mappings
-    uint256 public accumulatedTreasuryETH;
+    uint256 public accumulatedTreasuryNative;
     mapping(address => uint256) public accumulatedTreasuryTokens;
 
     // Wallet-agnostic deposit tracking (Phase 1.1)
@@ -314,7 +314,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
 
     function _validateProofRequirements(uint256 proofInterval, uint256 deposit, uint256 pricePerToken) internal pure {
         uint256 maxTokens = deposit / pricePerToken;
-        uint256 tokensPerProof = proofInterval * 10;
+        uint256 tokensPerProof = proofInterval;
         require(tokensPerProof >= MIN_PROVEN_TOKENS, "Proof interval too small");
         require(maxTokens >= tokensPerProof, "Deposit too small for proof interval");
     }
@@ -388,7 +388,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
             uint256 netHostPayment = hostPayment - treasuryFee; // Host gets remainder (HOST_EARNINGS_PERCENTAGE)
 
             if (session.paymentToken == address(0)) {
-                accumulatedTreasuryETH += treasuryFee;
+                accumulatedTreasuryNative += treasuryFee;
                 // Send ETH to HostEarnings contract
                 (bool sent, ) = payable(address(hostEarnings)).call{value: netHostPayment}("");
                 require(sent, "ETH transfer to HostEarnings failed");
@@ -463,7 +463,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         address paymentToken = job.paymentToken;
 
         if (paymentToken == address(0)) {
-            accumulatedTreasuryETH += treasuryFee;
+            accumulatedTreasuryNative += treasuryFee;
             // Send ETH to HostEarnings contract
             (bool sent, ) = payable(address(hostEarnings)).call{value: netPayment}("");
             require(sent, "ETH transfer to HostEarnings failed");
@@ -482,14 +482,14 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     }
 
     // Treasury withdrawal functions
-    function withdrawTreasuryETH() external {
+    function withdrawTreasuryNative() external {
         require(msg.sender == treasuryAddress, "Only treasury");
-        uint256 amount = accumulatedTreasuryETH;
-        require(amount > 0, "No ETH to withdraw");
+        uint256 amount = accumulatedTreasuryNative;
+        require(amount > 0, "No native tokens to withdraw");
 
-        accumulatedTreasuryETH = 0;
+        accumulatedTreasuryNative = 0;
         (bool sent, ) = payable(treasuryAddress).call{value: amount}("");
-        require(sent, "ETH transfer failed");
+        require(sent, "Native token transfer failed");
 
         emit TreasuryWithdrawal(address(0), amount);
     }
@@ -508,11 +508,11 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     function withdrawAllTreasuryFees(address[] calldata tokens) external {
         require(msg.sender == treasuryAddress, "Only treasury");
 
-        if (accumulatedTreasuryETH > 0) {
-            uint256 ethAmount = accumulatedTreasuryETH;
-            accumulatedTreasuryETH = 0;
+        if (accumulatedTreasuryNative > 0) {
+            uint256 ethAmount = accumulatedTreasuryNative;
+            accumulatedTreasuryNative = 0;
             (bool sent, ) = payable(treasuryAddress).call{value: ethAmount}("");
-            require(sent, "ETH transfer failed");
+            require(sent, "Native token transfer failed");
             emit TreasuryWithdrawal(address(0), ethAmount);
         }
 
