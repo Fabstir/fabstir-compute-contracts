@@ -19,6 +19,21 @@ fabstir-compute-contracts
 - **Validation**: Client's pricePerToken must be >= host's minPricePerToken
 - **No Migration**: Pre-MVP hosts will re-register with new pricing parameter
 
+## Implementation Progress
+
+**Overall Status: Phase 1-3 Complete, Phase 4 In Progress (75% Complete)**
+
+- ✅ **Phase 1: NodeRegistry Pricing Infrastructure** (6/6 sub-phases complete)
+- ✅ **Phase 2: JobMarketplace Price Validation** (3/3 sub-phases complete)
+- ✅ **Phase 3: Integration Testing** (1/1 sub-phase complete)
+- ⏳ **Phase 4: Deployment** (1/4 sub-phases complete)
+  - ✅ Sub-phase 4.1: Build and Verify (51/51 tests passing)
+  - ⏳ Sub-phase 4.2: Deploy NodeRegistryWithModels
+  - ⏳ Sub-phase 4.3: Deploy JobMarketplaceWithModels
+  - ⏳ Sub-phase 4.4: Extract ABIs and Documentation
+
+**Last Updated:** 2025-01-28
+
 ---
 
 ## Phase 1: NodeRegistry Pricing Infrastructure ✅
@@ -439,16 +454,16 @@ function test_GetNodeFullInfoMatchesPricing() public { /* ... */ }
 
 ## Phase 4: Deployment
 
-### Sub-phase 4.1: Build and Verify ⏳
+### Sub-phase 4.1: Build and Verify ✅
 Compile contracts and verify all tests pass.
 
 **Tasks:**
-- [ ] Run `forge clean`
-- [ ] Run `forge build`
-- [ ] Verify both contracts compile successfully
-- [ ] Run all tests: `forge test`
-- [ ] Verify all pricing tests pass
-- [ ] Extract ABIs from build artifacts
+- [x] Run `forge clean`
+- [x] Run `forge build`
+- [x] Verify both contracts compile successfully
+- [x] Run all tests: `forge test`
+- [x] Verify all pricing tests pass (51/51 passing)
+- [x] Extract ABIs from build artifacts
 
 **Commands:**
 ```bash
@@ -459,6 +474,24 @@ forge test --match-path "test/JobMarketplace/test_price_validation*.t.sol"
 forge test --match-path "test/Integration/test_pricing_flow.t.sol"
 forge test  # Run all tests
 ```
+
+**Test Results (2025-01-28):**
+- NodeRegistry Tests: 22/22 passing ✅
+  - test_pricing.t.sol: 5 tests (struct + registration validation)
+  - test_pricing_updates.t.sol: 11 tests (dynamic pricing updates)
+  - test_pricing_queries.t.sol: 6 tests (price discovery queries)
+- JobMarketplace Tests: 22/22 passing ✅
+  - test_price_validation_deposit.t.sol: 7 tests (pre-deposit sessions)
+  - test_price_validation_native.t.sol: 7 tests (ETH sessions)
+  - test_price_validation_token.t.sol: 8 tests (USDC sessions)
+- Integration Tests: 7/7 passing ✅
+  - test_pricing_flow.t.sol: 7 tests (end-to-end flows)
+- **Total: 51/51 tests passing** ✅
+
+**Fixes Applied:**
+- Fixed modelId calculation to match ModelRegistry.getModelId() (repo + "/" + fileName)
+- Fixed token acceptance using vm.etch for Base Sepolia USDC address
+- Fixed error message expectation in test_InactiveHostCannotUpdate
 
 ---
 
