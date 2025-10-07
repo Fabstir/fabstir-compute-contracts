@@ -637,40 +637,36 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         uint256 maxDuration,
         uint256 proofInterval
     ) external nonReentrant returns (uint256 sessionId) {
-        // Validate inputs
         require(pricePerToken > 0, "Invalid price");
         require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
         require(proofInterval > 0, "Invalid proof interval");
         require(host != address(0), "Invalid host");
+        require(deposit > 0, "Zero deposit");
         require(deposit <= 1000 ether, "Deposit too large");
 
-        // Check and deduct deposit
+        _validateHostRegistration(host);
+        _validateProofRequirements(proofInterval, deposit, pricePerToken);
+
+        // Verify user has sufficient pre-deposited balance
         if (paymentToken == address(0)) {
-            // Native token deposit
             require(deposit >= MIN_DEPOSIT, "Insufficient deposit");
-            require(userDepositsNative[msg.sender] >= deposit, "Insufficient native deposit");
+            require(userDepositsNative[msg.sender] >= deposit, "Insufficient native balance");
             userDepositsNative[msg.sender] -= deposit;
         } else {
-            // ERC20 token deposit
             require(acceptedTokens[paymentToken], "Token not accepted");
             uint256 minRequired = tokenMinDeposits[paymentToken];
             require(minRequired > 0, "Token not configured");
             require(deposit >= minRequired, "Insufficient deposit");
-            require(userDepositsToken[msg.sender][paymentToken] >= deposit, "Insufficient token deposit");
+            require(userDepositsToken[msg.sender][paymentToken] >= deposit, "Insufficient token balance");
             userDepositsToken[msg.sender][paymentToken] -= deposit;
         }
 
-        // Validate proof requirements and host
-        _validateProofRequirements(proofInterval, deposit, pricePerToken);
-        _validateHostRegistration(host);
-
-        // Create session
         sessionId = nextJobId++;
 
         SessionJob storage session = sessionJobs[sessionId];
         session.id = sessionId;
-        session.depositor = msg.sender;  // Wallet-agnostic depositor
-        session.requester = msg.sender;  // Keep for compatibility
+        session.depositor = msg.sender;
+        session.requester = msg.sender;
         session.host = host;
         session.paymentToken = paymentToken;
         session.deposit = deposit;
@@ -681,11 +677,9 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         session.proofInterval = proofInterval;
         session.status = SessionStatus.Active;
 
-        // Track session
         userSessions[msg.sender].push(sessionId);
         hostSessions[host].push(sessionId);
 
-        // Emit events
         emit SessionJobCreated(sessionId, msg.sender, host, deposit);
         emit SessionCreatedByDepositor(sessionId, msg.sender, host, deposit);
 
