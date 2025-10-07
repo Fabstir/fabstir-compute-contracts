@@ -26,11 +26,13 @@ contract DeployJobMarketplaceMultiChain is Script {
         console.log("Deploying JobMarketplaceWithModels...");
         console.log("Deployer:", deployer);
         uint256 feeBasisPoints = 1000; // 10% treasury fee
+        uint256 disputeWindow = 30; // 30 seconds
 
         JobMarketplaceWithModels marketplace = new JobMarketplaceWithModels(
             NODE_REGISTRY,
             HOST_EARNINGS,
-            feeBasisPoints
+            feeBasisPoints,
+            disputeWindow
         );
 
         console.log("JobMarketplaceWithModels deployed to:", address(marketplace));

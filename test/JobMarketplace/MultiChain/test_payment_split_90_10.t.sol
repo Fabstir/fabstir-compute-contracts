@@ -41,8 +41,8 @@ contract PaymentSplit90_10Test is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            FEE_BASIS_POINTS
-        );
+            FEE_BASIS_POINTS,
+            30);
 
         vm.stopPrank();
 
@@ -134,16 +134,16 @@ contract PaymentSplit90_10Test is Test {
         JobMarketplaceWithModels market5 = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            500
-        );
+            500,
+            30);
         assertEq(market5.FEE_BASIS_POINTS(), 500, "5% fee configured");
 
         // 20% fee (2000 basis points)
         JobMarketplaceWithModels market20 = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            2000
-        );
+            2000,
+            30);
         assertEq(market20.FEE_BASIS_POINTS(), 2000, "20% fee configured");
 
         vm.stopPrank();

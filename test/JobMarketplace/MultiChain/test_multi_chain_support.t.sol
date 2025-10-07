@@ -40,8 +40,8 @@ contract TestMultiChainSupport is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            FEE_BASIS_POINTS
-        );
+            FEE_BASIS_POINTS,
+            30);
 
         // Setup authorized callers
         hostEarnings.setAuthorizedCaller(address(marketplace), true);

@@ -29,8 +29,8 @@ contract DepositValidationTest is Test {
         marketplace = new JobMarketplaceWithModels(
             nodeRegistry,
             payable(hostEarnings),
-            1000 // 10% fee
-        );
+            1000 // 10% fee,
+                    30);
 
         // Deploy mock token
         token = new MockTokenForValidation();

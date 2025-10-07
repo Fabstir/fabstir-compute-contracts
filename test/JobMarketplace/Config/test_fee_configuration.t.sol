@@ -37,7 +37,8 @@ contract FeeConfigurationTest is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            feeBasisPoints
+            feeBasisPoints,
+            30
         );
 
         assertEq(marketplace.FEE_BASIS_POINTS(), 1000, "Should have 10% treasury fee");
@@ -49,7 +50,8 @@ contract FeeConfigurationTest is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            feeBasisPoints
+            feeBasisPoints,
+            30
         );
 
         assertEq(marketplace.FEE_BASIS_POINTS(), 500, "Should have 5% treasury fee");
@@ -61,7 +63,8 @@ contract FeeConfigurationTest is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            feeBasisPoints
+            feeBasisPoints,
+            30
         );
 
         assertEq(marketplace.FEE_BASIS_POINTS(), 0, "Should have 0% treasury fee");
@@ -73,7 +76,8 @@ contract FeeConfigurationTest is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            feeBasisPoints
+            feeBasisPoints,
+            30
         );
 
         assertEq(marketplace.FEE_BASIS_POINTS(), 10000, "Should have 100% treasury fee");
@@ -87,7 +91,8 @@ contract FeeConfigurationTest is Test {
         new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            feeBasisPoints
+            feeBasisPoints,
+            30
         );
     }
 
@@ -104,7 +109,8 @@ contract FeeConfigurationTest is Test {
             marketplace = new JobMarketplaceWithModels(
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                percentages[i]
+                percentages[i],
+                30
             );
 
             // Test payment calculation
@@ -128,7 +134,8 @@ contract FeeConfigurationTest is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            feeBasisPoints
+            feeBasisPoints,
+            30
         );
 
         assertEq(marketplace.FEE_BASIS_POINTS(), feeBasisPoints, "Fee should match input");
@@ -142,7 +149,8 @@ contract FeeConfigurationTest is Test {
         new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            feeBasisPoints
+            feeBasisPoints,
+            30
         );
     }
 }

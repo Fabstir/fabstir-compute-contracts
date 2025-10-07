@@ -14,11 +14,13 @@ contract DeployJobMarketplace is Script {
 
         // Default to 10% treasury fee (1000 basis points)
         uint256 feeBasisPoints = 1000;
+        uint256 disputeWindow = 30; // 30 seconds
 
         JobMarketplaceWithModels marketplace = new JobMarketplaceWithModels(
             nodeRegistry,
             hostEarnings,
-            feeBasisPoints
+            feeBasisPoints,
+            disputeWindow
         );
 
         console.log("JobMarketplace deployed to:", address(marketplace));

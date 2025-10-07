@@ -43,8 +43,8 @@ contract HostEarnings90PercentTest is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            FEE_BASIS_POINTS
-        );
+            FEE_BASIS_POINTS,
+            30);
 
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);

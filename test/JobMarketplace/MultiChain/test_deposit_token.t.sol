@@ -33,8 +33,8 @@ contract DepositTokenTest is Test {
         marketplace = new JobMarketplaceWithModels(
             nodeRegistry,
             payable(hostEarnings),
-            1000 // 10% fee
-        );
+            1000 // 10% fee,
+                    30);
 
         // Deploy mock token and distribute to test accounts
         token = new MockToken();

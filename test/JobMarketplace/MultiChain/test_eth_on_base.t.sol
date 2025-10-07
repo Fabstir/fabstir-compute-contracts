@@ -33,7 +33,8 @@ contract TestEthOnBase is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeReg),
             payable(address(hostEarn)),
-            1000 // 10% fee
+            1000, // 10% fee
+            30
         );
 
         hostEarn.setAuthorizedCaller(address(marketplace), true);

@@ -30,7 +30,8 @@ contract TestNativeTokenAgnostic is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeReg),
             payable(address(hostEarn)),
-            1000 // 10% fee
+            1000, // 10% fee
+            30
         );
 
         hostEarn.setAuthorizedCaller(address(marketplace), true);
@@ -107,7 +108,8 @@ contract TestNativeTokenAgnostic is Test {
         JobMarketplaceWithModels freshMarketplace = new JobMarketplaceWithModels(
             address(nodeReg),
             payable(address(hostEarn)),
-            1000
+            1000,
+            30
         );
 
         // Native functions work even without chain config

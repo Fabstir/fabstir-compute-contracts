@@ -15,6 +15,8 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     IERC20 public immutable fabToken;
     ModelRegistry public modelRegistry;
     uint256 public constant MIN_STAKE = 1000 * 10**18; // 1000 FAB tokens
+    uint256 public constant MIN_PRICE_PER_TOKEN = 100; // 0.0001 USDC per token
+    uint256 public constant MAX_PRICE_PER_TOKEN = 100_000; // 0.1 USDC per token
 
     struct Node {
         address operator;
@@ -23,6 +25,7 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
         string metadata;        // JSON formatted metadata
         string apiUrl;          // API endpoint URL
         bytes32[] supportedModels; // Array of model IDs this node supports
+        uint256 minPricePerToken; // Minimum price per token in USDC wei (100-100,000)
     }
 
     // Mappings
@@ -39,6 +42,7 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     event ApiUrlUpdated(address indexed operator, string newApiUrl);
     event ModelsUpdated(address indexed operator, bytes32[] newModels);
     event ModelRegistryUpdated(address indexed newRegistry);
+    event PricingUpdated(address indexed operator, uint256 newMinPrice);
 
     constructor(address _fabToken, address _modelRegistry) Ownable(msg.sender) {
         require(_fabToken != address(0), "Invalid FAB token address");
@@ -48,20 +52,24 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Register a node with supported models
+     * @notice Register a node with supported models and pricing
      * @param metadata JSON formatted metadata with hardware specs, capabilities, etc.
      * @param apiUrl The API endpoint URL for the node
      * @param modelIds Array of model IDs this node supports
+     * @param minPricePerToken Minimum price per token in USDC wei (100-100,000)
      */
     function registerNode(
         string memory metadata,
         string memory apiUrl,
-        bytes32[] memory modelIds
+        bytes32[] memory modelIds,
+        uint256 minPricePerToken
     ) external nonReentrant {
         require(nodes[msg.sender].operator == address(0), "Already registered");
         require(bytes(metadata).length > 0, "Empty metadata");
         require(bytes(apiUrl).length > 0, "Empty API URL");
         require(modelIds.length > 0, "Must support at least one model");
+        require(minPricePerToken >= MIN_PRICE_PER_TOKEN, "Price below minimum");
+        require(minPricePerToken <= MAX_PRICE_PER_TOKEN, "Price above maximum");
 
         // Verify all models are approved
         for (uint i = 0; i < modelIds.length; i++) {
@@ -78,7 +86,8 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
             active: true,
             metadata: metadata,
             apiUrl: apiUrl,
-            supportedModels: modelIds
+            supportedModels: modelIds,
+            minPricePerToken: minPricePerToken
         });
 
         // Add to active nodes list
@@ -172,6 +181,21 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Update minimum price per token
+     * @param newMinPrice New minimum price in USDC wei (100-100,000)
+     */
+    function updatePricing(uint256 newMinPrice) external {
+        require(nodes[msg.sender].operator != address(0), "Not registered");
+        require(nodes[msg.sender].active, "Node not active");
+        require(newMinPrice >= MIN_PRICE_PER_TOKEN, "Price below minimum");
+        require(newMinPrice <= MAX_PRICE_PER_TOKEN, "Price above maximum");
+
+        nodes[msg.sender].minPricePerToken = newMinPrice;
+
+        emit PricingUpdated(msg.sender, newMinPrice);
+    }
+
+    /**
      * @notice Unregister node and return stake
      */
     function unregisterNode() external nonReentrant {
@@ -231,7 +255,7 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Get full node information
+     * @notice Get full node information including pricing
      */
     function getNodeFullInfo(address operator) external view returns (
         address,
@@ -239,7 +263,8 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
         bool,
         string memory,
         string memory,
-        bytes32[] memory
+        bytes32[] memory,
+        uint256
     ) {
         Node storage node = nodes[operator];
         return (
@@ -248,8 +273,18 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
             node.active,
             node.metadata,
             node.apiUrl,
-            node.supportedModels
+            node.supportedModels,
+            node.minPricePerToken
         );
+    }
+
+    /**
+     * @notice Get node's minimum price per token
+     * @param operator The address of the node operator
+     * @return Minimum price per token in USDC wei (0 if not registered)
+     */
+    function getNodePricing(address operator) external view returns (uint256) {
+        return nodes[operator].minPricePerToken;
     }
 
     /**

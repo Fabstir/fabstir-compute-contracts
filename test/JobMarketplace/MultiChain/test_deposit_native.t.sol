@@ -24,8 +24,8 @@ contract DepositNativeTest is Test {
         marketplace = new JobMarketplaceWithModels(
             nodeRegistry,
             payable(hostEarnings),
-            1000 // 10% fee
-        );
+            1000 // 10% fee,
+                    30);
 
         // Fund test accounts
         vm.deal(ALICE, 10 ether);

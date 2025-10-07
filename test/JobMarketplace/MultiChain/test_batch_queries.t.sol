@@ -31,8 +31,8 @@ contract BatchQueriesTest is Test {
         marketplace = new JobMarketplaceWithModels(
             nodeRegistry,
             payable(hostEarnings),
-            1000 // 10% fee
-        );
+            1000 // 10% fee,
+                    30);
 
         // Deploy tokens
         token1 = new MockTokenBatch("Token1", "TK1");

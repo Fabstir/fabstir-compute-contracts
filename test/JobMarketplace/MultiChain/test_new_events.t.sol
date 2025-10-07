@@ -70,8 +70,8 @@ contract NewEventsTest is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            FEE_BASIS_POINTS
-        );
+            FEE_BASIS_POINTS,
+            30);
 
         vm.stopPrank();
 

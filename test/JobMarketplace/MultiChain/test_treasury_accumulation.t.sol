@@ -43,8 +43,8 @@ contract TreasuryAccumulationTest is Test {
         marketplace = new JobMarketplaceWithModels(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            FEE_BASIS_POINTS
-        );
+            FEE_BASIS_POINTS,
+            30);
 
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
@@ -58,7 +58,7 @@ contract TreasuryAccumulationTest is Test {
 
     function test_TreasuryAccumulationCalculation() public {
         // Initial state
-        assertEq(marketplace.accumulatedTreasuryETH(), 0, "Treasury starts at 0");
+        assertEq(marketplace.accumulatedTreasuryNative(), 0, "Treasury starts at 0");
 
         // Test the treasury fee calculation
         uint256 payment = 1 ether;
@@ -104,7 +104,7 @@ contract TreasuryAccumulationTest is Test {
         // This is a conceptual test since we can't create jobs in the current system
 
         // Verify initial state
-        assertEq(marketplace.accumulatedTreasuryETH(), 0, "Treasury starts at 0");
+        assertEq(marketplace.accumulatedTreasuryNative(), 0, "Treasury starts at 0");
 
         // After withdrawal, treasury should be 0
         // This is tested conceptually as the actual flow requires job completion

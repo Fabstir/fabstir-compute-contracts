@@ -21,17 +21,17 @@ fabstir-compute-contracts
 
 ---
 
-## Phase 1: NodeRegistry Pricing Infrastructure
+## Phase 1: NodeRegistry Pricing Infrastructure ✅
 
-### Sub-phase 1.1: Add Pricing to Node Struct ⏳
+### Sub-phase 1.1: Add Pricing to Node Struct ✅
 Add minimum price per token field to Node struct.
 
 **Tasks:**
-- [ ] Add `minPricePerToken` field to Node struct in NodeRegistryWithModels.sol
-- [ ] Verify struct compiles with new field
-- [ ] Write test file `test/NodeRegistry/test_pricing_struct.t.sol`
-- [ ] Test: Node struct includes minPricePerToken field
-- [ ] Test: Default value is accessible via public nodes mapping
+- [x] Add `minPricePerToken` field to Node struct in NodeRegistryWithModels.sol
+- [x] Verify struct compiles with new field
+- [x] Write test file `test/NodeRegistry/test_pricing.t.sol`
+- [x] Test: Node struct includes minPricePerToken field
+- [x] Test: Default value is accessible via public nodes mapping
 
 **Implementation:**
 ```solidity
@@ -59,21 +59,21 @@ function test_NodeStructHasPricingField() public {
 
 ---
 
-### Sub-phase 1.2: Update registerNode() Function ⏳
+### Sub-phase 1.2: Update registerNode() Function ✅
 Add pricing parameter to node registration with validation.
 
 **Tasks:**
-- [ ] Add `minPricePerToken` parameter to registerNode() function signature
-- [ ] Add validation: `require(minPricePerToken >= 100, "Price too low")`
-- [ ] Add validation: `require(minPricePerToken <= 100000, "Price too high")`
-- [ ] Set minPricePerToken in Node struct initialization
-- [ ] Write test file `test/NodeRegistry/test_pricing_registration.t.sol`
-- [ ] Test: Register with valid price (2000) succeeds
-- [ ] Test: Register with too low price (50) fails
-- [ ] Test: Register with too high price (200000) fails
-- [ ] Test: Register with minimum valid price (100) succeeds
-- [ ] Test: Register with maximum valid price (100000) succeeds
-- [ ] Test: Verify price stored correctly in nodes mapping
+- [x] Add `minPricePerToken` parameter to registerNode() function signature
+- [x] Add validation: `require(minPricePerToken >= 100, "Price too low")`
+- [x] Add validation: `require(minPricePerToken <= 100000, "Price too high")`
+- [x] Set minPricePerToken in Node struct initialization
+- [x] Write test file `test/NodeRegistry/test_pricing.t.sol` (completed in 1.1)
+- [x] Test: Register with valid price (2000) succeeds
+- [x] Test: Register with too low price (50) fails
+- [x] Test: Register with too high price (200000) fails
+- [x] Test: Register with minimum valid price (100) succeeds
+- [x] Test: Register with maximum valid price (100000) succeeds
+- [x] Test: Verify price stored correctly in nodes mapping
 
 **Implementation:**
 ```solidity
@@ -118,14 +118,14 @@ function test_PriceStoredCorrectly() public { /* ... */ }
 
 ---
 
-### Sub-phase 1.3: Add PricingUpdated Event ⏳
+### Sub-phase 1.3: Add PricingUpdated Event ✅
 Add event for tracking pricing changes.
 
 **Tasks:**
-- [ ] Add `PricingUpdated` event declaration
-- [ ] Write test file `test/NodeRegistry/test_pricing_events.t.sol`
-- [ ] Test: Event definition compiles
-- [ ] Test: Event can be emitted with correct parameters
+- [x] Add `PricingUpdated` event declaration
+- [x] Write test file `test/NodeRegistry/test_pricing_updates.t.sol` (combined with 1.4)
+- [x] Test: Event definition compiles
+- [x] Test: Event can be emitted with correct parameters
 
 **Implementation:**
 ```solidity
@@ -143,26 +143,26 @@ function test_PricingUpdatedEventExists() public { /* ... */ }
 
 ---
 
-### Sub-phase 1.4: Add updatePricing() Function ⏳
+### Sub-phase 1.4: Add updatePricing() Function ✅
 Allow hosts to update their minimum pricing dynamically.
 
 **Tasks:**
-- [ ] Create updatePricing() function with newMinPrice parameter
-- [ ] Add validation: caller must be registered
-- [ ] Add validation: caller must be active
-- [ ] Add validation: price >= 100
-- [ ] Add validation: price <= 100000
-- [ ] Update nodes[msg.sender].minPricePerToken
-- [ ] Emit PricingUpdated event
-- [ ] Write test file `test/NodeRegistry/test_pricing_updates.t.sol`
-- [ ] Test: Registered host can update pricing
-- [ ] Test: Update with valid price succeeds
-- [ ] Test: Update with too low price fails
-- [ ] Test: Update with too high price fails
-- [ ] Test: Non-registered address cannot update
-- [ ] Test: Inactive host cannot update
-- [ ] Test: PricingUpdated event emitted correctly
-- [ ] Test: Price stored correctly after update
+- [x] Create updatePricing() function with newMinPrice parameter
+- [x] Add validation: caller must be registered
+- [x] Add validation: caller must be active
+- [x] Add validation: price >= 100
+- [x] Add validation: price <= 100000
+- [x] Update nodes[msg.sender].minPricePerToken
+- [x] Emit PricingUpdated event
+- [x] Write test file `test/NodeRegistry/test_pricing_updates.t.sol`
+- [x] Test: Registered host can update pricing
+- [x] Test: Update with valid price succeeds
+- [x] Test: Update with too low price fails
+- [x] Test: Update with too high price fails
+- [x] Test: Non-registered address cannot update
+- [x] Test: Inactive host cannot update
+- [x] Test: PricingUpdated event emitted correctly
+- [x] Test: Price stored correctly after update
 
 **Implementation:**
 ```solidity
@@ -196,16 +196,16 @@ function test_PriceStoredAfterUpdate() public { /* ... */ }
 
 ---
 
-### Sub-phase 1.5: Add getNodePricing() View Function ⏳
+### Sub-phase 1.5: Add getNodePricing() View Function ✅
 Add convenience function to query host pricing.
 
 **Tasks:**
-- [ ] Create getNodePricing() view function
-- [ ] Return nodes[operator].minPricePerToken
-- [ ] Write test file `test/NodeRegistry/test_pricing_queries.t.sol`
-- [ ] Test: Returns correct price for registered host
-- [ ] Test: Returns 0 for non-registered address
-- [ ] Test: Returns updated price after updatePricing()
+- [x] Create getNodePricing() view function
+- [x] Return nodes[operator].minPricePerToken
+- [x] Write test file `test/NodeRegistry/test_pricing_queries.t.sol`
+- [x] Test: Returns correct price for registered host
+- [x] Test: Returns 0 for non-registered address
+- [x] Test: Returns updated price after updatePricing()
 
 **Implementation:**
 ```solidity
@@ -227,17 +227,17 @@ function test_GetPricingAfterUpdate() public { /* ... */ }
 
 ---
 
-### Sub-phase 1.6: Update getNodeFullInfo() ⏳
+### Sub-phase 1.6: Update getNodeFullInfo() ✅
 Update existing view function to include pricing information.
 
 **Tasks:**
-- [ ] Add `uint256` return type for minPricePerToken
-- [ ] Return node.minPricePerToken as last value
-- [ ] Write test file `test/NodeRegistry/test_full_info_pricing.t.sol`
-- [ ] Test: getNodeFullInfo returns 7 fields (was 6)
-- [ ] Test: 7th field is minPricePerToken
-- [ ] Test: Returns correct pricing value
-- [ ] Test: Works with updated pricing
+- [x] Add `uint256` return type for minPricePerToken
+- [x] Return node.minPricePerToken as last value
+- [x] Write test file `test/NodeRegistry/test_pricing.t.sol` (completed in 1.1)
+- [x] Test: getNodeFullInfo returns 7 fields (was 6)
+- [x] Test: 7th field is minPricePerToken
+- [x] Test: Returns correct pricing value
+- [x] Test: Works with updated pricing
 
 **Implementation:**
 ```solidity
@@ -277,21 +277,21 @@ function test_WorksWithUpdatedPricing() public { /* ... */ }
 
 ---
 
-## Phase 2: JobMarketplace Price Validation
+## Phase 2: JobMarketplace Price Validation ✅
 
-### Sub-phase 2.1: Add Price Validation to createSessionFromDeposit() ⏳
+### Sub-phase 2.1: Add Price Validation to createSessionFromDeposit() ✅
 Validate client's pricePerToken meets host's minimum.
 
 **Tasks:**
-- [ ] Add price validation at start of createSessionFromDeposit()
-- [ ] Query: `Node memory node = nodeRegistry.nodes(host)`
-- [ ] Require: `pricePerToken >= node.minPricePerToken`
-- [ ] Error message: "Price below host minimum"
-- [ ] Write test file `test/JobMarketplace/test_price_validation_deposit.t.sol`
-- [ ] Test: Session with price above minimum succeeds
-- [ ] Test: Session with price equal to minimum succeeds
-- [ ] Test: Session with price below minimum fails
-- [ ] Test: Host with no pricing (0) fails registration (handled in Phase 1)
+- [x] Add price validation at start of createSessionFromDeposit()
+- [x] Query: `getNodeFullInfo(host)` to get minPricePerToken
+- [x] Require: `pricePerToken >= hostMinPrice`
+- [x] Error message: "Price below host minimum"
+- [x] Write test file `test/JobMarketplace/test_price_validation_deposit.t.sol`
+- [x] Test: Session with price above minimum succeeds
+- [x] Test: Session with price equal to minimum succeeds
+- [x] Test: Session with price below minimum fails
+- [x] Test: Host with no pricing (0) fails registration (handled in Phase 1)
 
 **Implementation:**
 ```solidity
@@ -324,18 +324,18 @@ function test_SessionWithPriceBelowMinimum() public { /* ... */ }
 
 ---
 
-### Sub-phase 2.2: Add Price Validation to createSessionJob() ⏳
+### Sub-phase 2.2: Add Price Validation to createSessionJob() ✅
 Validate pricing for native token sessions.
 
 **Tasks:**
-- [ ] Add price validation at start of createSessionJob()
-- [ ] Query: `Node memory node = nodeRegistry.nodes(host)`
-- [ ] Require: `pricePerToken >= node.minPricePerToken`
-- [ ] Error message: "Price below host minimum"
-- [ ] Write test file `test/JobMarketplace/test_price_validation_native.t.sol`
-- [ ] Test: Native session with price above minimum succeeds
-- [ ] Test: Native session with price equal to minimum succeeds
-- [ ] Test: Native session with price below minimum fails
+- [x] Add price validation at start of createSessionJob()
+- [x] Query: `getNodeFullInfo(host)` to get minPricePerToken
+- [x] Require: `pricePerToken >= hostMinPrice`
+- [x] Error message: "Price below host minimum"
+- [x] Write test file `test/JobMarketplace/test_price_validation_native.t.sol`
+- [x] Test: Native session with price above minimum succeeds
+- [x] Test: Native session with price equal to minimum succeeds
+- [x] Test: Native session with price below minimum fails
 
 **Implementation:**
 ```solidity
@@ -366,18 +366,18 @@ function test_NativeSessionWithPriceBelowMinimum() public { /* ... */ }
 
 ---
 
-### Sub-phase 2.3: Add Price Validation to createSessionJobWithToken() ⏳
+### Sub-phase 2.3: Add Price Validation to createSessionJobWithToken() ✅
 Validate pricing for ERC20 token sessions.
 
 **Tasks:**
-- [ ] Add price validation at start of createSessionJobWithToken()
-- [ ] Query: `Node memory node = nodeRegistry.nodes(host)`
-- [ ] Require: `pricePerToken >= node.minPricePerToken`
-- [ ] Error message: "Price below host minimum"
-- [ ] Write test file `test/JobMarketplace/test_price_validation_token.t.sol`
-- [ ] Test: Token session with price above minimum succeeds
-- [ ] Test: Token session with price equal to minimum succeeds
-- [ ] Test: Token session with price below minimum fails
+- [x] Add price validation at start of createSessionJobWithToken()
+- [x] Query: `getNodeFullInfo(host)` to get minPricePerToken
+- [x] Require: `pricePerToken >= hostMinPrice`
+- [x] Error message: "Price below host minimum"
+- [x] Write test file `test/JobMarketplace/test_price_validation_token.t.sol`
+- [x] Test: Token session with price above minimum succeeds
+- [x] Test: Token session with price equal to minimum succeeds
+- [x] Test: Token session with price below minimum fails
 
 **Implementation:**
 ```solidity
@@ -410,19 +410,19 @@ function test_TokenSessionWithPriceBelowMinimum() public { /* ... */ }
 
 ---
 
-## Phase 3: Integration Testing
+## Phase 3: Integration Testing ✅
 
-### Sub-phase 3.1: End-to-End Pricing Flow ⏳
+### Sub-phase 3.1: End-to-End Pricing Flow ✅
 Test complete flow from registration to session creation.
 
 **Tasks:**
-- [ ] Write test file `test/Integration/test_pricing_flow.t.sol`
-- [ ] Test: Register host with pricing → create session above minimum → succeeds
-- [ ] Test: Register host → update pricing higher → create session with old price → fails
-- [ ] Test: Register host → update pricing lower → create session with new price → succeeds
-- [ ] Test: Multiple hosts with different pricing → sessions respect individual pricing
-- [ ] Test: Query pricing via getNodePricing() → matches registered value
-- [ ] Test: Query pricing via getNodeFullInfo() → matches registered value
+- [x] Write test file `test/Integration/test_pricing_flow.t.sol`
+- [x] Test: Register host with pricing → create session above minimum → succeeds
+- [x] Test: Register host → update pricing higher → create session with old price → fails
+- [x] Test: Register host → update pricing lower → create session with new price → succeeds
+- [x] Test: Multiple hosts with different pricing → sessions respect individual pricing
+- [x] Test: Query pricing via getNodePricing() → matches registered value
+- [x] Test: Query pricing via getNodeFullInfo() → matches registered value
 
 **Tests:**
 ```solidity

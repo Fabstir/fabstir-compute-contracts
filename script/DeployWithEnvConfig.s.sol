@@ -50,10 +50,12 @@ contract DeployWithEnvConfig is Script {
         vm.startBroadcast();
 
         // Deploy JobMarketplaceWithModels with configurable fee
+        uint256 disputeWindow = 30; // 30 seconds
         JobMarketplaceWithModels marketplace = new JobMarketplaceWithModels(
             NODE_REGISTRY,
             payable(HOST_EARNINGS),
-            feeBasisPoints
+            feeBasisPoints,
+            disputeWindow
         );
 
         console.log("JobMarketplaceWithModels deployed at:", address(marketplace));
@@ -85,10 +87,12 @@ contract DeployWithEnvConfig is Script {
 
         vm.startBroadcast();
 
+        uint256 disputeWindow = 30; // 30 seconds
         JobMarketplaceWithModels marketplace = new JobMarketplaceWithModels(
             NODE_REGISTRY,
             payable(HOST_EARNINGS),
-            feeBasisPoints
+            feeBasisPoints,
+            disputeWindow
         );
 
         console.log("Test deployment with", _treasuryFeePercentage, "% treasury fee");
