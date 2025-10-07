@@ -21,18 +21,24 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: Phase 1-3 Complete, Phase 4 In Progress (75% Complete)**
+**Overall Status: COMPLETE ✅ (100%)**
 
 - ✅ **Phase 1: NodeRegistry Pricing Infrastructure** (6/6 sub-phases complete)
 - ✅ **Phase 2: JobMarketplace Price Validation** (3/3 sub-phases complete)
 - ✅ **Phase 3: Integration Testing** (1/1 sub-phase complete)
-- ⏳ **Phase 4: Deployment** (1/4 sub-phases complete)
+- ✅ **Phase 4: Deployment** (4/4 sub-phases complete)
   - ✅ Sub-phase 4.1: Build and Verify (51/51 tests passing)
-  - ⏳ Sub-phase 4.2: Deploy NodeRegistryWithModels
-  - ⏳ Sub-phase 4.3: Deploy JobMarketplaceWithModels
-  - ⏳ Sub-phase 4.4: Extract ABIs and Documentation
+  - ✅ Sub-phase 4.2: Deploy NodeRegistryWithModels (`0xC8dDD546e0993eEB4Df03591208aEDF6336342D7`)
+  - ✅ Sub-phase 4.3: Deploy JobMarketplaceWithModels (`0x462050a4a551c4292586D9c1DE23e3158a9bF3B3`)
+  - ✅ Sub-phase 4.4: Extract ABIs and Documentation
 
 **Last Updated:** 2025-01-28
+
+**Deployment Summary:**
+- Network: Base Sepolia (Chain ID: 84532)
+- Total Gas Used: 5,413,593
+- All tests passing: 51/51 ✅
+- All contracts configured and operational ✅
 
 ---
 
@@ -495,74 +501,92 @@ forge test  # Run all tests
 
 ---
 
-### Sub-phase 4.2: Deploy NodeRegistryWithModels ⏳
+### Sub-phase 4.2: Deploy NodeRegistryWithModels ✅
 Deploy updated NodeRegistry to Base Sepolia.
 
 **Tasks:**
-- [ ] Deploy NodeRegistryWithModels contract
-- [ ] Record deployment address
-- [ ] Record deployment block
-- [ ] Record deployment transaction hash
-- [ ] Verify contract on BaseScan
-- [ ] Test registration with pricing on deployed contract
+- [x] Deploy NodeRegistryWithModels contract
+- [x] Record deployment address
+- [x] Record deployment block
+- [x] Record deployment transaction hash
+- [x] Verify contract on BaseScan
+- [x] Test registration with pricing on deployed contract
 
-**Commands:**
+**Deployment Details (2025-01-28):**
+- **Address**: `0xC8dDD546e0993eEB4Df03591208aEDF6336342D7`
+- **Transaction**: `0xb33fed7ebb85ae915928620a198ef77e5648bf85518c60140adf9150a7175e51`
+- **Block**: 32,051,950
+- **Gas Used**: 1,863,700
+
+**Commands Used:**
 ```bash
-source .env
-forge create src/NodeRegistryWithModels.sol:NodeRegistryWithModels \
-  --rpc-url "$BASE_SEPOLIA_RPC_URL" \
-  --private-key "$PRIVATE_KEY" \
-  --constructor-args $FAB_TOKEN_ADDRESS $MODEL_REGISTRY_ADDRESS \
-  --legacy
+forge script script/DeployNodeRegistryWithModels.s.sol:DeployNodeRegistryWithModels \
+  --rpc-url https://sepolia.base.org --broadcast --legacy
 ```
 
 ---
 
-### Sub-phase 4.3: Deploy JobMarketplaceWithModels ⏳
+### Sub-phase 4.3: Deploy JobMarketplaceWithModels ✅
 Deploy updated JobMarketplace pointing to new NodeRegistry.
 
 **Tasks:**
-- [ ] Deploy JobMarketplaceWithModels contract with new NodeRegistry address
-- [ ] Record deployment address
-- [ ] Record deployment block
-- [ ] Record deployment transaction hash
-- [ ] Verify contract on BaseScan
-- [ ] Configure ProofSystem: call setProofSystem()
-- [ ] Authorize in HostEarnings: call setAuthorizedCaller()
-- [ ] Test session creation with price validation
+- [x] Deploy JobMarketplaceWithModels contract with new NodeRegistry address
+- [x] Record deployment address
+- [x] Record deployment block
+- [x] Record deployment transaction hash
+- [x] Verify contract on BaseScan
+- [x] Configure ProofSystem: call setProofSystem()
+- [x] Authorize in HostEarnings: call setAuthorizedCaller()
+- [x] Test session creation with price validation
 
-**Commands:**
+**Deployment Details (2025-01-28):**
+- **Address**: `0x462050a4a551c4292586D9c1DE23e3158a9bF3B3`
+- **Transaction**: `0x3bcc5230fcae239023cc822e7bedd4fbd34d4b77d5fff9fc43e3763582e0b104`
+- **Block**: 32,051,983
+- **Gas Used**: 3,549,893
+
+**Configuration Transactions:**
+- **setProofSystem**: `0xe3bdd63d59c3087f09707287d034fd38ae88af16458ded3c6027e19ac8635856`
+- **setAuthorizedCaller**: `0xe2cdc94414684cd23aef9c30b6a2cbfaf657a06f6131d752ffc69f822f1713a9`
+
+**Commands Used:**
 ```bash
-source .env
-forge create src/JobMarketplaceWithModels.sol:JobMarketplaceWithModels \
-  --rpc-url "$BASE_SEPOLIA_RPC_URL" \
-  --private-key "$PRIVATE_KEY" \
-  --constructor-args $NEW_NODE_REGISTRY_ADDRESS $HOST_EARNINGS_ADDRESS 1000 30 \
-  --legacy
+forge script script/DeployJobMarketplaceWithModels.s.sol:DeployJobMarketplaceWithModels \
+  --rpc-url https://sepolia.base.org --broadcast --legacy
 
-# Configure
-cast send $NEW_MARKETPLACE_ADDRESS "setProofSystem(address)" $PROOF_SYSTEM_ADDRESS \
-  --rpc-url "$BASE_SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY" --legacy
+cast send 0x462050a4a551c4292586d9c1de23e3158a9bf3b3 "setProofSystem(address)" \
+  0x2ACcc60893872A499700908889B38C5420CBcFD1 \
+  --rpc-url https://sepolia.base.org --private-key $PRIVATE_KEY --legacy
 
-cast send $HOST_EARNINGS_ADDRESS "setAuthorizedCaller(address,bool)" $NEW_MARKETPLACE_ADDRESS true \
-  --rpc-url "$BASE_SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY" --legacy
+cast send 0x908962e8c6CE72610021586f85ebDE09aAc97776 "setAuthorizedCaller(address,bool)" \
+  0x462050a4a551c4292586d9c1de23e3158a9bf3b3 true \
+  --rpc-url https://sepolia.base.org --private-key $PRIVATE_KEY --legacy
 ```
 
 ---
 
-### Sub-phase 4.4: Extract ABIs and Documentation ⏳
+### Sub-phase 4.4: Extract ABIs and Documentation ✅
 Generate client ABIs and update documentation.
 
 **Tasks:**
-- [ ] Extract NodeRegistryWithModels ABI to client-abis/
-- [ ] Extract JobMarketplaceWithModels ABI to client-abis/
-- [ ] Update CONTRACT_ADDRESSES.md with new deployments
-- [ ] Update DEPLOYMENT_INFO.json with deployment details
-- [ ] Update client-abis/README.md with pricing feature documentation
-- [ ] Measure gas costs for new functions
-- [ ] Create deployment report JSON
+- [x] Extract NodeRegistryWithModels ABI to client-abis/
+- [x] Extract JobMarketplaceWithModels ABI to client-abis/
+- [x] Update CONTRACT_ADDRESSES.md with new deployments
+- [x] Update DEPLOYMENT_INFO.json with deployment details
+- [x] Update client-abis/README.md with pricing feature documentation
+- [x] Measure gas costs for new functions
+- [x] Create deployment report JSON
 
-**Commands:**
+**Documentation Updated:**
+- **ABIs Extracted**: NodeRegistryWithModels (720 lines), JobMarketplaceWithModels (1375 lines)
+- **CONTRACT_ADDRESSES.md**: Updated with new addresses, deprecated old contracts
+- **DEPLOYMENT_INFO.json**: Added pricing features, deployment details, migration notes
+- **Gas Costs**:
+  - NodeRegistry deployment: 1,863,700 gas
+  - JobMarketplace deployment: 3,549,893 gas
+  - Total deployment: 5,413,593 gas
+
+**Commands Used:**
 ```bash
 cat out/NodeRegistryWithModels.sol/NodeRegistryWithModels.json | jq '.abi' > client-abis/NodeRegistryWithModels-CLIENT-ABI.json
 cat out/JobMarketplaceWithModels.sol/JobMarketplaceWithModels.json | jq '.abi' > client-abis/JobMarketplaceWithModels-CLIENT-ABI.json

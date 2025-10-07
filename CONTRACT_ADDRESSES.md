@@ -6,23 +6,24 @@ Last Updated: January 28, 2025
 
 | Chain | Network | Status | Native Token | Contract Address |
 |-------|---------|--------|--------------|------------------|
-| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0xdEa1B47872C27458Bb7331Ade99099761C4944Dc` |
+| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0x462050a4a551c4292586D9c1DE23e3158a9bF3B3` |
 | **opBNB** | Testnet | ⏳ PLANNED | BNB | Post-MVP deployment |
 | **Base** | Mainnet | ⏳ FUTURE | ETH | TBD |
 | **opBNB** | Mainnet | ⏳ FUTURE | BNB | TBD |
 
-> **🚀 LATEST DEPLOYMENT**: Multi-Chain Support & Bug Fixes
+> **🚀 LATEST DEPLOYMENT**: Host-Controlled Pricing
 >
-> - **JobMarketplaceWithModels**: `0xdEa1B47872C27458Bb7331Ade99099761C4944Dc` ✅ NEW - 30s dispute window, ETH/USDC deposit parity, native token naming (Jan 28, 2025)
-> - **Features**: Configurable dispute window, removed 10x ETH multiplier, accumulatedTreasuryNative for multi-chain
+> - **NodeRegistryWithModels**: `0xC8dDD546e0993eEB4Df03591208aEDF6336342D7` ✅ NEW - Host pricing support (Jan 28, 2025)
+> - **JobMarketplaceWithModels**: `0x462050a4a551c4292586D9c1DE23e3158a9bF3B3` ✅ NEW - Price validation enforcement (Jan 28, 2025)
+> - **Features**: Hosts set own pricing (100-100,000 range), contract-level price validation, dynamic pricing updates, 7-field Node struct
 
 ## Active Contracts
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceWithModels** | `0xdEa1B47872C27458Bb7331Ade99099761C4944Dc` | ✅ NEW - Multi-chain native support, 30s dispute, ETH/USDC parity |
+| **JobMarketplaceWithModels** | `0x462050a4a551c4292586D9c1DE23e3158a9bF3B3` | ✅ NEW - Host pricing validation, price enforcement |
+| **NodeRegistryWithModels** | `0xC8dDD546e0993eEB4Df03591208aEDF6336342D7` | ✅ NEW - Host-controlled pricing (7-field struct) |
 | **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | Model governance (2 approved models) |
-| **NodeRegistryWithModels** | `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218` | Host registration with model validation |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | EZKL proof verification |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | Host earnings accumulation |
 
@@ -58,9 +59,9 @@ const baseSepoliaConfig = {
   chainId: 84532,
   nativeToken: "ETH",
   contracts: {
-    jobMarketplace: "0xaa38e7fcf5d7944ef7c836e8451f3bf93b98364f", // Multi-chain support
+    jobMarketplace: "0x462050a4a551c4292586D9c1DE23e3158a9bF3B3", // Host-controlled pricing
     modelRegistry: "0x92b2De840bB2171203011A6dBA928d855cA8183E",
-    nodeRegistry: "0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218",
+    nodeRegistry: "0xC8dDD546e0993eEB4Df03591208aEDF6336342D7", // Pricing support
     proofSystem: "0x2ACcc60893872A499700908889B38C5420CBcFD1",
     hostEarnings: "0x908962e8c6CE72610021586f85ebDE09aAc97776",
     fabToken: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
@@ -91,6 +92,8 @@ const opBNBConfig = {
 
 | Contract | Address | Description | Deprecated Date |
 |----------|---------|-------------|-----------------|
+| **JobMarketplaceWithModels** | `0xdEa1B47872C27458Bb7331Ade99099761C4944Dc` | ⚠️ DEPRECATED - No pricing validation | Jan 28, 2025 |
+| **NodeRegistryWithModels** | `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218` | ⚠️ DEPRECATED - 6-field struct, no pricing | Jan 28, 2025 |
 | **JobMarketplaceWithModels** | `0x1273E6358aa52Bb5B160c34Bf2e617B745e4A944` | ⚠️ DEPRECATED - Replaced with multi-chain version | Jan 24, 2025 |
 
 ## Network Information
