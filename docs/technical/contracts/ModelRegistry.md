@@ -6,8 +6,9 @@ The ModelRegistry contract manages approved AI models that can be used in the Fa
 
 **Contract Address**: `0x92b2De840bB2171203011A6dBA928d855cA8183E`
 **Network**: Base Sepolia
-**Source**: [`src/ModelRegistry.sol`](../../../src/ModelRegistry.sol)
 **Status**: ✅ ACTIVE - Model governance with 2 approved models
+**Last Updated**: January 28, 2025
+**Source**: [`src/ModelRegistry.sol`](../../../src/ModelRegistry.sol)
 
 ### Key Features
 - Model approval and governance system
