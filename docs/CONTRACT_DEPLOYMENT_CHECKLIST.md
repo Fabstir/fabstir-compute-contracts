@@ -91,7 +91,6 @@ Before deploying ANY contract:
 3. **Update All References**
    - [ ] Update `CONTRACT_ADDRESSES.md`
    - [ ] Update `.env` - `MODEL_REGISTRY_ADDRESS`
-   - [ ] Update `client-abis/DEPLOYMENT_INFO.json`
    - [ ] Update `client-abis/README.md`
    - [ ] Update `docs/MODEL_REGISTRY_DEPLOYMENT.md`
 
@@ -116,7 +115,6 @@ Before deploying ANY contract:
 2. **Update All References**
    - [ ] Update `CONTRACT_ADDRESSES.md`
    - [ ] Update `.env` - `NODE_REGISTRY_ADDRESS`
-   - [ ] Update `client-abis/DEPLOYMENT_INFO.json`
    - [ ] Update `client-abis/README.md`
    - [ ] Update `docs/HOST_REGISTRATION_GUIDE.md`
 
@@ -172,7 +170,6 @@ Before deploying ANY contract:
 3. **Update All References**
    - [ ] Update `CONTRACT_ADDRESSES.md`
    - [ ] Update `.env` - `JOB_MARKETPLACE_ADDRESS`
-   - [ ] Update `client-abis/DEPLOYMENT_INFO.json`
    - [ ] Update `client-abis/README.md`
    - [ ] Generate new ABI: `forge build && jq -c '.abi' out/JobMarketplaceWithModels.sol/JobMarketplaceWithModels.json > client-abis/JobMarketplaceWithModels-CLIENT-ABI.json`
 
@@ -215,7 +212,6 @@ Before deploying ANY contract:
 3. **Update All References**
    - [ ] Update `CONTRACT_ADDRESSES.md`
    - [ ] Update `.env` - `HOST_EARNINGS_ADDRESS`
-   - [ ] Update `client-abis/DEPLOYMENT_INFO.json`
 
 4. **Dependent Contracts to Redeploy**
    - JobMarketplaceWithModels (uses HostEarnings address in constructor)
@@ -244,7 +240,6 @@ Before deploying ANY contract:
 3. **Update All References**
    - [ ] Update `CONTRACT_ADDRESSES.md`
    - [ ] Update `.env` - `PROOF_SYSTEM_ADDRESS`
-   - [ ] Update `client-abis/DEPLOYMENT_INFO.json`
 
 ---
 
@@ -336,7 +331,6 @@ cast call <NODE_REGISTRY_ADDRESS> "MIN_STAKE()" --rpc-url $BASE_SEPOLIA_RPC_URL
 **MUST update ALL of these**:
 - [ ] `CONTRACT_ADDRESSES.md` - Main reference
 - [ ] `.env` - Environment variables
-- [ ] `client-abis/DEPLOYMENT_INFO.json` - Client reference
 - [ ] `client-abis/README.md` - Integration guide
 - [ ] `docs/HOST_REGISTRATION_GUIDE.md` - If NodeRegistry changed
 - [ ] `docs/MODEL_REGISTRY_DEPLOYMENT.md` - If ModelRegistry changed
@@ -445,7 +439,6 @@ New: [New deployed address]
 ### Files Updated
 - [ ] CONTRACT_ADDRESSES.md
 - [ ] .env
-- [ ] client-abis/DEPLOYMENT_INFO.json
 - [ ] client-abis/README.md
 - [ ] [Other files]
 

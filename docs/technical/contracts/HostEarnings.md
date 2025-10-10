@@ -40,7 +40,7 @@ contract HostEarnings {
 
 ### Integration with JobMarketplace
 
-The HostEarnings contract works in tandem with JobMarketplaceWithModels (`0x462050a4a551c4292586D9c1DE23e3158a9bF3B3`):
+The HostEarnings contract works in tandem with JobMarketplaceWithModels (`0xe169A4B57700080725f9553E3Cc69885fea13629` - corrected dual pricing):
 
 1. **Session Completion**: Anyone completes a session (user, host, or third party)
 2. **Payment Calculation**: Marketplace calculates 90% host / 10% treasury split

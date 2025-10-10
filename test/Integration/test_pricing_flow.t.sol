@@ -93,12 +93,13 @@ contract PricingFlowIntegrationTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            hostMinPrice
+            hostMinPrice,  // Native (ETH) price
+            hostMinPrice   // Stable (USDC) price - same for this test
         );
         vm.stopPrank();
 
-        // Step 2: Verify pricing is stored
-        uint256 storedPrice = nodeRegistry.getNodePricing(host1);
+        // Step 2: Verify pricing is stored (testing native token price for ETH sessions)
+        uint256 storedPrice = nodeRegistry.getNodePricing(host1, address(0)); // address(0) = native
         assertEq(storedPrice, hostMinPrice, "Pricing should be stored");
 
         // Step 3: Create session above minimum (should succeed)
@@ -138,7 +139,8 @@ contract PricingFlowIntegrationTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            initialPrice
+            initialPrice,  // Native price
+            initialPrice   // Stable price - same for this test
         );
         vm.stopPrank();
 
@@ -152,13 +154,13 @@ contract PricingFlowIntegrationTest is Test {
         );
         assertGt(sessionId1, 0, "Initial session created");
 
-        // Step 3: Host updates pricing higher
+        // Step 3: Host updates pricing higher (native token for ETH sessions)
         uint256 newHigherPrice = 5000;
         vm.prank(host1);
-        nodeRegistry.updatePricing(newHigherPrice);
+        nodeRegistry.updatePricingNative(newHigherPrice);
 
         // Step 4: Verify updated pricing
-        uint256 updatedPrice = nodeRegistry.getNodePricing(host1);
+        uint256 updatedPrice = nodeRegistry.getNodePricing(host1, address(0));
         assertEq(updatedPrice, newHigherPrice, "Pricing should be updated");
 
         // Step 5: Try to create session with old price (should fail)
@@ -199,7 +201,8 @@ contract PricingFlowIntegrationTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            initialHighPrice
+            initialHighPrice,  // Native price
+            initialHighPrice   // Stable price
         );
         vm.stopPrank();
 
@@ -217,7 +220,7 @@ contract PricingFlowIntegrationTest is Test {
         // Step 3: Host lowers pricing to be competitive
         uint256 newLowerPrice = 2500;
         vm.prank(host1);
-        nodeRegistry.updatePricing(newLowerPrice);
+        nodeRegistry.updatePricingNative(newLowerPrice);
 
         // Step 4: Now user can create session with their desired price
         vm.prank(user);
@@ -246,7 +249,8 @@ contract PricingFlowIntegrationTest is Test {
             "metadata1",
             "https://api1.example.com",
             models,
-            host1Price
+            host1Price,  // Native price
+            host1Price   // Stable price
         );
         vm.stopPrank();
 
@@ -262,7 +266,8 @@ contract PricingFlowIntegrationTest is Test {
             "metadata2",
             "https://api2.example.com",
             models,
-            host2Price
+            host2Price,  // Native price
+            host2Price   // Stable price
         );
         vm.stopPrank();
 
@@ -278,7 +283,8 @@ contract PricingFlowIntegrationTest is Test {
             "metadata3",
             "https://api3.example.com",
             models,
-            host3Price
+            host3Price,  // Native price
+            host3Price   // Stable price
         );
         vm.stopPrank();
 
@@ -351,14 +357,15 @@ contract PricingFlowIntegrationTest is Test {
                 string(abi.encodePacked("metadata", i)),
                 string(abi.encodePacked("https://api", i, ".example.com")),
                 models,
-                prices[i]
+                prices[i],  // Native price
+                prices[i]   // Stable price - same for this test
             );
             vm.stopPrank();
         }
 
-        // Verify all pricing queries match
+        // Verify all pricing queries match (testing native token queries)
         for (uint i = 0; i < hosts.length; i++) {
-            uint256 queriedPrice = nodeRegistry.getNodePricing(hosts[i]);
+            uint256 queriedPrice = nodeRegistry.getNodePricing(hosts[i], address(0));
             assertEq(queriedPrice, prices[i], "getNodePricing should match registered price");
         }
     }
@@ -379,20 +386,22 @@ contract PricingFlowIntegrationTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            hostPrice
+            hostPrice,  // Native price
+            hostPrice   // Stable price
         );
         vm.stopPrank();
 
-        // Query via getNodePricing
-        uint256 priceFromGetter = nodeRegistry.getNodePricing(host1);
+        // Query via getNodePricing (native token)
+        uint256 priceFromGetter = nodeRegistry.getNodePricing(host1, address(0));
 
-        // Query via getNodeFullInfo
-        (, , , , , , uint256 priceFromFullInfo) = nodeRegistry.getNodeFullInfo(host1);
+        // Query via getNodeFullInfo (returns both native and stable)
+        (, , , , , , uint256 nativePrice, uint256 stablePrice) = nodeRegistry.getNodeFullInfo(host1);
 
         // Both should match the registered price
         assertEq(priceFromGetter, hostPrice, "getNodePricing matches registered");
-        assertEq(priceFromFullInfo, hostPrice, "getNodeFullInfo matches registered");
-        assertEq(priceFromGetter, priceFromFullInfo, "Both getters return same price");
+        assertEq(nativePrice, hostPrice, "getNodeFullInfo native matches registered");
+        assertEq(stablePrice, hostPrice, "getNodeFullInfo stable matches registered");
+        assertEq(priceFromGetter, nativePrice, "getNodePricing and native price match");
     }
 
     function test_CompleteFlowWithTokenPayments() public {
@@ -412,11 +421,12 @@ contract PricingFlowIntegrationTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            hostPrice
+            hostPrice,  // Native price
+            hostPrice   // Stable price
         );
         vm.stopPrank();
 
-        // User creates USDC session
+        // User creates USDC session (validates against stable price)
         vm.startPrank(user);
         usdcToken.approve(address(marketplace), 1000e6);
 

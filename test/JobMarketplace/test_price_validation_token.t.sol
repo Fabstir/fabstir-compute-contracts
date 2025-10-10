@@ -27,7 +27,9 @@ contract PriceValidationTokenTest is Test {
 
     bytes32 public modelId = keccak256(abi.encodePacked("CohereForAI/TinyVicuna-1B-32k-GGUF", "/", "tiny-vicuna-1b.q4_k_m.gguf"));
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant HOST_MIN_PRICE = 2000; // Host requires 2000 wei per token
+    uint256 constant HOST_MIN_PRICE_NATIVE = 3_000_000_000; // Host requires 3B wei per token (above MIN_PRICE_NATIVE)
+    uint256 constant HOST_MIN_PRICE_STABLE = 5000; // Host requires 5000 for stablecoins
+    uint256 constant HOST_MIN_PRICE = HOST_MIN_PRICE_STABLE; // Alias for token tests (tests USDC)
     uint256 constant FEE_BASIS_POINTS = 1000; // 10%
     uint256 constant DISPUTE_WINDOW = 30; // 30 seconds
 
@@ -86,7 +88,8 @@ contract PriceValidationTokenTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            HOST_MIN_PRICE
+            HOST_MIN_PRICE_NATIVE,  // Native (ETH) price
+            HOST_MIN_PRICE_STABLE   // Stable (USDC) price
         );
         vm.stopPrank();
 
@@ -160,11 +163,11 @@ contract PriceValidationTokenTest is Test {
     }
 
     function test_TokenSessionAfterHostPriceUpdate() public {
-        uint256 newMinPrice = 5000;
+        uint256 newMinPrice = 8000; // Within stable price range
 
-        // Host updates pricing
+        // Host updates stable pricing (for USDC sessions)
         vm.prank(host);
-        nodeRegistry.updatePricing(newMinPrice);
+        nodeRegistry.updatePricingStable(newMinPrice);
 
         // Old price should now fail
         vm.prank(user);
@@ -195,7 +198,7 @@ contract PriceValidationTokenTest is Test {
     function test_TokenSessionMultipleHostsDifferentPricing() public {
         // Setup second host with different pricing
         address host2 = address(4);
-        uint256 host2MinPrice = 3500;
+        uint256 host2MinPrice = 7000; // Within stable price range
 
         vm.prank(owner);
         fabToken.mint(host2, MIN_STAKE);
@@ -210,7 +213,8 @@ contract PriceValidationTokenTest is Test {
             "metadata2",
             "https://api2.example.com",
             models,
-            host2MinPrice
+            HOST_MIN_PRICE_NATIVE,  // Native (ETH) price
+            host2MinPrice   // Stable (USDC) price
         );
         vm.stopPrank();
 

@@ -15,8 +15,10 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     IERC20 public immutable fabToken;
     ModelRegistry public modelRegistry;
     uint256 public constant MIN_STAKE = 1000 * 10**18; // 1000 FAB tokens
-    uint256 public constant MIN_PRICE_PER_TOKEN = 100; // 0.0001 USDC per token
-    uint256 public constant MAX_PRICE_PER_TOKEN = 100_000; // 0.1 USDC per token
+    uint256 public constant MIN_PRICE_PER_TOKEN_STABLE = 10; // Minimum for stablecoins: 0.00001 USDC per AI token
+    uint256 public constant MIN_PRICE_PER_TOKEN_NATIVE = 2_272_727_273; // Minimum for native tokens: ~0.00001 USD @ $4400 ETH
+    uint256 public constant MAX_PRICE_PER_TOKEN_STABLE = 100_000; // Maximum for stablecoins: 0.1 USDC per AI token
+    uint256 public constant MAX_PRICE_PER_TOKEN_NATIVE = 22_727_272_727_273; // Maximum for native tokens: ~0.1 USD @ $4400 ETH
 
     struct Node {
         address operator;
@@ -25,7 +27,8 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
         string metadata;        // JSON formatted metadata
         string apiUrl;          // API endpoint URL
         bytes32[] supportedModels; // Array of model IDs this node supports
-        uint256 minPricePerToken; // Minimum price per token in USDC wei (100-100,000)
+        uint256 minPricePerTokenNative;  // Minimum price per token for native tokens (ETH/BNB) - 18 decimals
+        uint256 minPricePerTokenStable;  // Minimum price per token for stablecoins (USDC) - 6 decimals
     }
 
     // Mappings
@@ -52,24 +55,28 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Register a node with supported models and pricing
+     * @notice Register a node with supported models and dual pricing
      * @param metadata JSON formatted metadata with hardware specs, capabilities, etc.
      * @param apiUrl The API endpoint URL for the node
      * @param modelIds Array of model IDs this node supports
-     * @param minPricePerToken Minimum price per token in USDC wei (100-100,000)
+     * @param minPricePerTokenNative Minimum price for native tokens (ETH/BNB) per AI token (2,272,727,273-22,727,272,727,273 wei)
+     * @param minPricePerTokenStable Minimum price for stablecoins (USDC) per AI token (10-100,000)
      */
     function registerNode(
         string memory metadata,
         string memory apiUrl,
         bytes32[] memory modelIds,
-        uint256 minPricePerToken
+        uint256 minPricePerTokenNative,
+        uint256 minPricePerTokenStable
     ) external nonReentrant {
         require(nodes[msg.sender].operator == address(0), "Already registered");
         require(bytes(metadata).length > 0, "Empty metadata");
         require(bytes(apiUrl).length > 0, "Empty API URL");
         require(modelIds.length > 0, "Must support at least one model");
-        require(minPricePerToken >= MIN_PRICE_PER_TOKEN, "Price below minimum");
-        require(minPricePerToken <= MAX_PRICE_PER_TOKEN, "Price above maximum");
+        require(minPricePerTokenNative >= MIN_PRICE_PER_TOKEN_NATIVE, "Native price below minimum");
+        require(minPricePerTokenNative <= MAX_PRICE_PER_TOKEN_NATIVE, "Native price above maximum");
+        require(minPricePerTokenStable >= MIN_PRICE_PER_TOKEN_STABLE, "Stable price below minimum");
+        require(minPricePerTokenStable <= MAX_PRICE_PER_TOKEN_STABLE, "Stable price above maximum");
 
         // Verify all models are approved
         for (uint i = 0; i < modelIds.length; i++) {
@@ -87,7 +94,8 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
             metadata: metadata,
             apiUrl: apiUrl,
             supportedModels: modelIds,
-            minPricePerToken: minPricePerToken
+            minPricePerTokenNative: minPricePerTokenNative,
+            minPricePerTokenStable: minPricePerTokenStable
         });
 
         // Add to active nodes list
@@ -181,16 +189,31 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Update minimum price per token
-     * @param newMinPrice New minimum price in USDC wei (100-100,000)
+     * @notice Update minimum price per token for native tokens (ETH/BNB)
+     * @param newMinPrice New minimum price for native tokens (2,272,727,273-22,727,272,727,273 wei)
      */
-    function updatePricing(uint256 newMinPrice) external {
+    function updatePricingNative(uint256 newMinPrice) external {
         require(nodes[msg.sender].operator != address(0), "Not registered");
         require(nodes[msg.sender].active, "Node not active");
-        require(newMinPrice >= MIN_PRICE_PER_TOKEN, "Price below minimum");
-        require(newMinPrice <= MAX_PRICE_PER_TOKEN, "Price above maximum");
+        require(newMinPrice >= MIN_PRICE_PER_TOKEN_NATIVE, "Price below minimum");
+        require(newMinPrice <= MAX_PRICE_PER_TOKEN_NATIVE, "Price above maximum");
 
-        nodes[msg.sender].minPricePerToken = newMinPrice;
+        nodes[msg.sender].minPricePerTokenNative = newMinPrice;
+
+        emit PricingUpdated(msg.sender, newMinPrice);
+    }
+
+    /**
+     * @notice Update minimum price per token for stablecoins (USDC)
+     * @param newMinPrice New minimum price for stablecoins (10-100,000)
+     */
+    function updatePricingStable(uint256 newMinPrice) external {
+        require(nodes[msg.sender].operator != address(0), "Not registered");
+        require(nodes[msg.sender].active, "Node not active");
+        require(newMinPrice >= MIN_PRICE_PER_TOKEN_STABLE, "Price below minimum");
+        require(newMinPrice <= MAX_PRICE_PER_TOKEN_STABLE, "Price above maximum");
+
+        nodes[msg.sender].minPricePerTokenStable = newMinPrice;
 
         emit PricingUpdated(msg.sender, newMinPrice);
     }
@@ -255,7 +278,7 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Get full node information including pricing
+     * @notice Get full node information including dual pricing
      */
     function getNodeFullInfo(address operator) external view returns (
         address,
@@ -264,6 +287,7 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
         string memory,
         string memory,
         bytes32[] memory,
+        uint256,
         uint256
     ) {
         Node storage node = nodes[operator];
@@ -274,17 +298,25 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
             node.metadata,
             node.apiUrl,
             node.supportedModels,
-            node.minPricePerToken
+            node.minPricePerTokenNative,
+            node.minPricePerTokenStable
         );
     }
 
     /**
-     * @notice Get node's minimum price per token
+     * @notice Get node's minimum price per token for a specific payment token
      * @param operator The address of the node operator
-     * @return Minimum price per token in USDC wei (0 if not registered)
+     * @param token The payment token address (address(0) for native ETH/BNB, USDC address for stablecoin)
+     * @return Minimum price per token (0 if not registered)
      */
-    function getNodePricing(address operator) external view returns (uint256) {
-        return nodes[operator].minPricePerToken;
+    function getNodePricing(address operator, address token) external view returns (uint256) {
+        if (token == address(0)) {
+            // Native token (ETH on Base, BNB on opBNB)
+            return nodes[operator].minPricePerTokenNative;
+        } else {
+            // Stablecoin (USDC or other)
+            return nodes[operator].minPricePerTokenStable;
+        }
     }
 
     /**

@@ -18,7 +18,12 @@ contract NodeRegistryPricingQueriesTest is Test {
     bytes32 public modelId = keccak256(abi.encodePacked("CohereForAI/TinyVicuna-1B-32k-GGUF", "/", "tiny-vicuna-1b.q4_k_m.gguf"));
 
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant INITIAL_PRICE = 1500;
+    uint256 constant MIN_PRICE_STABLE = 10; // 0.00001 USDC per token
+    uint256 constant MIN_PRICE_NATIVE = 2_272_727_273; // ~0.00001 USD @ $4400 ETH
+    uint256 constant MAX_PRICE_STABLE = 100_000; // 0.1 USDC per token
+    uint256 constant MAX_PRICE_NATIVE = 22_727_272_727_273; // ~0.1 USD @ $4400 ETH
+    uint256 constant INITIAL_PRICE_NATIVE = 3_000_000_000; // Above MIN_PRICE_NATIVE
+    uint256 constant INITIAL_PRICE_STABLE = 1500; // Above MIN_PRICE_STABLE
 
     function setUp() public {
         vm.startPrank(owner);
@@ -53,38 +58,40 @@ contract NodeRegistryPricingQueriesTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            INITIAL_PRICE
+            INITIAL_PRICE_NATIVE,  // Native price
+            INITIAL_PRICE_STABLE   // Stable price
         );
 
         vm.stopPrank();
     }
 
     function test_GetPricingForRegisteredHost() public {
-        uint256 price = nodeRegistry.getNodePricing(host);
-        assertEq(price, INITIAL_PRICE, "Should return registered price");
+        uint256 price = nodeRegistry.getNodePricing(host, address(0));
+        assertEq(price, INITIAL_PRICE_NATIVE, "Should return registered price");
     }
 
     function test_GetPricingForNonRegistered() public {
-        uint256 price = nodeRegistry.getNodePricing(nonRegisteredHost);
+        uint256 price = nodeRegistry.getNodePricing(nonRegisteredHost, address(0));
         assertEq(price, 0, "Should return 0 for non-registered");
     }
 
     function test_GetPricingAfterUpdate() public {
-        uint256 newPrice = 3000;
+        uint256 newPrice = 4_000_000_000;
 
         // Update pricing
         vm.prank(host);
-        nodeRegistry.updatePricing(newPrice);
+        nodeRegistry.updatePricingNative(newPrice);
 
         // Query pricing
-        uint256 price = nodeRegistry.getNodePricing(host);
+        uint256 price = nodeRegistry.getNodePricing(host, address(0));
         assertEq(price, newPrice, "Should return updated price");
     }
 
     function test_GetPricingMultipleHosts() public {
         // Setup second host
         address host2 = address(4);
-        uint256 host2Price = 2500;
+        uint256 host2PriceNative = 3_500_000_000;
+        uint256 host2PriceStable = 2500;
 
         vm.prank(owner);
         fabToken.mint(host2, MIN_STAKE);
@@ -99,42 +106,45 @@ contract NodeRegistryPricingQueriesTest is Test {
             "metadata2",
             "https://api2.example.com",
             models,
-            host2Price
+            host2PriceNative,  // Native price
+            host2PriceStable   // Stable price
         );
         vm.stopPrank();
 
         // Query both hosts
-        uint256 price1 = nodeRegistry.getNodePricing(host);
-        uint256 price2 = nodeRegistry.getNodePricing(host2);
+        uint256 price1 = nodeRegistry.getNodePricing(host, address(0));
+        uint256 price2 = nodeRegistry.getNodePricing(host2, address(0));
 
-        assertEq(price1, INITIAL_PRICE, "Host1 price incorrect");
-        assertEq(price2, host2Price, "Host2 price incorrect");
+        assertEq(price1, INITIAL_PRICE_NATIVE, "Host1 price incorrect");
+        assertEq(price2, host2PriceNative, "Host2 price incorrect");
     }
 
     function test_GetPricingConsistentWithFullInfo() public {
-        // Get price via getNodePricing
-        uint256 priceDirect = nodeRegistry.getNodePricing(host);
+        // Get price via getNodePricing (native)
+        uint256 priceDirect = nodeRegistry.getNodePricing(host, address(0));
 
         // Get price via getNodeFullInfo
-        (, , , , , , uint256 priceFromFullInfo) = nodeRegistry.getNodeFullInfo(host);
+        (, , , , , , uint256 nativePrice, uint256 stablePrice) = nodeRegistry.getNodeFullInfo(host);
 
-        assertEq(priceDirect, priceFromFullInfo, "Pricing should be consistent");
+        assertEq(priceDirect, nativePrice, "Native pricing should be consistent");
+        assertEq(nativePrice, INITIAL_PRICE_NATIVE, "Native price should match initial value");
+        assertEq(stablePrice, INITIAL_PRICE_STABLE, "Stable price should match initial value");
     }
 
     function test_GetPricingAfterMultipleUpdates() public {
         // First update
         vm.prank(host);
-        nodeRegistry.updatePricing(2000);
-        assertEq(nodeRegistry.getNodePricing(host), 2000, "First update failed");
+        nodeRegistry.updatePricingNative(4_000_000_000);
+        assertEq(nodeRegistry.getNodePricing(host, address(0)), 4_000_000_000, "First update failed");
 
         // Second update
         vm.prank(host);
-        nodeRegistry.updatePricing(3500);
-        assertEq(nodeRegistry.getNodePricing(host), 3500, "Second update failed");
+        nodeRegistry.updatePricingNative(5_500_000_000);
+        assertEq(nodeRegistry.getNodePricing(host, address(0)), 5_500_000_000, "Second update failed");
 
         // Third update
         vm.prank(host);
-        nodeRegistry.updatePricing(1000);
-        assertEq(nodeRegistry.getNodePricing(host), 1000, "Third update failed");
+        nodeRegistry.updatePricingNative(3_000_000_000);
+        assertEq(nodeRegistry.getNodePricing(host, address(0)), 3_000_000_000, "Third update failed");
     }
 }

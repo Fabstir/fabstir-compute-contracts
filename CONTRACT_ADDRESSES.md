@@ -6,23 +6,23 @@ Last Updated: January 28, 2025
 
 | Chain | Network | Status | Native Token | Contract Address |
 |-------|---------|--------|--------------|------------------|
-| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0x462050a4a551c4292586D9c1DE23e3158a9bF3B3` |
+| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0xe169A4B57700080725f9553E3Cc69885fea13629` |
 | **opBNB** | Testnet | ⏳ PLANNED | BNB | Post-MVP deployment |
 | **Base** | Mainnet | ⏳ FUTURE | ETH | TBD |
 | **opBNB** | Mainnet | ⏳ FUTURE | BNB | TBD |
 
-> **🚀 LATEST DEPLOYMENT**: Host-Controlled Pricing
+> **🚀 LATEST DEPLOYMENT**: Corrected Dual Pricing (10,000x Range)
 >
-> - **NodeRegistryWithModels**: `0xC8dDD546e0993eEB4Df03591208aEDF6336342D7` ✅ NEW - Host pricing support (Jan 28, 2025)
-> - **JobMarketplaceWithModels**: `0x462050a4a551c4292586D9c1DE23e3158a9bF3B3` ✅ NEW - Price validation enforcement (Jan 28, 2025)
-> - **Features**: Hosts set own pricing (100-100,000 range), contract-level price validation, dynamic pricing updates, 7-field Node struct
+> - **NodeRegistryWithModels**: `0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6` ✅ NEW - Dual pricing with 10,000x range (Jan 28, 2025)
+> - **JobMarketplaceWithModels**: `0xe169A4B57700080725f9553E3Cc69885fea13629` ✅ NEW - Validates corrected pricing ranges (Jan 28, 2025)
+> - **Features**: Separate native/stable pricing, 10,000x range (MIN to MAX), Native: 2.27B-22.7T wei, Stable: 10-100,000, 8-field Node struct
 
 ## Active Contracts
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceWithModels** | `0x462050a4a551c4292586D9c1DE23e3158a9bF3B3` | ✅ NEW - Host pricing validation, price enforcement |
-| **NodeRegistryWithModels** | `0xC8dDD546e0993eEB4Df03591208aEDF6336342D7` | ✅ NEW - Host-controlled pricing (7-field struct) |
+| **JobMarketplaceWithModels** | `0xe169A4B57700080725f9553E3Cc69885fea13629` | ✅ NEW - Corrected dual pricing validation (10,000x range) |
+| **NodeRegistryWithModels** | `0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6` | ✅ NEW - Dual pricing with 8-field struct, 10,000x range |
 | **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | Model governance (2 approved models) |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | EZKL proof verification |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | Host earnings accumulation |
@@ -59,9 +59,9 @@ const baseSepoliaConfig = {
   chainId: 84532,
   nativeToken: "ETH",
   contracts: {
-    jobMarketplace: "0x462050a4a551c4292586D9c1DE23e3158a9bF3B3", // Host-controlled pricing
+    jobMarketplace: "0xe169A4B57700080725f9553E3Cc69885fea13629", // Corrected dual pricing
     modelRegistry: "0x92b2De840bB2171203011A6dBA928d855cA8183E",
-    nodeRegistry: "0xC8dDD546e0993eEB4Df03591208aEDF6336342D7", // Pricing support
+    nodeRegistry: "0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6", // 10,000x range dual pricing
     proofSystem: "0x2ACcc60893872A499700908889B38C5420CBcFD1",
     hostEarnings: "0x908962e8c6CE72610021586f85ebDE09aAc97776",
     fabToken: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
@@ -87,14 +87,6 @@ const opBNBConfig = {
   explorer: "https://testnet.opbnbscan.com"
 };
 ```
-
-## Deprecated Contracts
-
-| Contract | Address | Description | Deprecated Date |
-|----------|---------|-------------|-----------------|
-| **JobMarketplaceWithModels** | `0xdEa1B47872C27458Bb7331Ade99099761C4944Dc` | ⚠️ DEPRECATED - No pricing validation | Jan 28, 2025 |
-| **NodeRegistryWithModels** | `0x2AA37Bb6E9f0a5d0F3b2836f3a5F656755906218` | ⚠️ DEPRECATED - 6-field struct, no pricing | Jan 28, 2025 |
-| **JobMarketplaceWithModels** | `0x1273E6358aa52Bb5B160c34Bf2e617B745e4A944` | ⚠️ DEPRECATED - Replaced with multi-chain version | Jan 24, 2025 |
 
 ## Network Information
 

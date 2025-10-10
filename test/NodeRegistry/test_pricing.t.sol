@@ -17,8 +17,10 @@ contract NodeRegistryPricingTest is Test {
     bytes32 public modelId = keccak256(abi.encodePacked("CohereForAI/TinyVicuna-1B-32k-GGUF", "/", "tiny-vicuna-1b.q4_k_m.gguf"));
 
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant MIN_PRICE = 100; // 0.0001 USDC per token
-    uint256 constant MAX_PRICE = 100_000; // 0.1 USDC per token
+    uint256 constant MIN_PRICE_STABLE = 10; // 0.00001 USDC per token
+    uint256 constant MIN_PRICE_NATIVE = 2_272_727_273; // ~0.00001 USD @ $4400 ETH
+    uint256 constant MAX_PRICE_STABLE = 100_000; // 0.1 USDC per token
+    uint256 constant MAX_PRICE_NATIVE = 22_727_272_727_273; // ~0.1 USD @ $4400 ETH
 
     function setUp() public {
         vm.startPrank(owner);
@@ -52,18 +54,20 @@ contract NodeRegistryPricingTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
 
-        uint256 pricePerToken = 1000; // 0.001 USDC per token
+        uint256 priceNative = 3_000_000_000; // Price for native
+        uint256 priceStable = 1000; // Price for stable
 
         nodeRegistry.registerNode(
             "metadata",
             "https://api.example.com",
             models,
-            pricePerToken
+            priceNative,  // Native price
+            priceStable   // Stable price
         );
 
         vm.stopPrank();
 
-        // Query the node and verify pricing is stored
+        // Query the node and verify pricing is stored (8 fields now)
         (
             address operator,
             uint256 stakedAmount,
@@ -71,11 +75,13 @@ contract NodeRegistryPricingTest is Test {
             string memory metadata,
             string memory apiUrl,
             bytes32[] memory supportedModels,
-            uint256 minPricePerToken
+            uint256 minPricePerTokenNative,
+            uint256 minPricePerTokenStable
         ) = nodeRegistry.getNodeFullInfo(host);
 
         assertEq(operator, host, "Operator mismatch");
-        assertEq(minPricePerToken, pricePerToken, "Pricing not stored correctly");
+        assertEq(minPricePerTokenNative, priceNative, "Native pricing not stored correctly");
+        assertEq(minPricePerTokenStable, priceStable, "Stable pricing not stored correctly");
     }
 
     function test_PricingValidation_TooLow() public {
@@ -86,13 +92,14 @@ contract NodeRegistryPricingTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
 
-        // Try to register with price below minimum
-        vm.expectRevert("Price below minimum");
+        // Try to register with native price below minimum
+        vm.expectRevert("Native price below minimum");
         nodeRegistry.registerNode(
             "metadata",
             "https://api.example.com",
             models,
-            MIN_PRICE - 1
+            MIN_PRICE_NATIVE - 1,  // Native price too low
+            MIN_PRICE_STABLE       // Stable price OK
         );
 
         vm.stopPrank();
@@ -106,13 +113,14 @@ contract NodeRegistryPricingTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
 
-        // Try to register with price above maximum
-        vm.expectRevert("Price above maximum");
+        // Try to register with native price above maximum
+        vm.expectRevert("Native price above maximum");
         nodeRegistry.registerNode(
             "metadata",
             "https://api.example.com",
             models,
-            MAX_PRICE + 1
+            MAX_PRICE_NATIVE + 1,  // Native price too high
+            MAX_PRICE_STABLE       // Stable price OK
         );
 
         vm.stopPrank();
@@ -130,13 +138,15 @@ contract NodeRegistryPricingTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            MIN_PRICE
+            MIN_PRICE_NATIVE,  // Native price
+            MIN_PRICE_STABLE   // Stable price
         );
 
         vm.stopPrank();
 
-        (, , , , , , uint256 minPricePerToken) = nodeRegistry.getNodeFullInfo(host);
-        assertEq(minPricePerToken, MIN_PRICE, "Minimum price not accepted");
+        (, , , , , , uint256 nativePrice, uint256 stablePrice) = nodeRegistry.getNodeFullInfo(host);
+        assertEq(nativePrice, MIN_PRICE_NATIVE, "Minimum native price not accepted");
+        assertEq(stablePrice, MIN_PRICE_STABLE, "Minimum stable price not accepted");
     }
 
     function test_PricingValidation_AtMaximum() public {
@@ -151,12 +161,14 @@ contract NodeRegistryPricingTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            MAX_PRICE
+            MAX_PRICE_NATIVE,  // Native price
+            MAX_PRICE_STABLE   // Stable price
         );
 
         vm.stopPrank();
 
-        (, , , , , , uint256 minPricePerToken) = nodeRegistry.getNodeFullInfo(host);
-        assertEq(minPricePerToken, MAX_PRICE, "Maximum price not accepted");
+        (, , , , , , uint256 nativePrice, uint256 stablePrice) = nodeRegistry.getNodeFullInfo(host);
+        assertEq(nativePrice, MAX_PRICE_NATIVE, "Maximum native price not accepted");
+        assertEq(stablePrice, MAX_PRICE_STABLE, "Maximum stable price not accepted");
     }
 }

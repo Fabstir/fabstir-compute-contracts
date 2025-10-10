@@ -26,7 +26,9 @@ contract PriceValidationDepositTest is Test {
 
     bytes32 public modelId = keccak256(abi.encodePacked("CohereForAI/TinyVicuna-1B-32k-GGUF", "/", "tiny-vicuna-1b.q4_k_m.gguf"));
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant HOST_MIN_PRICE = 2000; // Host requires 2000 wei per token
+    uint256 constant HOST_MIN_PRICE_NATIVE = 3_000_000_000; // Host requires 3B wei per token (above MIN_PRICE_NATIVE)
+    uint256 constant HOST_MIN_PRICE_STABLE = 5000; // Host requires 5000 for stablecoins
+    uint256 constant HOST_MIN_PRICE = HOST_MIN_PRICE_NATIVE; // Alias for deposit tests
     uint256 constant FEE_BASIS_POINTS = 1000; // 10%
     uint256 constant DISPUTE_WINDOW = 30; // 30 seconds
 
@@ -84,7 +86,8 @@ contract PriceValidationDepositTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            HOST_MIN_PRICE
+            HOST_MIN_PRICE_NATIVE,  // Native (ETH) price
+            HOST_MIN_PRICE_STABLE   // Stable (USDC) price
         );
         vm.stopPrank();
 
@@ -165,7 +168,7 @@ contract PriceValidationDepositTest is Test {
         marketplace.depositToken(address(usdcToken), 100e6);
         vm.stopPrank();
 
-        uint256 pricePerToken = HOST_MIN_PRICE + 500;
+        uint256 pricePerToken = HOST_MIN_PRICE_STABLE + 500;
 
         vm.prank(user);
         uint256 sessionId = marketplace.createSessionFromDeposit(
@@ -190,7 +193,7 @@ contract PriceValidationDepositTest is Test {
         marketplace.depositToken(address(usdcToken), 100e6);
         vm.stopPrank();
 
-        uint256 pricePerToken = HOST_MIN_PRICE - 500;
+        uint256 pricePerToken = HOST_MIN_PRICE_STABLE - 500;
 
         vm.prank(user);
         vm.expectRevert("Price below host minimum");
@@ -205,11 +208,11 @@ contract PriceValidationDepositTest is Test {
     }
 
     function test_PriceValidationWithUpdatedHostPricing() public {
-        uint256 newMinPrice = 5000;
+        uint256 newMinPrice = 4_000_000_000;
 
         // Host updates pricing
         vm.prank(host);
-        nodeRegistry.updatePricing(newMinPrice);
+        nodeRegistry.updatePricingNative(newMinPrice);
 
         // Old price should now fail
         vm.prank(user);

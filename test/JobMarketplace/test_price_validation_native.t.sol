@@ -25,7 +25,9 @@ contract PriceValidationNativeTest is Test {
 
     bytes32 public modelId = keccak256(abi.encodePacked("CohereForAI/TinyVicuna-1B-32k-GGUF", "/", "tiny-vicuna-1b.q4_k_m.gguf"));
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant HOST_MIN_PRICE = 2000; // Host requires 2000 wei per token
+    uint256 constant HOST_MIN_PRICE_NATIVE = 3_000_000_000; // Host requires 3B wei per token (above MIN_PRICE_NATIVE)
+    uint256 constant HOST_MIN_PRICE_STABLE = 5000; // Host requires 5000 for stablecoins
+    uint256 constant HOST_MIN_PRICE = HOST_MIN_PRICE_NATIVE; // Alias for native tests
     uint256 constant FEE_BASIS_POINTS = 1000; // 10%
     uint256 constant DISPUTE_WINDOW = 30; // 30 seconds
 
@@ -77,7 +79,8 @@ contract PriceValidationNativeTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            HOST_MIN_PRICE
+            HOST_MIN_PRICE_NATIVE,  // Native (ETH) price
+            HOST_MIN_PRICE_STABLE   // Stable (USDC) price
         );
         vm.stopPrank();
 
@@ -139,11 +142,11 @@ contract PriceValidationNativeTest is Test {
     }
 
     function test_NativeSessionAfterHostPriceUpdate() public {
-        uint256 newMinPrice = 5000;
+        uint256 newMinPrice = 4_000_000_000;
 
         // Host updates pricing
         vm.prank(host);
-        nodeRegistry.updatePricing(newMinPrice);
+        nodeRegistry.updatePricingNative(newMinPrice);
 
         // Old price should now fail
         vm.prank(user);
@@ -170,7 +173,7 @@ contract PriceValidationNativeTest is Test {
     function test_NativeSessionMultipleHostsDifferentPricing() public {
         // Setup second host with different pricing
         address host2 = address(4);
-        uint256 host2MinPrice = 3500;
+        uint256 host2MinPrice = 3_500_000_000;
 
         vm.prank(owner);
         fabToken.mint(host2, MIN_STAKE);
@@ -185,7 +188,8 @@ contract PriceValidationNativeTest is Test {
             "metadata2",
             "https://api2.example.com",
             models,
-            host2MinPrice
+            host2MinPrice,  // Native (ETH) price
+            HOST_MIN_PRICE_STABLE   // Stable (USDC) price
         );
         vm.stopPrank();
 

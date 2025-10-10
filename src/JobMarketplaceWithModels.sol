@@ -228,8 +228,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         _validateProofRequirements(proofInterval, msg.value, pricePerToken);
         _validateHostRegistration(host);
 
-        // Validate price meets host's minimum
-        (, , , , , , uint256 hostMinPrice) = nodeRegistry.getNodeFullInfo(host);
+        // Validate price meets host's minimum for native token (ETH/BNB)
+        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, address(0)); // address(0) = native token
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
         jobId = nextJobId++;
@@ -279,8 +279,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         _validateHostRegistration(host);
         _validateProofRequirements(proofInterval, deposit, pricePerToken);
 
-        // Validate price meets host's minimum
-        (, , , , , , uint256 hostMinPrice) = nodeRegistry.getNodeFullInfo(host);
+        // Validate price meets host's minimum for the specified token (USDC or other stablecoin)
+        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, token);
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
         IERC20(token).transferFrom(msg.sender, address(this), deposit);
@@ -655,8 +655,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         _validateHostRegistration(host);
         _validateProofRequirements(proofInterval, deposit, pricePerToken);
 
-        // Validate price meets host's minimum
-        (, , , , , , uint256 hostMinPrice) = nodeRegistry.getNodeFullInfo(host);
+        // Validate price meets host's minimum for the specified payment token
+        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, paymentToken);
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
         // Verify user has sufficient pre-deposited balance
