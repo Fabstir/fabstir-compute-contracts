@@ -73,7 +73,7 @@ contract TestMixedWallets is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://test");
 
         // Verify completed
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), uint256(JobMarketplaceWithModels.SessionStatus.Completed), "Session should be completed");
     }
 
@@ -98,7 +98,7 @@ contract TestMixedWallets is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://test");
 
         // Verify session completed successfully
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), uint256(JobMarketplaceWithModels.SessionStatus.Completed), "Session should be completed");
     }
 
@@ -117,7 +117,7 @@ contract TestMixedWallets is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://test");
 
         // Verify it worked
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), uint256(JobMarketplaceWithModels.SessionStatus.Completed), "Session should be completed");
     }
 }

@@ -128,7 +128,7 @@ contract CreateFromDepositTest is Test {
         );
 
         // Check depositor field is set
-        (, address depositor, address requester, , , , , , , , , , , , ,) = marketplace.sessionJobs(sessionId);
+        (, address depositor, address requester, , , , , , , , , , , , ,,,) = marketplace.sessionJobs(sessionId);
         assertEq(depositor, user, "Depositor should be user");
         assertEq(requester, user, "Requester should also be user for compatibility");
 

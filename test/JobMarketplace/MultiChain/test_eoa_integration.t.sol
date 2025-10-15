@@ -65,7 +65,7 @@ contract TestEOAIntegration is Test {
         assertEq(marketplace.userDepositsNative(eoa_user), 0.5 ether);
 
         // 3. Session is created and can be completed
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), uint256(JobMarketplaceWithModels.SessionStatus.Active), "Session should be active");
 
         // 4. EOA withdraws remaining balance

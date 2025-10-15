@@ -72,7 +72,7 @@ contract BackwardCompatibilityTest is Test {
         assertEq(sessionId, 1, "Session should be created");
 
         // Verify session details
-        (uint256 id, address depositor, address requester, address sessionHost,,,,,,,,,,,,) =
+        (uint256 id, address depositor, address requester, address sessionHost,,,,,,,,,,,,,,) =
             marketplace.sessionJobs(sessionId);
 
         assertEq(id, sessionId, "Session ID should match");
@@ -104,7 +104,7 @@ contract BackwardCompatibilityTest is Test {
         assertEq(sessionId, 1, "Session should be created");
 
         // Verify session details
-        (uint256 id, address depositor, address requester,, address paymentToken, uint256 deposit,,,,,,,,,,) =
+        (uint256 id, address depositor, address requester,, address paymentToken, uint256 deposit,,,,,,,,,,,,) =
             marketplace.sessionJobs(sessionId);
 
         assertEq(id, sessionId, "Session ID should match");

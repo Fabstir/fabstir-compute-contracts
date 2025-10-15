@@ -114,7 +114,7 @@ contract PricingFlowIntegrationTest is Test {
         assertGt(sessionId, 0, "Session should be created");
 
         // Step 4: Verify session details
-        (uint256 id, , , address sessionHost, , , uint256 sessionPrice, , , , , , , , , ) =
+        (uint256 id, , , address sessionHost, , , uint256 sessionPrice, , , , , , , , , ,,) =
             marketplace.sessionJobs(sessionId);
 
         assertEq(id, sessionId, "Session ID correct");
@@ -443,7 +443,7 @@ contract PricingFlowIntegrationTest is Test {
         assertGt(sessionId, 0, "Token session created");
 
         // Verify pricing in session
-        (, , , , , , uint256 sessionPrice, , , , , , , , , ) =
+        (, , , , , , uint256 sessionPrice, , , , , , , , , ,,) =
             marketplace.sessionJobs(sessionId);
         assertEq(sessionPrice, hostPrice + 1000, "Token session price correct");
     }

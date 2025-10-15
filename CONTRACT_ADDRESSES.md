@@ -1,27 +1,28 @@
 # Current Contract Addresses - Multi-Chain Support
 
-Last Updated: January 28, 2025
+Last Updated: October 14, 2025
 
 ## 🌐 Multi-Chain Deployment Status
 
 | Chain | Network | Status | Native Token | Contract Address |
 |-------|---------|--------|--------------|------------------|
-| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0xe169A4B57700080725f9553E3Cc69885fea13629` |
+| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E` |
 | **opBNB** | Testnet | ⏳ PLANNED | BNB | Post-MVP deployment |
 | **Base** | Mainnet | ⏳ FUTURE | ETH | TBD |
 | **opBNB** | Mainnet | ⏳ FUTURE | BNB | TBD |
 
-> **🚀 LATEST DEPLOYMENT**: Corrected Dual Pricing (10,000x Range)
+> **🚀 LATEST DEPLOYMENT**: S5 Off-Chain Proof Storage
 >
-> - **NodeRegistryWithModels**: `0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6` ✅ NEW - Dual pricing with 10,000x range (Jan 28, 2025)
-> - **JobMarketplaceWithModels**: `0xe169A4B57700080725f9553E3Cc69885fea13629` ✅ NEW - Validates corrected pricing ranges (Jan 28, 2025)
-> - **Features**: Separate native/stable pricing, 10,000x range (MIN to MAX), Native: 2.27B-22.7T wei, Stable: 10-100,000, 8-field Node struct
+> - **JobMarketplaceWithModels**: `0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E` ✅ NEW - S5 proof storage (hash + CID) (Oct 14, 2025)
+> - **Features**: Off-chain proof storage in S5, on-chain hash + CID only, 737x transaction size reduction (221KB → 300 bytes), ~$50 → $0.001 storage cost savings
+> - **Breaking Change**: `submitProofOfWork(uint256,uint256,bytes)` → `submitProofOfWork(uint256,uint256,bytes32,string)`
 
 ## Active Contracts
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceWithModels** | `0xe169A4B57700080725f9553E3Cc69885fea13629` | ✅ NEW - Corrected dual pricing validation (10,000x range) |
+| **JobMarketplaceWithModels** | `0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E` | ✅ ACTIVE - S5 off-chain proof storage (Oct 14, 2025) |
+| **JobMarketplaceWithModels** | `0xe169A4B57700080725f9553E3Cc69885fea13629` | ⚠️ DEPRECATED - Old proof storage (Jan 28, 2025) |
 | **NodeRegistryWithModels** | `0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6` | ✅ NEW - Dual pricing with 8-field struct, 10,000x range |
 | **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | Model governance (2 approved models) |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | EZKL proof verification |
@@ -59,7 +60,7 @@ const baseSepoliaConfig = {
   chainId: 84532,
   nativeToken: "ETH",
   contracts: {
-    jobMarketplace: "0xe169A4B57700080725f9553E3Cc69885fea13629", // Corrected dual pricing
+    jobMarketplace: "0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E", // S5 off-chain proof storage
     modelRegistry: "0x92b2De840bB2171203011A6dBA928d855cA8183E",
     nodeRegistry: "0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6", // 10,000x range dual pricing
     proofSystem: "0x2ACcc60893872A499700908889B38C5420CBcFD1",

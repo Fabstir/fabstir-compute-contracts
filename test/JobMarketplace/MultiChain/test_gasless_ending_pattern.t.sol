@@ -77,7 +77,7 @@ contract GaslessEndingPatternTest is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://conversation");
 
         // Verify completion worked
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), 1, "Host completed session");
     }
 
@@ -129,7 +129,7 @@ contract GaslessEndingPatternTest is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://conversation");
 
         // Verify completion
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), 1, "User completed as fallback");
     }
 
@@ -180,7 +180,7 @@ contract GaslessEndingPatternTest is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://conversation");
 
         // Verify session was completed
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), 1, "Host completed despite user disconnect");
     }
 }

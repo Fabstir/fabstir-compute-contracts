@@ -92,6 +92,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         uint256 withdrawnByHost;
         uint256 refundedToUser;
         string conversationCID;
+        bytes32 lastProofHash;  // S5: Hash of most recent proof (32 bytes)
+        string lastProofCID;    // S5: CID of most recent proof in S5 storage
     }
 
     // Chain configuration structure (Phase 4.1)
@@ -150,7 +152,7 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     event JobClaimed(uint256 indexed jobId, address indexed host);
     event JobCompleted(uint256 indexed jobId, address indexed host, string responseS5CID);
     event SessionJobCreated(uint256 indexed jobId, address indexed requester, address indexed host, uint256 deposit);
-    event ProofSubmitted(uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash);
+    event ProofSubmitted(uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID);
     event SessionCompleted(uint256 indexed jobId, uint256 totalTokensUsed, uint256 hostEarnings, uint256 userRefund);
     // New event that tracks who completed the session (Phase 3.1 - Anyone-can-complete pattern)
     event SessionCompleted(uint256 indexed jobId, address indexed completedBy, uint256 tokensUsed, uint256 paymentAmount, uint256 refundAmount);
@@ -330,7 +332,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     function submitProofOfWork(
         uint256 jobId,
         uint256 tokensClaimed,
-        bytes calldata proof
+        bytes32 proofHash,
+        string calldata proofCID
     ) external nonReentrant {
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
@@ -345,26 +348,22 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         uint256 maxTokens = session.deposit / session.pricePerToken;
         require(newTotal <= maxTokens, "Exceeds deposit");
 
-        bytes32 proofHash = keccak256(proof);
-        for (uint i = 0; i < session.proofs.length; i++) {
-            require(session.proofs[i].proofHash != proofHash, "Proof already submitted");
-        }
+        // S5: Store proof hash and CID instead of full proof
+        session.lastProofHash = proofHash;
+        session.lastProofCID = proofCID;
 
-        require(address(proofSystem) != address(0), "Proof system not set");
-        bool verified = proofSystem.verifyEKZL(proof, msg.sender, tokensClaimed);
-        require(verified, "Invalid proof");
-
+        // Keep legacy proof tracking for compatibility
         session.proofs.push(ProofSubmission({
             proofHash: proofHash,
             tokensClaimed: tokensClaimed,
             timestamp: block.timestamp,
-            verified: true
+            verified: false  // No on-chain verification with S5 storage
         }));
 
         session.tokensUsed = newTotal;
         session.lastProofTime = block.timestamp;
 
-        emit ProofSubmitted(jobId, msg.sender, tokensClaimed, proofHash);
+        emit ProofSubmitted(jobId, msg.sender, tokensClaimed, proofHash, proofCID);
     }
 
     function completeSessionJob(uint256 jobId, string calldata conversationCID) external nonReentrant {

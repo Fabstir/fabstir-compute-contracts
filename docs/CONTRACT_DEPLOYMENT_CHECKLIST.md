@@ -42,20 +42,50 @@ cast call <HOST_EARNINGS_ADDRESS> "authorizedCallers(address)" <MARKETPLACE_ADDR
 
 Before deploying ANY contract:
 
-1. **Check Dependencies**
+1. **Verify Deployer Account**
+   ```bash
+   # Check you're using the correct account from .env
+   export DEPLOYER_ADDRESS=$(grep "^DEPLOYER_ADDRESS=" .env | cut -d'"' -f2)
+   export PRIVATE_KEY=$(grep "^PRIVATE_KEY=" .env | cut -d'=' -f2)
+
+   # Verify the private key matches the deployer address
+   DERIVED_ADDRESS=$(cast wallet address --private-key $PRIVATE_KEY)
+   if [ "$DERIVED_ADDRESS" != "$DEPLOYER_ADDRESS" ]; then
+     echo "❌ ERROR: Private key doesn't match DEPLOYER_ADDRESS!"
+     echo "Expected: $DEPLOYER_ADDRESS"
+     echo "Got: $DERIVED_ADDRESS"
+     exit 1
+   fi
+
+   # Check balance (should have at least 0.01 ETH for deployment)
+   BALANCE=$(cast balance $DEPLOYER_ADDRESS --rpc-url "https://sepolia.base.org" --ether)
+   echo "Deployer balance: $BALANCE ETH"
+   ```
+
+2. **Test RPC Can Send Transactions**
+   ```bash
+   # Some RPC keys are read-only. Test before deploying:
+   cast send $DEPLOYER_ADDRESS --value 0 \
+     --rpc-url "https://sepolia.base.org" \
+     --private-key $PRIVATE_KEY \
+     --legacy
+   # Should succeed. If it fails with "method not allowed", your RPC is read-only!
+   ```
+
+3. **Check Dependencies**
    ```bash
    # List all contracts that depend on the one you're changing
    grep -r "import.*ContractName" src/
    grep -r "ContractName public" src/
    ```
 
-2. **Check Current Addresses**
+4. **Check Current Addresses**
    ```bash
    # Record the current deployed addresses
    cat CONTRACT_ADDRESSES.md | grep -A 5 "Active Contracts"
    ```
 
-3. **Backup Current State**
+5. **Backup Current State**
    ```bash
    # Save current addresses for rollback if needed
    cp CONTRACT_ADDRESSES.md CONTRACT_ADDRESSES.backup.md
@@ -131,15 +161,35 @@ Before deploying ANY contract:
 
 ### 3. JobMarketplaceWithModels Deployment
 
-**When to redeploy**: Changing fee structure, updating validation logic, fixing bugs
+**When to redeploy**: Changing fee structure, updating validation logic, fixing bugs, adding features (like S5 proof storage)
 
 **Steps**:
 1. **Deploy Contract**
    ```bash
+   # Method 1: Using forge create (recommended - simpler and more reliable)
+   # CRITICAL: --broadcast MUST come first after contract path!
+   forge create src/JobMarketplaceWithModels.sol:JobMarketplaceWithModels \
+     --broadcast \
+     --private-key $PRIVATE_KEY \
+     --rpc-url "https://sepolia.base.org" \
+     --constructor-args 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6 \
+                        0x908962e8c6CE72610021586f85ebDE09aAc97776 \
+                        1000 30 \
+     --legacy
+
+   # Method 2: Using forge script (for complex setups)
    forge script script/DeployJobMarketplaceWithModels.s.sol:DeployJobMarketplaceWithModels \
      --rpc-url $BASE_SEPOLIA_RPC_URL \
      --private-key $PRIVATE_KEY \
-     --broadcast -vvv
+     --broadcast \
+     --legacy \
+     -vvv
+
+   # IMMEDIATELY verify deployment (don't skip this!)
+   # Save the deployed address from output, then:
+   MARKETPLACE_ADDRESS="<address_from_output>"
+   cast code $MARKETPLACE_ADDRESS --rpc-url "https://sepolia.base.org" | head -c 100
+   # Should return bytecode, NOT "0x". If "0x", deployment failed!
    ```
 
 2. **CRITICAL: Configure ProofSystem**
@@ -460,20 +510,39 @@ New: [New deployed address]
 ## 🚀 Quick Reference Commands
 
 ```bash
-# Deploy ModelRegistry
-forge script script/DeployModelRegistry.s.sol:DeployModelRegistry --rpc-url $BASE_SEPOLIA_RPC_URL --private-key $PRIVATE_KEY --broadcast
+# IMPORTANT: When using forge create, --broadcast MUST come first after contract path!
 
-# Deploy NodeRegistryWithModels
-forge script script/DeployNodeRegistryWithModels.s.sol:DeployNodeRegistryWithModels --rpc-url $BASE_SEPOLIA_RPC_URL --private-key $PRIVATE_KEY --broadcast
+# Deploy with forge create (recommended for single contracts)
+forge create src/JobMarketplaceWithModels.sol:JobMarketplaceWithModels \
+  --broadcast \
+  --private-key $PRIVATE_KEY \
+  --rpc-url "https://sepolia.base.org" \
+  --constructor-args <arg1> <arg2> <arg3> \
+  --legacy
 
-# Deploy JobMarketplaceWithModels
-forge script script/DeployJobMarketplaceWithModels.s.sol:DeployJobMarketplaceWithModels --rpc-url $BASE_SEPOLIA_RPC_URL --private-key $PRIVATE_KEY --broadcast
+# Deploy with forge script (for complex deployments)
+forge script script/DeployModelRegistry.s.sol:DeployModelRegistry \
+  --rpc-url $BASE_SEPOLIA_RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast \
+  --legacy \
+  -vvv
 
 # Generate ABI
 forge build && jq -c '.abi' out/[Contract].sol/[Contract].json > client-abis/[Contract]-CLIENT-ABI.json
 
-# Verify deployment
-cast code [ADDRESS] --rpc-url $BASE_SEPOLIA_RPC_URL
+# Verify deployment (ALWAYS do this immediately after deployment)
+cast code [ADDRESS] --rpc-url $BASE_SEPOLIA_RPC_URL | head -c 100
+# Should return bytecode, NOT "0x"
+
+# Quick verification script
+ADDR="<deployed_address>"
+CODE=$(cast code $ADDR --rpc-url "https://sepolia.base.org")
+if [ "$CODE" = "0x" ]; then
+  echo "❌ Contract NOT deployed!"
+else
+  echo "✅ Contract deployed successfully"
+fi
 ```
 
 ---
@@ -581,6 +650,76 @@ cast send 0x908962e8c6CE72610021586f85ebDE09aAc97776 "setAuthorizedCaller(addres
 - Total debugging time: 4+ hours across multiple developers
 - Root cause: 2 missing configuration calls that take 30 seconds each
 - These configurations are NOT automatic - they MUST be done manually
+
+---
+
+### October 14, 2025 - forge create --broadcast Flag Position Matters!
+
+**What Happened**:
+1. Attempted to deploy JobMarketplaceWithModels with S5 proof storage
+2. Used `forge create` with `--broadcast` flag at the end of command
+3. Got "Warning: Dry run enabled, not broadcasting transaction" message
+4. Tried multiple times with different flag positions - all failed
+5. Eventually discovered `--broadcast` MUST come immediately after contract name
+
+**Root Cause**:
+- `forge create` requires `--broadcast` flag in specific position
+- When placed at end or middle of command, Foundry silently ignores it
+- No error message - just runs in dry-run/simulation mode
+- Contract appears to deploy but actually doesn't
+
+**Debugging Steps Taken** (wasted ~45 minutes):
+1. Checked RPC connectivity - ✅ working
+2. Verified account balance - ✅ had 0.41794 ETH
+3. Tested with `cast send` to self - ✅ transactions work
+4. Checked for config overrides in `foundry.toml` - ❌ none found
+5. Checked environment variables - ❌ none affecting deployment
+6. Tried `--json` output - ❌ not valid JSON
+7. Finally discovered flag position issue by reading `forge create --help`
+
+**Correct Command**:
+```bash
+# ✅ CORRECT - --broadcast immediately after contract name
+forge create src/JobMarketplaceWithModels.sol:JobMarketplaceWithModels \
+  --broadcast \
+  --private-key $PRIVATE_KEY \
+  --rpc-url "https://sepolia.base.org" \
+  --constructor-args 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6 \
+                     0x908962e8c6CE72610021586f85ebDE09aAc97776 \
+                     1000 30 \
+  --legacy
+
+# ❌ WRONG - --broadcast at the end (will dry-run only)
+forge create src/JobMarketplaceWithModels.sol:JobMarketplaceWithModels \
+  --private-key $PRIVATE_KEY \
+  --rpc-url "https://sepolia.base.org" \
+  --constructor-args ... \
+  --legacy \
+  --broadcast   # ← TOO LATE!
+```
+
+**Lesson**:
+- Flag order matters in `forge create`
+- `--broadcast` MUST come first after contract path
+- Always verify actual deployment with `cast code <address>`
+- Don't trust log output that shows contract address without checking on-chain
+
+**Time Lost**: ~45 minutes of debugging flag positioning
+
+**Prevention**:
+```bash
+# Always use this template for forge create:
+forge create <CONTRACT_PATH> \
+  --broadcast \                    # ← FIRST FLAG
+  --private-key $PRIVATE_KEY \
+  --rpc-url $RPC_URL \
+  --constructor-args <args> \
+  --legacy
+
+# Verify immediately:
+cast code $DEPLOYED_ADDRESS --rpc-url $RPC_URL | head -c 100
+# Should return bytecode, NOT "0x"
+```
 
 ---
 

@@ -81,7 +81,9 @@ contract SessionStructUpdateTest is Test {
             ,  // status
             ,  // withdrawnByHost
             ,  // refundedToUser
-               // conversationCID
+            ,  // conversationCID
+            ,  // lastProofHash
+               // lastProofCID
         ) = marketplace.sessionJobs(sessionId);
 
         assertEq(sessionDepositor, depositor, "Depositor field should be set");
@@ -104,7 +106,7 @@ contract SessionStructUpdateTest is Test {
         );
 
         // Get initial depositor
-        (, address initialDepositor, , , , , , , , , , , , , ,) = marketplace.sessionJobs(sessionId);
+        (, address initialDepositor, , , , , , , , , , , , , ,,,) = marketplace.sessionJobs(sessionId);
 
         // Update deposit via native deposit function (doesn't change session depositor)
         marketplace.depositNative{value: 0.05 ether}();
@@ -112,7 +114,7 @@ contract SessionStructUpdateTest is Test {
         vm.stopPrank();
 
         // Check depositor unchanged after other operations
-        (, address afterDepositDepositor, , , , , , , , , , , , , ,) = marketplace.sessionJobs(sessionId);
+        (, address afterDepositDepositor, , , , , , , , , , , , , ,,,) = marketplace.sessionJobs(sessionId);
         assertEq(afterDepositDepositor, initialDepositor, "Depositor should not change");
 
         // Create another session from different address
@@ -122,7 +124,7 @@ contract SessionStructUpdateTest is Test {
         marketplace.createSessionJob{value: 0.1 ether}(host, 0.0001 ether, 3600, 100);
 
         // Check original session depositor still unchanged
-        (, address finalDepositor, , , , , , , , , , , , , ,) = marketplace.sessionJobs(sessionId);
+        (, address finalDepositor, , , , , , , , , , , , , ,,,) = marketplace.sessionJobs(sessionId);
         assertEq(finalDepositor, initialDepositor, "Depositor should persist");
     }
 }

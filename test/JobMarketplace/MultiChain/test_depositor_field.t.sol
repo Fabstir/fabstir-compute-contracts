@@ -61,7 +61,7 @@ contract DepositorFieldTest is Test {
         );
 
         // Test actual depositor field
-        (, address depositor, , , , , , , , , , , , , ,) = marketplace.sessionJobs(sessionId);
+        (, address depositor, , , , , , , , , , , , , ,,,) = marketplace.sessionJobs(sessionId);
         assertEq(depositor, eoaDepositor, "EOA depositor should be tracked");
 
         vm.stopPrank();
@@ -80,7 +80,7 @@ contract DepositorFieldTest is Test {
             100
         );
 
-        (, address depositor, , , , , , , , , , , , , ,) = marketplace.sessionJobs(sessionId);
+        (, address depositor, , , , , , , , , , , , , ,,,) = marketplace.sessionJobs(sessionId);
         assertEq(depositor, smartAccountDepositor, "Smart Account depositor should be tracked");
 
         vm.stopPrank();
@@ -114,7 +114,9 @@ contract DepositorFieldTest is Test {
             ,  // status
             ,  // withdrawnByHost
             ,  // refundedToUser
-               // conversationCID
+            ,  // conversationCID
+            ,  // lastProofHash
+               // lastProofCID
         ) = marketplace.sessionJobs(sessionId);
 
         assertEq(depositor, eoaDepositor, "Depositor should be set");

@@ -73,7 +73,7 @@ contract AnyoneCanCompleteTest is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://conversation");
 
         // Verify session was completed
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), 1, "Session should be completed"); // 1 = Completed
     }
 
@@ -97,7 +97,7 @@ contract AnyoneCanCompleteTest is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://conversation");
 
         // Verify session was completed
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), 1, "Session should be completed");
     }
 
@@ -121,7 +121,7 @@ contract AnyoneCanCompleteTest is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://conversation");
 
         // Verify session was completed
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), 1, "Session should be completed");
     }
 
@@ -140,7 +140,7 @@ contract AnyoneCanCompleteTest is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://conversation");
 
         // Verify session was completed
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), 1, "Session should be completed");
 
         vm.stopPrank();
@@ -203,7 +203,7 @@ contract AnyoneCanCompleteTest is Test {
         marketplace.completeSessionJob(sessionId, "ipfs://conversation");
 
         // Verify it worked for requester
-        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,,,,,,,, JobMarketplaceWithModels.SessionStatus status,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(uint256(status), 1, "Session should be completed");
     }
 }
