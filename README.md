@@ -286,27 +286,24 @@ See [S5_PROOF_STORAGE_DEPLOYMENT.md](docs/S5_PROOF_STORAGE_DEPLOYMENT.md) for mi
 ### Bug Bounty
 - Coming soon
 
-## Contributing
+## License & Usage
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+This project is source-available under the **Business Source License 1.1** (BUSL-1.1).
 
-### Areas for Contribution
-- Additional AI model integrations
-- Gas optimizations
-- Multi-chain deployment scripts
-- SDK development
-- Documentation improvements
+### You MAY:
+- ✅ View, audit, and review the code (trustless verification)
+- ✅ Use in production on the Official Platformless AI Network with FAB token
+- ✅ Run nodes on the Official Platformless AI Network
+- ✅ Fork for development, testing, research, and security audits
 
-## License
+### You MAY NOT (before 2029-01-01):
+- ❌ Launch competing networks with different staking tokens
+- ❌ Operate nodes on competing networks
+- ❌ Offer as commercial hosting service (SaaS/PaaS)
 
-This project is licensed under the Business Source License 1.1 (BUSL-1.1) - see the [LICENSE](LICENSE) file for details.
+**After 2029-01-01**: Automatically converts to AGPL-3.0-or-later.
 
-### Additional Restrictions (Section 1c)
-- **Production Use Limitation**: May not be used for Production Use on any network other than an **Official Platformless AI Network** before the Change Date (four years from first public release)
-- **Official Networks**: Defined in [NETWORKS.md](NETWORKS.md) (the Canonical Notice Repo)
-- **After Change Date**: Automatically converts to Apache License 2.0
-
-See [NOTICE](NOTICE) and [NETWORKS.md](NETWORKS.md) for complete details.
+See [LICENSE](LICENSE), [NOTICE](NOTICE), and [NETWORKS.md](NETWORKS.md) for complete details.
 
 ## Network Information
 
