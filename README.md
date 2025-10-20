@@ -2,7 +2,7 @@
 
 **Decentralized AI Inference Marketplace on Base L2**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-yellow.svg)](https://mariadb.com/bsl11/)
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg)](https://getfoundry.sh/)
 [![Base Sepolia](https://img.shields.io/badge/Network-Base%20Sepolia-0052FF.svg)](https://sepolia.basescan.org)
 
@@ -299,7 +299,14 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Business Source License 1.1 (BUSL-1.1) - see the [LICENSE](LICENSE) file for details.
+
+### Additional Restrictions (Section 1c)
+- **Production Use Limitation**: May not be used for Production Use on any network other than an **Official Platformless AI Network** before the Change Date (four years from first public release)
+- **Official Networks**: Defined in [NETWORKS.md](NETWORKS.md) (the Canonical Notice Repo)
+- **After Change Date**: Automatically converts to Apache License 2.0
+
+See [NOTICE](NOTICE) and [NETWORKS.md](NETWORKS.md) for complete details.
 
 ## Network Information
 
