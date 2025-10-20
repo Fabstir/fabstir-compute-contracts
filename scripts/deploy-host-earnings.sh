@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2025 Fabstir
+# SPDX-License-Identifier: BUSL-1.1
 
 # Deploy script for JobMarketplace with HostEarnings accumulation pattern
 # This enables gas-efficient host payment accumulation

@@ -1,3 +1,5 @@
+// Copyright (c) 2025 Fabstir
+// SPDX-License-Identifier: BUSL-1.1
 // CRITICAL: Proper async/await handling for blockchain transactions
 // Base Sepolia can take 15-30 seconds for confirmation!
 

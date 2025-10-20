@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2025 Fabstir
+# SPDX-License-Identifier: BUSL-1.1
 
 # Deploy new JobMarketplace with USDC session support
 # This script deploys ProofSystem and JobMarketplaceFABWithS5

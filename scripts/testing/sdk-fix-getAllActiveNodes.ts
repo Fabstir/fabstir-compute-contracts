@@ -1,3 +1,5 @@
+// Copyright (c) 2025 Fabstir
+// SPDX-License-Identifier: BUSL-1.1
 import { Contract, JsonRpcProvider, ethers } from 'ethers';
 import { SDKError } from './errors';
 

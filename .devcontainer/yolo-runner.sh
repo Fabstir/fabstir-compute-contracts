@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2025 Fabstir
+# SPDX-License-Identifier: BUSL-1.1
 # fabstir-compute-contracts/.devcontainer/yolo-runner.sh
 
 echo "🚀 Fabstir Contracts YOLO Mode"

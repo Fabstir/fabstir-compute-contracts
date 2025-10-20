@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2025 Fabstir
+# SPDX-License-Identifier: BUSL-1.1
 
 # Deploy Fixed JobMarketplace with Payment Distribution Fixes
 # This script deploys a new JobMarketplace contract that fixes the payment distribution issue

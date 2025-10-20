@@ -1,3 +1,5 @@
+// Copyright (c) 2025 Fabstir
+// SPDX-License-Identifier: BUSL-1.1
 // Simple fix: Replace the problematic section in discoverAllActiveHostsWithModels
 // with this code that uses a direct JsonRpcProvider
 

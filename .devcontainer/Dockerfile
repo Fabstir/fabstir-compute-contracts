@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Fabstir
+# SPDX-License-Identifier: BUSL-1.1
+
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
