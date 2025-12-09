@@ -52,6 +52,7 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     event ModelsUpdated(address indexed operator, bytes32[] newModels);
     event ModelRegistryUpdated(address indexed newRegistry);
     event PricingUpdated(address indexed operator, uint256 newMinPrice);
+    event ModelPricingUpdated(address indexed operator, bytes32 indexed modelId, uint256 nativePrice, uint256 stablePrice);
 
     constructor(address _fabToken, address _modelRegistry) Ownable(msg.sender) {
         require(_fabToken != address(0), "Invalid FAB token address");
@@ -222,6 +223,45 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
         nodes[msg.sender].minPricePerTokenStable = newMinPrice;
 
         emit PricingUpdated(msg.sender, newMinPrice);
+    }
+
+    /**
+     * @notice Set per-model pricing overrides
+     * @dev Setting price to 0 clears the override (uses default pricing)
+     * @param modelId The model ID to set pricing for (must be in host's supportedModels)
+     * @param nativePrice Price for native tokens (0 = use default, otherwise MIN_PRICE_PER_TOKEN_NATIVE to MAX_PRICE_PER_TOKEN_NATIVE)
+     * @param stablePrice Price for stablecoins (0 = use default, otherwise MIN_PRICE_PER_TOKEN_STABLE to MAX_PRICE_PER_TOKEN_STABLE)
+     */
+    function setModelPricing(bytes32 modelId, uint256 nativePrice, uint256 stablePrice) external {
+        require(nodes[msg.sender].operator != address(0), "Not registered");
+        require(nodes[msg.sender].active, "Node not active");
+        require(_nodeSupportsModel(msg.sender, modelId), "Model not supported");
+
+        // Validate prices (0 means use default, otherwise must be in range)
+        if (nativePrice > 0) {
+            require(nativePrice >= MIN_PRICE_PER_TOKEN_NATIVE, "Native price below minimum");
+            require(nativePrice <= MAX_PRICE_PER_TOKEN_NATIVE, "Native price above maximum");
+        }
+        if (stablePrice > 0) {
+            require(stablePrice >= MIN_PRICE_PER_TOKEN_STABLE, "Stable price below minimum");
+            require(stablePrice <= MAX_PRICE_PER_TOKEN_STABLE, "Stable price above maximum");
+        }
+
+        modelPricingNative[msg.sender][modelId] = nativePrice;
+        modelPricingStable[msg.sender][modelId] = stablePrice;
+
+        emit ModelPricingUpdated(msg.sender, modelId, nativePrice, stablePrice);
+    }
+
+    /**
+     * @notice Check if a node supports a specific model (internal helper)
+     */
+    function _nodeSupportsModel(address operator, bytes32 modelId) internal view returns (bool) {
+        bytes32[] memory models = nodes[operator].supportedModels;
+        for (uint i = 0; i < models.length; i++) {
+            if (models[i] == modelId) return true;
+        }
+        return false;
     }
 
     /**

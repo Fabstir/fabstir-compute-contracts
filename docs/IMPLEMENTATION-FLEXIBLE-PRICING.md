@@ -39,10 +39,11 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (6%)**
+**Overall Status: IN PROGRESS (11%)**
 
-- [ ] **Phase 1: Per-Model Pricing Infrastructure** (1/5 sub-phases)
+- [ ] **Phase 1: Per-Model Pricing Infrastructure** (2/5 sub-phases)
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
+  - [x] Sub-phase 1.2: Add setModelPricing() Function ✅
 - [ ] **Phase 2: Multi-Token Support** (0/4 sub-phases)
 - [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
@@ -100,20 +101,20 @@ function test_ModelPricingDoesNotAffectNodeStruct() public { /* ... */ }
 Allow hosts to set model-specific pricing that overrides default pricing.
 
 **Tasks:**
-- [ ] Create `setModelPricing(bytes32 modelId, uint256 nativePrice, uint256 stablePrice)` function
-- [ ] Add validation: caller must be registered
-- [ ] Add validation: caller must be active
-- [ ] Add validation: model must be in host's supportedModels
-- [ ] Add validation: prices within MIN/MAX ranges (0 = use default)
-- [ ] Store prices in modelPricingNative and modelPricingStable mappings
-- [ ] Add `ModelPricingUpdated` event
-- [ ] Write test file `test/NodeRegistry/test_model_pricing_setter.t.sol`
-- [ ] Test: Registered host can set model pricing
-- [ ] Test: Setting price to 0 clears override (uses default)
-- [ ] Test: Non-registered address cannot set model pricing
-- [ ] Test: Cannot set pricing for unsupported model
-- [ ] Test: Invalid prices rejected
-- [ ] Test: ModelPricingUpdated event emitted
+- [x] Create `setModelPricing(bytes32 modelId, uint256 nativePrice, uint256 stablePrice)` function
+- [x] Add validation: caller must be registered
+- [x] Add validation: caller must be active
+- [x] Add validation: model must be in host's supportedModels
+- [x] Add validation: prices within MIN/MAX ranges (0 = use default)
+- [x] Store prices in modelPricingNative and modelPricingStable mappings
+- [x] Add `ModelPricingUpdated` event
+- [x] Write test file `test/NodeRegistry/test_model_pricing_setter.t.sol`
+- [x] Test: Registered host can set model pricing
+- [x] Test: Setting price to 0 clears override (uses default)
+- [x] Test: Non-registered address cannot set model pricing
+- [x] Test: Cannot set pricing for unsupported model
+- [x] Test: Invalid prices rejected
+- [x] Test: ModelPricingUpdated event emitted
 
 **Implementation:**
 ```solidity
@@ -162,6 +163,14 @@ function test_CannotSetPricingForUnsupportedModel() public { /* ... */ }
 function test_InvalidPricesRejected() public { /* ... */ }
 function test_ModelPricingUpdatedEventEmitted() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added ModelPricingUpdated event at line 55
+- Added setModelPricing function at lines 235-254
+- Added _nodeSupportsModel helper at lines 259-265
+- 16 new tests in test_model_pricing_setter.t.sol (all passing)
+- 157 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
 
 ---
 
