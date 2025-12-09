@@ -39,12 +39,13 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (17%)**
+**Overall Status: IN PROGRESS (22%)**
 
-- [ ] **Phase 1: Per-Model Pricing Infrastructure** (3/5 sub-phases)
+- [ ] **Phase 1: Per-Model Pricing Infrastructure** (4/5 sub-phases)
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
   - [x] Sub-phase 1.2: Add setModelPricing() Function ✅
   - [x] Sub-phase 1.3: Add getModelPricing() View Function ✅
+  - [x] Sub-phase 1.4: Add clearModelPricing() Function ✅
 - [ ] **Phase 2: Multi-Token Support** (0/4 sub-phases)
 - [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
@@ -232,14 +233,14 @@ function test_ReturnsZeroForNonRegisteredOperator() public { /* ... */ }
 Allow hosts to clear all model-specific pricing at once.
 
 **Tasks:**
-- [ ] Create `clearModelPricing(bytes32 modelId)` function
-- [ ] Clear both native and stable model pricing
-- [ ] Add validation: caller must be registered
-- [ ] Emit ModelPricingUpdated event with zero prices
-- [ ] Write test file `test/NodeRegistry/test_model_pricing_clear.t.sol`
-- [ ] Test: Clears model pricing successfully
-- [ ] Test: After clearing, getModelPricing returns default
-- [ ] Test: Non-registered cannot clear
+- [x] Create `clearModelPricing(bytes32 modelId)` function
+- [x] Clear both native and stable model pricing
+- [x] Add validation: caller must be registered
+- [x] Emit ModelPricingUpdated event with zero prices
+- [x] Write test file `test/NodeRegistry/test_model_pricing_clear.t.sol`
+- [x] Test: Clears model pricing successfully
+- [x] Test: After clearing, getModelPricing returns default
+- [x] Test: Non-registered cannot clear
 
 **Implementation:**
 ```solidity
@@ -263,6 +264,12 @@ function test_ClearsModelPricingSuccessfully() public { /* ... */ }
 function test_AfterClearingReturnsDefault() public { /* ... */ }
 function test_NonRegisteredCannotClear() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added clearModelPricing function at lines 261-268
+- 8 new tests in test_model_pricing_clear.t.sol (all passing)
+- 178 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
 
 ---
 

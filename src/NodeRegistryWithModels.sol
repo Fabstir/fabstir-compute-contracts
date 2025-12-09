@@ -254,6 +254,20 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Clear per-model pricing overrides (revert to default pricing)
+     * @dev Sets both native and stable model pricing to 0, causing getModelPricing to return defaults
+     * @param modelId The model ID to clear pricing for
+     */
+    function clearModelPricing(bytes32 modelId) external {
+        require(nodes[msg.sender].operator != address(0), "Not registered");
+
+        modelPricingNative[msg.sender][modelId] = 0;
+        modelPricingStable[msg.sender][modelId] = 0;
+
+        emit ModelPricingUpdated(msg.sender, modelId, 0, 0);
+    }
+
+    /**
      * @notice Check if a node supports a specific model (internal helper)
      */
     function _nodeSupportsModel(address operator, bytes32 modelId) internal view returns (bool) {
