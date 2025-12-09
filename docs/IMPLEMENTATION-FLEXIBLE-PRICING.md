@@ -39,7 +39,7 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (44%)**
+**Overall Status: IN PROGRESS (50%)**
 
 - [x] **Phase 1: Per-Model Pricing Infrastructure** (5/5 sub-phases) ✅
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
@@ -47,10 +47,11 @@ This ensures existing code always gets valid pricing via the default fallback.
   - [x] Sub-phase 1.3: Add getModelPricing() View Function ✅
   - [x] Sub-phase 1.4: Add clearModelPricing() Function ✅
   - [x] Sub-phase 1.5: Add getHostModelPrices() Batch Query ✅
-- [ ] **Phase 2: Multi-Token Support** (3/4 sub-phases)
+- [x] **Phase 2: Multi-Token Support** (4/4 sub-phases) ✅
   - [x] Sub-phase 2.1: Add Per-Token Pricing Mapping ✅
   - [x] Sub-phase 2.2: Add setTokenPricing() Function ✅
   - [x] Sub-phase 2.3: Update getNodePricing() with Token Fallback ✅
+  - [x] Sub-phase 2.4: Add Admin Token Acceptance Function ✅
 - [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
 - [ ] **Phase 5: Deployment** (0/4 sub-phases)
@@ -498,19 +499,19 @@ function test_ExistingBehaviorUnchanged() public { /* ... */ }
 Add function to JobMarketplace for accepting new stablecoin tokens.
 
 **Tasks:**
-- [ ] Create `addAcceptedToken(address token, uint256 minDeposit)` function in JobMarketplaceWithModels
-- [ ] Add validation: only treasury can call
-- [ ] Add validation: token not already accepted
-- [ ] Add validation: minDeposit > 0
-- [ ] Set acceptedTokens[token] = true and tokenMinDeposits[token] = minDeposit
-- [ ] Add `TokenAccepted` event
-- [ ] Write test file `test/JobMarketplace/test_token_acceptance.t.sol`
-- [ ] Test: Treasury can add accepted token
-- [ ] Test: Non-treasury cannot add token
-- [ ] Test: Cannot add already accepted token
-- [ ] Test: Cannot add with zero minDeposit
-- [ ] Test: TokenAccepted event emitted
-- [ ] Test: Sessions can be created with newly accepted token
+- [x] Create `addAcceptedToken(address token, uint256 minDeposit)` function in JobMarketplaceWithModels
+- [x] Add validation: only treasury can call
+- [x] Add validation: token not already accepted
+- [x] Add validation: minDeposit > 0
+- [x] Set acceptedTokens[token] = true and tokenMinDeposits[token] = minDeposit
+- [x] Add `TokenAccepted` event
+- [x] Write test file `test/JobMarketplace/test_token_acceptance.t.sol`
+- [x] Test: Treasury can add accepted token
+- [x] Test: Non-treasury cannot add token
+- [x] Test: Cannot add already accepted token
+- [x] Test: Cannot add with zero minDeposit
+- [x] Test: TokenAccepted event emitted
+- [x] Test: Sessions can be created with newly accepted token
 
 **Implementation:**
 ```solidity
@@ -542,6 +543,14 @@ function test_CannotAddWithZeroMinDeposit() public { /* ... */ }
 function test_TokenAcceptedEventEmitted() public { /* ... */ }
 function test_SessionsCanBeCreatedWithNewToken() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added TokenAccepted event at line 188 in JobMarketplaceWithModels.sol
+- Added addAcceptedToken function at lines 546-556 in JobMarketplaceWithModels.sol
+- 10 new tests in test_token_acceptance.t.sol (all passing)
+- 230 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
+- Phase 2 complete!
 
 ---
 

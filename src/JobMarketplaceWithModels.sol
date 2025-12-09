@@ -184,6 +184,9 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         uint256 deposit
     );
 
+    // Token acceptance event (Phase 2.4)
+    event TokenAccepted(address indexed token, uint256 minDeposit);
+
     modifier onlyRegisteredHost(address host) {
         // Just check if host is registered by looking at operator
         // NodeRegistryWithModels has different return signature
@@ -532,6 +535,24 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
                 emit TreasuryWithdrawal(tokens[i], amount);
             }
         }
+    }
+
+    /**
+     * @notice Add a new accepted stablecoin token (treasury only)
+     * @dev Allows treasury to add support for new stablecoins (e.g., EUR stablecoin)
+     * @param token The stablecoin token address to accept
+     * @param minDeposit The minimum deposit required for sessions with this token
+     */
+    function addAcceptedToken(address token, uint256 minDeposit) external {
+        require(msg.sender == treasuryAddress, "Only treasury");
+        require(!acceptedTokens[token], "Token already accepted");
+        require(minDeposit > 0, "Invalid minimum deposit");
+        require(token != address(0), "Invalid token address");
+
+        acceptedTokens[token] = true;
+        tokenMinDeposits[token] = minDeposit;
+
+        emit TokenAccepted(token, minDeposit);
     }
 
     // Wallet-agnostic deposit functions (Phase 1.2)
