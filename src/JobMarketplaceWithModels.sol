@@ -119,6 +119,9 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     mapping(address => uint256[]) public userSessions;
     mapping(address => uint256[]) public hostSessions;
 
+    // Session model tracking (sessionId => modelId) - Phase 3.1
+    mapping(uint256 => bytes32) public sessionModel;
+
     uint256 public nextJobId = 1;
     // NOTE: This immutable value is set from TREASURY_FEE_PERCENTAGE env var during deployment
     // FEE_BASIS_POINTS = TREASURY_FEE_PERCENTAGE * 100 (e.g., 10% = 1000 basis points)

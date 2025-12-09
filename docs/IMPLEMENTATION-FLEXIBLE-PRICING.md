@@ -39,7 +39,7 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (50%)**
+**Overall Status: IN PROGRESS (56%)**
 
 - [x] **Phase 1: Per-Model Pricing Infrastructure** (5/5 sub-phases) ✅
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
@@ -52,7 +52,8 @@ This ensures existing code always gets valid pricing via the default fallback.
   - [x] Sub-phase 2.2: Add setTokenPricing() Function ✅
   - [x] Sub-phase 2.3: Update getNodePricing() with Token Fallback ✅
   - [x] Sub-phase 2.4: Add Admin Token Acceptance Function ✅
-- [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
+- [ ] **Phase 3: Model-Aware Sessions** (1/3 sub-phases)
+  - [x] Sub-phase 3.1: Add Session Model Tracking ✅
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
 - [ ] **Phase 5: Deployment** (0/4 sub-phases)
 
@@ -563,11 +564,11 @@ Add optional model parameter to session creation for per-model pricing validatio
 Add mapping to track which model is used in each session.
 
 **Tasks:**
-- [ ] Add `mapping(uint256 => bytes32) public sessionModel` to JobMarketplaceWithModels
-- [ ] Verify contract compiles
-- [ ] Write test file `test/JobMarketplace/test_session_model_storage.t.sol`
-- [ ] Test: Mapping is accessible and defaults to bytes32(0)
-- [ ] Test: Existing session creation still works (model = bytes32(0))
+- [x] Add `mapping(uint256 => bytes32) public sessionModel` to JobMarketplaceWithModels
+- [x] Verify contract compiles
+- [x] Write test file `test/JobMarketplace/test_session_model_storage.t.sol`
+- [x] Test: Mapping is accessible and defaults to bytes32(0)
+- [x] Test: Existing session creation still works (model = bytes32(0))
 
 **Implementation:**
 ```solidity
@@ -585,6 +586,12 @@ function test_SessionModelMappingExists() public { /* ... */ }
 function test_SessionModelDefaultsToZero() public { /* ... */ }
 function test_ExistingSessionCreationStillWorks() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added sessionModel mapping at lines 122-123 in JobMarketplaceWithModels.sol
+- 5 new tests in test_session_model_storage.t.sol (all passing)
+- 235 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
 
 ---
 
