@@ -39,9 +39,10 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: NOT STARTED (0%)**
+**Overall Status: IN PROGRESS (6%)**
 
-- [ ] **Phase 1: Per-Model Pricing Infrastructure** (0/5 sub-phases)
+- [ ] **Phase 1: Per-Model Pricing Infrastructure** (1/5 sub-phases)
+  - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
 - [ ] **Phase 2: Multi-Token Support** (0/4 sub-phases)
 - [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
@@ -60,12 +61,12 @@ Add per-model pricing mappings and functions to NodeRegistryWithModels while pre
 Add storage mappings for model-specific pricing outside the Node struct (preserves struct compatibility).
 
 **Tasks:**
-- [ ] Add `mapping(address => mapping(bytes32 => uint256)) public modelPricingNative` after Node struct
-- [ ] Add `mapping(address => mapping(bytes32 => uint256)) public modelPricingStable` after Node struct
-- [ ] Verify contract compiles with new mappings
-- [ ] Write test file `test/NodeRegistry/test_model_pricing_storage.t.sol`
-- [ ] Test: Mappings are accessible and default to 0
-- [ ] Test: Mappings can store values without affecting Node struct
+- [x] Add `mapping(address => mapping(bytes32 => uint256)) public modelPricingNative` after Node struct
+- [x] Add `mapping(address => mapping(bytes32 => uint256)) public modelPricingStable` after Node struct
+- [x] Verify contract compiles with new mappings
+- [x] Write test file `test/NodeRegistry/test_model_pricing_storage.t.sol`
+- [x] Test: Mappings are accessible and default to 0
+- [x] Test: Mappings can store values without affecting Node struct
 
 **Implementation:**
 ```solidity
@@ -77,6 +78,12 @@ mapping(address => mapping(bytes32 => uint256)) public modelPricingStable;
 
 **Files Modified:**
 - `src/NodeRegistryWithModels.sol` (add mappings after line 38)
+
+**Completion Notes (2025-12-09):**
+- Added mappings at lines 42-43 in NodeRegistryWithModels.sol
+- 6 new tests in test_model_pricing_storage.t.sol (all passing)
+- 141 existing tests still passing (backward compatible)
+- TDD: RED phase confirmed (compilation failed), GREEN phase achieved
 
 **Tests:**
 ```solidity
