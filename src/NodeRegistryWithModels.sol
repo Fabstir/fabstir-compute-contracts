@@ -391,16 +391,21 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
 
     /**
      * @notice Get node's minimum price per token for a specific payment token
+     * @dev For stablecoins, checks customTokenPricing first, falls back to default minPricePerTokenStable
      * @param operator The address of the node operator
      * @param token The payment token address (address(0) for native ETH/BNB, USDC address for stablecoin)
      * @return Minimum price per token (0 if not registered)
      */
     function getNodePricing(address operator, address token) external view returns (uint256) {
         if (token == address(0)) {
-            // Native token (ETH on Base, BNB on opBNB)
+            // Native token (ETH on Base, BNB on opBNB) - unchanged behavior
             return nodes[operator].minPricePerTokenNative;
         } else {
-            // Stablecoin (USDC or other)
+            // Stablecoin - check custom token pricing first, fall back to default
+            uint256 customPrice = customTokenPricing[operator][token];
+            if (customPrice > 0) {
+                return customPrice;
+            }
             return nodes[operator].minPricePerTokenStable;
         }
     }

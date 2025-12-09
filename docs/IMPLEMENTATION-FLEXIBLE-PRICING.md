@@ -39,7 +39,7 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (39%)**
+**Overall Status: IN PROGRESS (44%)**
 
 - [x] **Phase 1: Per-Model Pricing Infrastructure** (5/5 sub-phases) ✅
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
@@ -47,9 +47,10 @@ This ensures existing code always gets valid pricing via the default fallback.
   - [x] Sub-phase 1.3: Add getModelPricing() View Function ✅
   - [x] Sub-phase 1.4: Add clearModelPricing() Function ✅
   - [x] Sub-phase 1.5: Add getHostModelPrices() Batch Query ✅
-- [ ] **Phase 2: Multi-Token Support** (2/4 sub-phases)
+- [ ] **Phase 2: Multi-Token Support** (3/4 sub-phases)
   - [x] Sub-phase 2.1: Add Per-Token Pricing Mapping ✅
   - [x] Sub-phase 2.2: Add setTokenPricing() Function ✅
+  - [x] Sub-phase 2.3: Update getNodePricing() with Token Fallback ✅
 - [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
 - [ ] **Phase 5: Deployment** (0/4 sub-phases)
@@ -444,14 +445,14 @@ function test_TokenPricingUpdatedEventEmitted() public { /* ... */ }
 Modify existing function to check token-specific pricing first.
 
 **Tasks:**
-- [ ] Modify `getNodePricing(address operator, address token)` function
-- [ ] For non-native tokens: check customTokenPricing first, fall back to default stable
-- [ ] Native token behavior unchanged
-- [ ] Write test file `test/NodeRegistry/test_token_pricing_queries.t.sol`
-- [ ] Test: Returns token-specific price when set
-- [ ] Test: Falls back to default stable when token price is 0
-- [ ] Test: Native token returns minPricePerTokenNative (unchanged)
-- [ ] Test: Existing tests still pass (backward compatibility)
+- [x] Modify `getNodePricing(address operator, address token)` function
+- [x] For non-native tokens: check customTokenPricing first, fall back to default stable
+- [x] Native token behavior unchanged
+- [x] Write test file `test/NodeRegistry/test_token_pricing_queries.t.sol`
+- [x] Test: Returns token-specific price when set
+- [x] Test: Falls back to default stable when token price is 0
+- [x] Test: Native token returns minPricePerTokenNative (unchanged)
+- [x] Test: Existing tests still pass (backward compatibility)
 
 **Implementation:**
 ```solidity
@@ -481,6 +482,14 @@ function test_FallsBackToDefaultStableWhenTokenPriceZero() public { /* ... */ }
 function test_NativeTokenReturnsNativePrice() public { /* ... */ }
 function test_ExistingBehaviorUnchanged() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Modified getNodePricing function at lines 399-411 in NodeRegistryWithModels.sol
+- Added customTokenPricing fallback: custom price → default stable
+- Native token behavior unchanged
+- 11 new tests in test_token_pricing_queries.t.sol (all passing)
+- 220 total tests passing (backward compatible)
+- TDD: RED phase (6 failures), GREEN phase achieved
 
 ---
 
