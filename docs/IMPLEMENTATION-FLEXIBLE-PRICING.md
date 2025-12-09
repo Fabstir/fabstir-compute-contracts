@@ -39,11 +39,12 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (11%)**
+**Overall Status: IN PROGRESS (17%)**
 
-- [ ] **Phase 1: Per-Model Pricing Infrastructure** (2/5 sub-phases)
+- [ ] **Phase 1: Per-Model Pricing Infrastructure** (3/5 sub-phases)
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
   - [x] Sub-phase 1.2: Add setModelPricing() Function ✅
+  - [x] Sub-phase 1.3: Add getModelPricing() View Function ✅
 - [ ] **Phase 2: Multi-Token Support** (0/4 sub-phases)
 - [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
@@ -179,14 +180,14 @@ function test_ModelPricingUpdatedEventEmitted() public { /* ... */ }
 Query model-specific pricing with fallback to default.
 
 **Tasks:**
-- [ ] Create `getModelPricing(address operator, bytes32 modelId, address token)` view function
-- [ ] Implement fallback logic: model-specific → default
-- [ ] Return 0 if operator not registered
-- [ ] Write test file `test/NodeRegistry/test_model_pricing_queries.t.sol`
-- [ ] Test: Returns model-specific price when set
-- [ ] Test: Falls back to default when model price is 0
-- [ ] Test: Returns correct price for native vs stable token
-- [ ] Test: Returns 0 for non-registered operator
+- [x] Create `getModelPricing(address operator, bytes32 modelId, address token)` view function
+- [x] Implement fallback logic: model-specific → default
+- [x] Return 0 if operator not registered
+- [x] Write test file `test/NodeRegistry/test_model_pricing_queries.t.sol`
+- [x] Test: Returns model-specific price when set
+- [x] Test: Falls back to default when model price is 0
+- [x] Test: Returns correct price for native vs stable token
+- [x] Test: Returns 0 for non-registered operator
 
 **Implementation:**
 ```solidity
@@ -216,6 +217,13 @@ function test_FallsBackToDefaultWhenModelPriceZero() public { /* ... */ }
 function test_ReturnsCorrectPriceForNativeVsStable() public { /* ... */ }
 function test_ReturnsZeroForNonRegisteredOperator() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added getModelPricing function at lines 376-388
+- Implements fallback: model-specific → default pricing
+- 13 new tests in test_model_pricing_queries.t.sol (all passing)
+- 170 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
 
 ---
 

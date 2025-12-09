@@ -366,6 +366,28 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Get model-specific pricing with fallback to default
+     * @dev Returns model-specific price if set (> 0), otherwise falls back to default pricing
+     * @param operator The address of the node operator
+     * @param modelId The model ID to query pricing for
+     * @param token The payment token address (address(0) for native, any other for stablecoin)
+     * @return Effective minimum price per token (0 if operator not registered)
+     */
+    function getModelPricing(address operator, bytes32 modelId, address token) external view returns (uint256) {
+        if (nodes[operator].operator == address(0)) return 0;
+
+        if (token == address(0)) {
+            // Native token - check model-specific, fall back to default
+            uint256 modelPrice = modelPricingNative[operator][modelId];
+            return modelPrice > 0 ? modelPrice : nodes[operator].minPricePerTokenNative;
+        } else {
+            // Stablecoin - check model-specific, fall back to default
+            uint256 modelPrice = modelPricingStable[operator][modelId];
+            return modelPrice > 0 ? modelPrice : nodes[operator].minPricePerTokenStable;
+        }
+    }
+
+    /**
      * @notice Get all active nodes
      */
     function getAllActiveNodes() external view returns (address[] memory) {
