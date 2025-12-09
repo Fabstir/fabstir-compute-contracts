@@ -190,6 +190,15 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     // Token acceptance event (Phase 2.4)
     event TokenAccepted(address indexed token, uint256 minDeposit);
 
+    // Model-aware session event (Phase 3.2)
+    event SessionJobCreatedForModel(
+        uint256 indexed jobId,
+        address indexed requester,
+        address indexed host,
+        bytes32 modelId,
+        uint256 deposit
+    );
+
     modifier onlyRegisteredHost(address host) {
         // Just check if host is registered by looking at operator
         // NodeRegistryWithModels has different return signature
@@ -265,6 +274,68 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
         emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value);  // NEW event
+
+        return jobId;
+    }
+
+    /// @notice Create a session job for a specific model with native token payment
+    /// @param host The host address to create the session with
+    /// @param modelId The model ID to use for this session
+    /// @param pricePerToken The price per token offered
+    /// @param maxDuration Maximum duration of the session
+    /// @param proofInterval Interval between proofs
+    /// @return jobId The created session ID
+    function createSessionJobForModel(
+        address host,
+        bytes32 modelId,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval
+    ) external payable nonReentrant returns (uint256 jobId) {
+        // Standard validations
+        require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
+        require(msg.value <= 1000 ether, "Deposit too large");
+        require(pricePerToken > 0, "Invalid price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
+        require(proofInterval > 0, "Invalid proof interval");
+        require(host != address(0), "Invalid host");
+
+        // Model-specific validations
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
+
+        _validateProofRequirements(proofInterval, msg.value, pricePerToken);
+        _validateHostRegistration(host);
+
+        // Get model-specific pricing (falls back to default if not set)
+        uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, address(0));
+        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+
+        jobId = nextJobId++;
+
+        // Store model for this session (Phase 3.1)
+        sessionModel[jobId] = modelId;
+
+        // Create session (same pattern as createSessionJob)
+        SessionJob storage session = sessionJobs[jobId];
+        session.id = jobId;
+        session.depositor = msg.sender;
+        session.requester = msg.sender;
+        session.host = host;
+        session.paymentToken = address(0);
+        session.deposit = msg.value;
+        session.pricePerToken = pricePerToken;
+        session.maxDuration = maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = proofInterval;
+        session.status = SessionStatus.Active;
+
+        userDepositsNative[msg.sender] += msg.value;
+        userSessions[msg.sender].push(jobId);
+        hostSessions[host].push(jobId);
+
+        emit SessionJobCreated(jobId, msg.sender, host, msg.value);
+        emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, msg.value);
 
         return jobId;
     }

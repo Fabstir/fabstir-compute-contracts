@@ -39,7 +39,7 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (56%)**
+**Overall Status: IN PROGRESS (63%)**
 
 - [x] **Phase 1: Per-Model Pricing Infrastructure** (5/5 sub-phases) ✅
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
@@ -52,8 +52,9 @@ This ensures existing code always gets valid pricing via the default fallback.
   - [x] Sub-phase 2.2: Add setTokenPricing() Function ✅
   - [x] Sub-phase 2.3: Update getNodePricing() with Token Fallback ✅
   - [x] Sub-phase 2.4: Add Admin Token Acceptance Function ✅
-- [ ] **Phase 3: Model-Aware Sessions** (1/3 sub-phases)
+- [ ] **Phase 3: Model-Aware Sessions** (2/3 sub-phases)
   - [x] Sub-phase 3.1: Add Session Model Tracking ✅
+  - [x] Sub-phase 3.2: Add createSessionJobForModel() Function ✅
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
 - [ ] **Phase 5: Deployment** (0/4 sub-phases)
 
@@ -600,19 +601,19 @@ function test_ExistingSessionCreationStillWorks() public { /* ... */ }
 New function for model-aware session creation with per-model pricing.
 
 **Tasks:**
-- [ ] Create `createSessionJobForModel(address host, bytes32 modelId, uint256 pricePerToken, ...)` function
-- [ ] Validate host supports the specified model
-- [ ] Query model-specific pricing from NodeRegistry
-- [ ] Validate pricePerToken >= model-specific minimum
-- [ ] Store modelId in sessionModel mapping
-- [ ] Emit enhanced event with modelId
-- [ ] Write test file `test/JobMarketplace/test_session_model_creation.t.sol`
-- [ ] Test: Session created with correct model pricing validation
-- [ ] Test: Fails if host doesn't support model
-- [ ] Test: Fails if price below model-specific minimum
-- [ ] Test: Model stored in sessionModel mapping
-- [ ] Test: Works with model override pricing
-- [ ] Test: Falls back to default pricing when no model override
+- [x] Create `createSessionJobForModel(address host, bytes32 modelId, uint256 pricePerToken, ...)` function
+- [x] Validate host supports the specified model
+- [x] Query model-specific pricing from NodeRegistry
+- [x] Validate pricePerToken >= model-specific minimum
+- [x] Store modelId in sessionModel mapping
+- [x] Emit enhanced event with modelId
+- [x] Write test file `test/JobMarketplace/test_session_model_creation.t.sol`
+- [x] Test: Session created with correct model pricing validation
+- [x] Test: Fails if host doesn't support model
+- [x] Test: Fails if price below model-specific minimum
+- [x] Test: Model stored in sessionModel mapping
+- [x] Test: Works with model override pricing
+- [x] Test: Falls back to default pricing when no model override
 
 **Implementation:**
 ```solidity
@@ -684,13 +685,33 @@ function createSessionJobForModel(
 **Tests:**
 ```solidity
 // test/JobMarketplace/test_session_model_creation.t.sol
-function test_SessionCreatedWithModelPricingValidation() public { /* ... */ }
-function test_FailsIfHostDoesNotSupportModel() public { /* ... */ }
-function test_FailsIfPriceBelowModelMinimum() public { /* ... */ }
-function test_ModelStoredInSessionModelMapping() public { /* ... */ }
-function test_WorksWithModelOverridePricing() public { /* ... */ }
-function test_FallsBackToDefaultPricingWhenNoOverride() public { /* ... */ }
+function test_CreateSessionJobForModel_Success() public { /* ... */ }
+function test_CreateSessionJobForModel_StoresModelId() public { /* ... */ }
+function test_CreateSessionJobForModel_FailsIfHostDoesNotSupportModel() public { /* ... */ }
+function test_CreateSessionJobForModel_FailsIfPriceBelowModelMinimum() public { /* ... */ }
+function test_CreateSessionJobForModel_UsesModelOverridePricing() public { /* ... */ }
+function test_CreateSessionJobForModel_FallsBackToDefaultPricing() public { /* ... */ }
+function test_CreateSessionJobForModel_EmitsEvents() public { /* ... */ }
+function test_CreateSessionJobForModel_ValidatesDeposit() public { /* ... */ }
+function test_CreateSessionJobForModel_ValidatesProofRequirements() public { /* ... */ }
+function test_CreateSessionJobForModel_ValidatesPrice() public { /* ... */ }
+function test_CreateSessionJobForModel_ValidatesDuration() public { /* ... */ }
+function test_CreateSessionJobForModel_ValidatesHostAddress() public { /* ... */ }
+function test_CreateSessionJobForModel_IncrementsNextJobId() public { /* ... */ }
+function test_CreateSessionJobForModel_UpdatesSessionArrays() public { /* ... */ }
+function test_CreateSessionJobForModel_TracksNativeDeposits() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added SessionJobCreatedForModel event at lines 193-200 in JobMarketplaceWithModels.sol
+- Added createSessionJobForModel function at lines 288-341 in JobMarketplaceWithModels.sol
+- Uses nodeSupportsModel() to validate host supports model
+- Uses getModelPricing() to get model-specific pricing (falls back to default)
+- Stores modelId in sessionModel mapping
+- Emits both SessionJobCreated and SessionJobCreatedForModel events
+- 15 new tests in test_session_model_creation.t.sol (all passing)
+- 250 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
 
 ---
 
