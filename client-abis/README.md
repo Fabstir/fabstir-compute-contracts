@@ -2,46 +2,37 @@
 
 This directory contains the Application Binary Interfaces (ABIs) for client integration.
 
-## Current Deployed Contracts (October 14, 2025 - S5 Proof Storage)
+## Current Deployed Contracts (December 9, 2025 - Flexible Pricing)
 
 ### JobMarketplaceWithModels
-- **Address**: 0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E
+- **Address**: 0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1
 - **Network**: Base Sepolia
-- **Status**: ✅ S5 PROOF STORAGE (October 14, 2025)
+- **Status**: ✅ FLEXIBLE PRICING (December 9, 2025)
 - **Configuration**:
   - ProofSystem: 0x2ACcc60893872A499700908889B38C5420CBcFD1 ✅ SET
   - Authorized in HostEarnings: ✅ CONFIRMED
-  - NodeRegistry: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6 (8-field struct with dual pricing)
+  - NodeRegistry: 0x48aa4A8047A45862Da8412FAB71ef66C17c7766d (Per-model pricing support)
 - **Key Features**:
-  - 🆕 **S5 Off-Chain Proof Storage**: Full STARK proofs (221KB) stored in S5, only hash + CID on-chain
-  - 🆕 **Transaction Size Reduction**: 737x reduction (221KB → 300 bytes)
-  - 🆕 **Cost Reduction**: 5000x reduction (~$50 → ~$0.001 per proof)
-  - 🆕 **18-Field SessionJob Struct**: Added lastProofHash and lastProofCID fields
-  - 🆕 **Updated submitProofOfWork**: Now takes 4 params (jobId, tokensClaimed, proofHash, proofCID)
-  - 🆕 **100% Proof Submission Success**: Solved 128KB RPC limit issue (was 0% success rate)
-  - 🆕 **DUAL PRICING**: Separate native (ETH/BNB) and stable (USDC) pricing fields
-  - 🆕 **10,000x Range**: Both native and stable have 10,000x range (MIN to MAX)
-  - 🆕 **Price Validation**: Validates against correct pricing field based on payment type
-  - 🆕 **Query Pricing**: Get host pricing for both native and stable tokens
-  - Works with NodeRegistryWithModels 8-field struct (includes both pricing fields)
+  - 🆕 **Per-Model Pricing Support**: Query model-specific pricing with `getModelPricing()`
+  - 🆕 **Model-Aware Sessions**: Create sessions tied to specific models
+  - 🆕 **createSessionJobForModel()**: Native ETH session with model pricing validation
+  - 🆕 **createSessionJobForModelWithToken()**: Token session with model pricing validation
+  - 🆕 **sessionModel mapping**: Track which model is used for each session
+  - 🆕 **100% Backward Compatible**: All existing SDK functions work unchanged
+  - S5 Off-Chain Proof Storage: Full STARK proofs (221KB) stored in S5, only hash + CID on-chain
+  - Transaction Size Reduction: 737x reduction (221KB → 300 bytes)
+  - Cost Reduction: 5000x reduction (~$50 → ~$0.001 per proof)
+  - 18-Field SessionJob Struct: lastProofHash and lastProofCID fields
+  - submitProofOfWork takes 4 params (jobId, tokensClaimed, proofHash, proofCID)
+  - DUAL PRICING: Separate native (ETH/BNB) and stable (USDC) pricing fields
+  - 10,000x Range: Both native and stable have 10,000x range (MIN to MAX)
+  - Price Validation: Validates against correct pricing field based on payment type
+  - Works with NodeRegistryWithModels per-model pricing
   - Wallet-agnostic deposit/withdrawal functions (depositNative, withdrawNative)
   - createSessionFromDeposit for pre-funded session creation
   - Anyone-can-complete pattern for gasless session ending
   - ChainConfig support for multi-chain deployment (ETH on Base, BNB on opBNB)
-  - Enhanced event indexing for better filtering
-  - depositor field tracks who paid (EOA or Smart Account)
-  - Properly calls creditEarnings() for host balance tracking
-  - Validates hosts have supported models
-  - User refunds fixed for session jobs
-  - Treasury fee accumulation for batch withdrawals (90% host / 10% treasury)
-  - Host earnings accumulation WITH PROPER TRACKING
-  - USDC payment settlement with proper split distribution
-  - ETH and USDC payment support fully functional
-  - Direct payment distribution (no external escrow)
-  - Session jobs with proof checkpoints
-  - RISC0 STARK proof verification (via S5 storage)
   - MIN_DEPOSIT: 0.0002 ETH or 0.80 USDC minimum
-  - Total gas savings: ~80% + S5 storage savings
 
 ### ModelRegistry (NEW - CORRECTED)
 - **Address**: 0x92b2De840bB2171203011A6dBA928d855cA8183E
@@ -58,23 +49,28 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
   - TinyLlama-1.1B Chat (TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF)
 
 ### NodeRegistryWithModels
-- **Address**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6 ✅ NEW - Corrected Dual Pricing
-- **Previous**: 0xC8dDD546e0993eEB4Df03591208aEDF6336342D7 (Incorrect MAX_PRICE_NATIVE - deprecated)
+- **Address**: 0x48aa4A8047A45862Da8412FAB71ef66C17c7766d ✅ NEW - Per-Model Pricing
+- **Previous**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6 (Dual pricing only - deprecated)
 - **Network**: Base Sepolia
-- **Status**: ✅ DUAL PRICING WITH 10,000x RANGE
+- **Status**: ✅ PER-MODEL & MULTI-TOKEN PRICING (December 9, 2025)
 - **Stake Required**: 1000 FAB tokens
 - **Key Features**:
-  - 🆕 **Dual Pricing**: Separate minPricePerTokenNative and minPricePerTokenStable fields
-  - 🆕 **Native Pricing Range**: 2,272,727,273 to 22,727,272,727,273 wei (~$0.00001 to $0.1 @ $4400 ETH)
-  - 🆕 **Stable Pricing Range**: 10 to 100,000 (0.00001 to 0.1 USDC per token)
-  - 🆕 **Dynamic Pricing Updates**: Separate updatePricingNative() and updatePricingStable() functions
-  - 🆕 **Price Discovery**: Query both native and stable pricing separately
-  - 🆕 **8-Field Node Struct**: Added both pricing fields (getNodeFullInfo returns 8 values)
-  - 🆕 **PricingUpdated Events**: Separate events for native and stable pricing changes
+  - 🆕 **Per-Model Pricing**: Set different prices for different AI models
+  - 🆕 **setModelPricing(bytes32 modelId, uint256 nativePrice, uint256 stablePrice)**: Set model-specific pricing
+  - 🆕 **clearModelPricing(bytes32 modelId)**: Clear model-specific pricing (revert to default)
+  - 🆕 **getModelPricing(address, bytes32, address)**: Query model-specific pricing with fallback
+  - 🆕 **getHostModelPrices(address)**: Batch query all model prices for a host
+  - 🆕 **Multi-Token Support**: Set custom pricing per stablecoin token
+  - 🆕 **setTokenPricing(address token, uint256 price)**: Set token-specific pricing
+  - 🆕 **customTokenPricing mapping**: Per-token price overrides
+  - 🆕 **100% Backward Compatible**: Default pricing still works for existing code
+  - Dual Pricing: Separate minPricePerTokenNative and minPricePerTokenStable fields
+  - Native Pricing Range: 2,272,727,273 to 22,727,272,727,273 wei (~$0.00001 to $0.1 @ $4400 ETH)
+  - Stable Pricing Range: 10 to 100,000 (0.00001 to 0.1 USDC per token)
+  - Dynamic Pricing Updates: Separate updatePricingNative() and updatePricingStable() functions
+  - 8-Field Node Struct: Both pricing fields (getNodeFullInfo returns 8 values)
   - Integrates with ModelRegistry for approved models only
-  - Structured JSON metadata format
   - Tracks which hosts support which models
-  - API endpoint discovery (inherited from previous version)
   - Hosts must register with specific model IDs
 
 ### NodeRegistryFAB (DEPRECATED - Use NodeRegistryWithModels)

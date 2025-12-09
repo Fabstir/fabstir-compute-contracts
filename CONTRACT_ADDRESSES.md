@@ -1,32 +1,41 @@
 # Current Contract Addresses - Multi-Chain Support
 
-Last Updated: October 14, 2025
+Last Updated: December 9, 2025
 
 ## 🌐 Multi-Chain Deployment Status
 
 | Chain | Network | Status | Native Token | Contract Address |
 |-------|---------|--------|--------------|------------------|
-| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E` |
+| **Base** | Sepolia (Testnet) | ✅ DEPLOYED | ETH | `0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1` |
 | **opBNB** | Testnet | ⏳ PLANNED | BNB | Post-MVP deployment |
 | **Base** | Mainnet | ⏳ FUTURE | ETH | TBD |
 | **opBNB** | Mainnet | ⏳ FUTURE | BNB | TBD |
 
-> **🚀 LATEST DEPLOYMENT**: S5 Off-Chain Proof Storage
+> **🚀 LATEST DEPLOYMENT**: Flexible Pricing (Per-Model & Multi-Token)
 >
-> - **JobMarketplaceWithModels**: `0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E` ✅ NEW - S5 proof storage (hash + CID) (Oct 14, 2025)
-> - **Features**: Off-chain proof storage in S5, on-chain hash + CID only, 737x transaction size reduction (221KB → 300 bytes), ~$50 → $0.001 storage cost savings
-> - **Breaking Change**: `submitProofOfWork(uint256,uint256,bytes)` → `submitProofOfWork(uint256,uint256,bytes32,string)`
+> - **JobMarketplaceWithModels**: `0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1` ✅ NEW - Per-model pricing, model-aware sessions (Dec 9, 2025)
+> - **NodeRegistryWithModels**: `0x48aa4A8047A45862Da8412FAB71ef66C17c7766d` ✅ NEW - Per-model pricing, multi-token support (Dec 9, 2025)
+> - **Features**: Per-model pricing (setModelPricing), multi-token pricing (setTokenPricing), model-aware sessions (createSessionJobForModel), batch price queries (getHostModelPrices)
+> - **New Functions**: `setModelPricing()`, `clearModelPricing()`, `getModelPricing()`, `getHostModelPrices()`, `setTokenPricing()`, `createSessionJobForModel()`, `createSessionJobForModelWithToken()`
+> - **Backward Compatible**: All existing SDK functions work unchanged
 
 ## Active Contracts
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **JobMarketplaceWithModels** | `0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E` | ✅ ACTIVE - S5 off-chain proof storage (Oct 14, 2025) |
-| **JobMarketplaceWithModels** | `0xe169A4B57700080725f9553E3Cc69885fea13629` | ⚠️ DEPRECATED - Old proof storage (Jan 28, 2025) |
-| **NodeRegistryWithModels** | `0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6` | ✅ NEW - Dual pricing with 8-field struct, 10,000x range |
+| **JobMarketplaceWithModels** | `0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1` | ✅ ACTIVE - Flexible pricing, model-aware sessions (Dec 9, 2025) |
+| **NodeRegistryWithModels** | `0x48aa4A8047A45862Da8412FAB71ef66C17c7766d` | ✅ ACTIVE - Per-model pricing, multi-token support (Dec 9, 2025) |
 | **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | Model governance (2 approved models) |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | EZKL proof verification |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | Host earnings accumulation |
+
+## Deprecated Contracts
+
+| Contract | Address | Description |
+|----------|---------|-------------|
+| **JobMarketplaceWithModels** | `0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E` | ⚠️ DEPRECATED - S5 proof storage version (Oct 14, 2025) |
+| **JobMarketplaceWithModels** | `0xe169A4B57700080725f9553E3Cc69885fea13629` | ⚠️ DEPRECATED - Old proof storage (Jan 28, 2025) |
+| **NodeRegistryWithModels** | `0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6` | ⚠️ DEPRECATED - Dual pricing without per-model (Jan 28, 2025) |
 
 ## Approved Models
 
@@ -60,9 +69,9 @@ const baseSepoliaConfig = {
   chainId: 84532,
   nativeToken: "ETH",
   contracts: {
-    jobMarketplace: "0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E", // S5 off-chain proof storage
+    jobMarketplace: "0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1", // Flexible pricing (Dec 9, 2025)
+    nodeRegistry: "0x48aa4A8047A45862Da8412FAB71ef66C17c7766d", // Per-model pricing (Dec 9, 2025)
     modelRegistry: "0x92b2De840bB2171203011A6dBA928d855cA8183E",
-    nodeRegistry: "0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6", // 10,000x range dual pricing
     proofSystem: "0x2ACcc60893872A499700908889B38C5420CBcFD1",
     hostEarnings: "0x908962e8c6CE72610021586f85ebDE09aAc97776",
     fabToken: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
