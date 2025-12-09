@@ -39,7 +39,7 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (75%)**
+**Overall Status: IN PROGRESS (85%)**
 
 - [x] **Phase 1: Per-Model Pricing Infrastructure** (5/5 sub-phases) ✅
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
@@ -56,8 +56,9 @@ This ensures existing code always gets valid pricing via the default fallback.
   - [x] Sub-phase 3.1: Add Session Model Tracking ✅
   - [x] Sub-phase 3.2: Add createSessionJobForModel() Function ✅
   - [x] Sub-phase 3.3: Add createSessionJobForModelWithToken() Function ✅
-- [ ] **Phase 4: Integration Testing** (1/2 sub-phases)
+- [x] **Phase 4: Integration Testing** (2/2 sub-phases) ✅
   - [x] Sub-phase 4.1: Backward Compatibility Tests ✅
+  - [x] Sub-phase 4.2: Full Feature Integration Tests ✅
 - [ ] **Phase 5: Deployment** (0/4 sub-phases)
 
 **Last Updated:** 2025-12-09
@@ -883,24 +884,43 @@ function test_NewAndLegacySessionsCoexist() public { /* ... */ }
 Test complete flows with new features.
 
 **Tasks:**
-- [ ] Write test file `test/Integration/test_flexible_pricing_flow.t.sol`
-- [ ] Test: Host registers → sets model pricing → client creates model session
-- [ ] Test: Host registers → sets token pricing → client creates session with new token
-- [ ] Test: Treasury adds new token → host sets pricing → client uses new token
-- [ ] Test: Multiple hosts with different model prices for same model
-- [ ] Test: Price fallback chain works correctly
-- [ ] Test: Batch query returns correct effective prices
+- [x] Write test file `test/Integration/test_flexible_pricing_flow.t.sol`
+- [x] Test: Host registers → sets model pricing → client creates model session
+- [x] Test: Host registers → sets token pricing → client creates session with new token
+- [x] Test: Treasury adds new token → host sets pricing → client uses new token
+- [x] Test: Multiple hosts with different model prices for same model
+- [x] Test: Price fallback chain works correctly
+- [x] Test: Batch query returns correct effective prices
 
 **Tests:**
 ```solidity
 // test/Integration/test_flexible_pricing_flow.t.sol
 function test_HostSetsModelPricingClientCreatesSession() public { /* ... */ }
-function test_HostSetsTokenPricingClientUsesNewToken() public { /* ... */ }
+function test_HostSetsModelPricingClientCannotUnderpay() public { /* ... */ }
+function test_HostSetsTokenPricingClientUsesToken() public { /* ... */ }
 function test_TreasuryAddsTokenHostSetsPricingClientUses() public { /* ... */ }
+function test_ClientCannotUseUnacceptedToken() public { /* ... */ }
 function test_MultipleHostsDifferentModelPrices() public { /* ... */ }
+function test_ClientMustMeetEachHostsMinimum() public { /* ... */ }
 function test_PriceFallbackChainWorksCorrectly() public { /* ... */ }
+function test_DifferentModelsDifferentFallbacks() public { /* ... */ }
 function test_BatchQueryReturnsEffectivePrices() public { /* ... */ }
+function test_BatchQueryNonRegisteredReturnsEmpty() public { /* ... */ }
+function test_CompleteSessionLifecycleWithModelPricing() public { /* ... */ }
+function test_ModelAwareTokenSessionWithCustomPricing() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Created test/Integration/test_flexible_pricing_flow.t.sol with 13 tests
+- Tested complete flows: host sets model pricing → client creates model session
+- Tested complete flows: host sets token pricing → client uses token
+- Tested complete flows: treasury adds token → host sets pricing → client uses
+- Tested multiple hosts with different prices for same model
+- Tested price fallback chain (model-specific → default)
+- Tested batch query returns effective prices (override or default)
+- Additional tests for edge cases and lifecycle
+- 290 total tests passing (backward compatible)
+- Phase 4 complete!
 
 ---
 
