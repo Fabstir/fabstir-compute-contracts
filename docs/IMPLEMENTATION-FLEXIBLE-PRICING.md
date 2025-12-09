@@ -39,7 +39,7 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (33%)**
+**Overall Status: IN PROGRESS (39%)**
 
 - [x] **Phase 1: Per-Model Pricing Infrastructure** (5/5 sub-phases) ✅
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
@@ -47,8 +47,9 @@ This ensures existing code always gets valid pricing via the default fallback.
   - [x] Sub-phase 1.3: Add getModelPricing() View Function ✅
   - [x] Sub-phase 1.4: Add clearModelPricing() Function ✅
   - [x] Sub-phase 1.5: Add getHostModelPrices() Batch Query ✅
-- [ ] **Phase 2: Multi-Token Support** (1/4 sub-phases)
+- [ ] **Phase 2: Multi-Token Support** (2/4 sub-phases)
   - [x] Sub-phase 2.1: Add Per-Token Pricing Mapping ✅
+  - [x] Sub-phase 2.2: Add setTokenPricing() Function ✅
 - [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
 - [ ] **Phase 5: Deployment** (0/4 sub-phases)
@@ -384,17 +385,17 @@ function test_TokenPricingDoesNotAffectExisting() public { /* ... */ }
 Allow hosts to set token-specific pricing.
 
 **Tasks:**
-- [ ] Create `setTokenPricing(address token, uint256 price)` function
-- [ ] Add validation: caller must be registered and active
-- [ ] Add validation: token cannot be address(0) (use updatePricingNative for native)
-- [ ] Add validation: price in valid range (0 = use default)
-- [ ] Add `TokenPricingUpdated` event
-- [ ] Write test file `test/NodeRegistry/test_token_pricing_setter.t.sol`
-- [ ] Test: Registered host can set token pricing
-- [ ] Test: Setting price to 0 clears override
-- [ ] Test: Cannot set pricing for native token address(0)
-- [ ] Test: Invalid prices rejected
-- [ ] Test: TokenPricingUpdated event emitted
+- [x] Create `setTokenPricing(address token, uint256 price)` function
+- [x] Add validation: caller must be registered and active
+- [x] Add validation: token cannot be address(0) (use updatePricingNative for native)
+- [x] Add validation: price in valid range (0 = use default)
+- [x] Add `TokenPricingUpdated` event
+- [x] Write test file `test/NodeRegistry/test_token_pricing_setter.t.sol`
+- [x] Test: Registered host can set token pricing
+- [x] Test: Setting price to 0 clears override
+- [x] Test: Cannot set pricing for native token address(0)
+- [x] Test: Invalid prices rejected
+- [x] Test: TokenPricingUpdated event emitted
 
 **Implementation:**
 ```solidity
@@ -428,6 +429,13 @@ function test_CannotSetPricingForNativeToken() public { /* ... */ }
 function test_InvalidPricesRejected() public { /* ... */ }
 function test_TokenPricingUpdatedEventEmitted() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added TokenPricingUpdated event at line 60 in NodeRegistryWithModels.sol
+- Added setTokenPricing function at lines 281-294 in NodeRegistryWithModels.sol
+- 15 new tests in test_token_pricing_setter.t.sol (all passing)
+- 209 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
 
 ---
 

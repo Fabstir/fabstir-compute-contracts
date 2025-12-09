@@ -57,6 +57,7 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     event ModelRegistryUpdated(address indexed newRegistry);
     event PricingUpdated(address indexed operator, uint256 newMinPrice);
     event ModelPricingUpdated(address indexed operator, bytes32 indexed modelId, uint256 nativePrice, uint256 stablePrice);
+    event TokenPricingUpdated(address indexed operator, address indexed token, uint256 price);
 
     constructor(address _fabToken, address _modelRegistry) Ownable(msg.sender) {
         require(_fabToken != address(0), "Invalid FAB token address");
@@ -269,6 +270,27 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
         modelPricingStable[msg.sender][modelId] = 0;
 
         emit ModelPricingUpdated(msg.sender, modelId, 0, 0);
+    }
+
+    /**
+     * @notice Set token-specific pricing for a stablecoin
+     * @dev Allows hosts to set different minimum prices for different stablecoins (e.g., USDC vs EUR stable)
+     * @param token The stablecoin token address (cannot be address(0), use updatePricingNative for native)
+     * @param price The minimum price per token (0 = use default minPricePerTokenStable)
+     */
+    function setTokenPricing(address token, uint256 price) external {
+        require(nodes[msg.sender].operator != address(0), "Not registered");
+        require(nodes[msg.sender].active, "Node not active");
+        require(token != address(0), "Use updatePricingNative for native token");
+
+        if (price > 0) {
+            require(price >= MIN_PRICE_PER_TOKEN_STABLE, "Price below minimum");
+            require(price <= MAX_PRICE_PER_TOKEN_STABLE, "Price above maximum");
+        }
+
+        customTokenPricing[msg.sender][token] = price;
+
+        emit TokenPricingUpdated(msg.sender, token, price);
     }
 
     /**
