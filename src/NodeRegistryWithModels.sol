@@ -42,6 +42,10 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     mapping(address => mapping(bytes32 => uint256)) public modelPricingNative;
     mapping(address => mapping(bytes32 => uint256)) public modelPricingStable;
 
+    // Per-token pricing overrides (operator => tokenAddress => price)
+    // When set (> 0), these override the default minPricePerTokenStable for that specific token
+    mapping(address => mapping(address => uint256)) public customTokenPricing;
+
     address[] public activeNodesList;
 
     // Events

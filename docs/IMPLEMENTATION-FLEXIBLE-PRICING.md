@@ -39,7 +39,7 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (28%)**
+**Overall Status: IN PROGRESS (33%)**
 
 - [x] **Phase 1: Per-Model Pricing Infrastructure** (5/5 sub-phases) ✅
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
@@ -47,7 +47,8 @@ This ensures existing code always gets valid pricing via the default fallback.
   - [x] Sub-phase 1.3: Add getModelPricing() View Function ✅
   - [x] Sub-phase 1.4: Add clearModelPricing() Function ✅
   - [x] Sub-phase 1.5: Add getHostModelPrices() Batch Query ✅
-- [ ] **Phase 2: Multi-Token Support** (0/4 sub-phases)
+- [ ] **Phase 2: Multi-Token Support** (1/4 sub-phases)
+  - [x] Sub-phase 2.1: Add Per-Token Pricing Mapping ✅
 - [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
 - [ ] **Phase 5: Deployment** (0/4 sub-phases)
@@ -346,12 +347,12 @@ Add per-token pricing and admin token management.
 Add storage for token-specific pricing overrides.
 
 **Tasks:**
-- [ ] Add `mapping(address => mapping(address => uint256)) public customTokenPricing`
-- [ ] Mapping is: operator => token address => minimum price
-- [ ] Verify contract compiles
-- [ ] Write test file `test/NodeRegistry/test_token_pricing_storage.t.sol`
-- [ ] Test: Mapping is accessible and defaults to 0
-- [ ] Test: Mapping does not affect existing pricing
+- [x] Add `mapping(address => mapping(address => uint256)) public customTokenPricing`
+- [x] Mapping is: operator => token address => minimum price
+- [x] Verify contract compiles
+- [x] Write test file `test/NodeRegistry/test_token_pricing_storage.t.sol`
+- [x] Test: Mapping is accessible and defaults to 0
+- [x] Test: Mapping does not affect existing pricing
 
 **Implementation:**
 ```solidity
@@ -369,6 +370,12 @@ function test_TokenPricingMappingExists() public { /* ... */ }
 function test_TokenPricingDefaultsToZero() public { /* ... */ }
 function test_TokenPricingDoesNotAffectExisting() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added customTokenPricing mapping at lines 45-47 in NodeRegistryWithModels.sol
+- 6 new tests in test_token_pricing_storage.t.sol (all passing)
+- 194 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
 
 ---
 
