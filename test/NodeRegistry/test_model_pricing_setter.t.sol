@@ -27,14 +27,15 @@ contract NodeRegistryModelPricingSetterTest is Test {
     bytes32 public unsupportedModelId = keccak256(abi.encodePacked("unsupported/model", "/", "unsupported.gguf"));
 
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant MIN_PRICE_NATIVE = 2_272_727_273;
-    uint256 constant MIN_PRICE_STABLE = 10;
-    uint256 constant MAX_PRICE_NATIVE = 22_727_272_727_273;
-    uint256 constant MAX_PRICE_STABLE = 100_000;
+    // With PRICE_PRECISION=1000: prices are 1000x for sub-cent granularity
+    uint256 constant MIN_PRICE_NATIVE = 227_273;
+    uint256 constant MIN_PRICE_STABLE = 1;
+    uint256 constant MAX_PRICE_NATIVE = 22_727_272_727_273_000;
+    uint256 constant MAX_PRICE_STABLE = 100_000_000;
 
     // Valid test prices within range
-    uint256 constant VALID_NATIVE_PRICE = 5_000_000_000;
-    uint256 constant VALID_STABLE_PRICE = 5000;
+    uint256 constant VALID_NATIVE_PRICE = 5_000_000; // ~$0.022/million
+    uint256 constant VALID_STABLE_PRICE = 5000; // $5/million
 
     event ModelPricingUpdated(address indexed operator, bytes32 indexed modelId, uint256 nativePrice, uint256 stablePrice);
 
@@ -156,11 +157,16 @@ contract NodeRegistryModelPricingSetterTest is Test {
         nodeRegistry.setModelPricing(modelId1, MAX_PRICE_NATIVE + 1, VALID_STABLE_PRICE);
     }
 
-    /// @notice Test that invalid stable prices are rejected (too low)
-    function test_InvalidStablePriceTooLow() public {
+    /// @notice Test that zero stable price is allowed (clears override to use default)
+    /// @dev With MIN_PRICE_PER_TOKEN_STABLE=1, 0 is specifically allowed for clearing
+    function test_ZeroStablePriceAllowedForClearing() public {
+        // Set model pricing with 0 stable price (uses default)
         vm.prank(host);
-        vm.expectRevert("Stable price below minimum");
-        nodeRegistry.setModelPricing(modelId1, VALID_NATIVE_PRICE, MIN_PRICE_STABLE - 1);
+        nodeRegistry.setModelPricing(modelId1, VALID_NATIVE_PRICE, 0);
+
+        // Verify native price is set but stable falls back to default
+        assertEq(nodeRegistry.modelPricingNative(host, modelId1), VALID_NATIVE_PRICE, "Native price should be set");
+        assertEq(nodeRegistry.modelPricingStable(host, modelId1), 0, "Stable price should be 0 (use default)");
     }
 
     /// @notice Test that invalid stable prices are rejected (too high)

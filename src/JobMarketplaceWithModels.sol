@@ -137,6 +137,11 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
 
     // USDC-specific configuration
     uint256 public constant USDC_MIN_DEPOSIT = 800000; // 0.80 USDC
+
+    // Price precision: prices are stored with 1000x precision for sub-cent granularity
+    // Payment calculation: (tokensUsed * pricePerToken) / PRICE_PRECISION
+    uint256 public constant PRICE_PRECISION = 1000;
+
     mapping(address => bool) public acceptedTokens;
     mapping(address => uint256) public tokenMinDeposits;
 
@@ -475,7 +480,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     }
 
     function _validateProofRequirements(uint256 proofInterval, uint256 deposit, uint256 pricePerToken) internal pure {
-        uint256 maxTokens = deposit / pricePerToken;
+        // With PRICE_PRECISION: maxTokens = deposit * PRICE_PRECISION / pricePerToken
+        uint256 maxTokens = (deposit * PRICE_PRECISION) / pricePerToken;
         uint256 tokensPerProof = proofInterval;
         require(tokensPerProof >= MIN_PROVEN_TOKENS, "Proof interval too small");
         require(maxTokens >= tokensPerProof, "Deposit too small for proof interval");
@@ -497,7 +503,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         require(tokensClaimed <= expectedTokens * 2, "Excessive tokens claimed");
 
         uint256 newTotal = session.tokensUsed + tokensClaimed;
-        uint256 maxTokens = session.deposit / session.pricePerToken;
+        // With PRICE_PRECISION: maxTokens = deposit * PRICE_PRECISION / pricePerToken
+        uint256 maxTokens = (session.deposit * PRICE_PRECISION) / session.pricePerToken;
         require(newTotal <= maxTokens, "Exceeds deposit");
 
         // S5: Store proof hash and CID instead of full proof
@@ -538,7 +545,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     function _settleSessionPayments(uint256 jobId, address completedBy) internal {
         SessionJob storage session = sessionJobs[jobId];
 
-        uint256 hostPayment = session.tokensUsed * session.pricePerToken;
+        // With PRICE_PRECISION: hostPayment = (tokensUsed * pricePerToken) / PRICE_PRECISION
+        uint256 hostPayment = (session.tokensUsed * session.pricePerToken) / PRICE_PRECISION;
         uint256 userRefund = session.deposit > hostPayment ? session.deposit - hostPayment : 0;
 
         if (hostPayment > 0) {

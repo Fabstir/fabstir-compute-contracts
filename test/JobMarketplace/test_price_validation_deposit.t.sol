@@ -27,8 +27,9 @@ contract PriceValidationDepositTest is Test {
 
     bytes32 public modelId = keccak256(abi.encodePacked("CohereForAI/TinyVicuna-1B-32k-GGUF", "/", "tiny-vicuna-1b.q4_k_m.gguf"));
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant HOST_MIN_PRICE_NATIVE = 3_000_000_000; // Host requires 3B wei per token (above MIN_PRICE_NATIVE)
-    uint256 constant HOST_MIN_PRICE_STABLE = 5000; // Host requires 5000 for stablecoins
+    // With PRICE_PRECISION=1000: prices are 1000x for sub-cent granularity
+    uint256 constant HOST_MIN_PRICE_NATIVE = 3_000_000; // ~$0.013/million @ $4400 ETH
+    uint256 constant HOST_MIN_PRICE_STABLE = 5000; // $5/million
     uint256 constant HOST_MIN_PRICE = HOST_MIN_PRICE_NATIVE; // Alias for deposit tests
     uint256 constant FEE_BASIS_POINTS = 1000; // 10%
     uint256 constant DISPUTE_WINDOW = 30; // 30 seconds
@@ -209,7 +210,7 @@ contract PriceValidationDepositTest is Test {
     }
 
     function test_PriceValidationWithUpdatedHostPricing() public {
-        uint256 newMinPrice = 4_000_000_000;
+        uint256 newMinPrice = 4_000_000; // ~$0.018/million @ $4400 ETH
 
         // Host updates pricing
         vm.prank(host);

@@ -31,6 +31,9 @@ contract PricingFlowIntegrationTest is Test {
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant FEE_BASIS_POINTS = 1000; // 10%
     uint256 constant DISPUTE_WINDOW = 30; // 30 seconds
+    // With PRICE_PRECISION=1000: prices are 1000x for sub-cent granularity
+    uint256 constant HOST_MIN_PRICE_NATIVE = 500_000; // ~$2.2/million @ $4400 ETH
+    uint256 constant HOST_MIN_PRICE_STABLE = 2000; // $2/million
 
     function setUp() public {
         vm.startPrank(owner);
@@ -79,8 +82,6 @@ contract PricingFlowIntegrationTest is Test {
 
     function test_CompleteFlowRegistrationToSession() public {
         // Step 1: Register host with pricing
-        uint256 hostMinPrice = 2000;
-
         vm.prank(owner);
         fabToken.mint(host1, MIN_STAKE);
 
@@ -94,20 +95,21 @@ contract PricingFlowIntegrationTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            hostMinPrice,  // Native (ETH) price
-            hostMinPrice   // Stable (USDC) price - same for this test
+            HOST_MIN_PRICE_NATIVE,  // Native (ETH) price
+            HOST_MIN_PRICE_STABLE   // Stable (USDC) price
         );
         vm.stopPrank();
 
         // Step 2: Verify pricing is stored (testing native token price for ETH sessions)
         uint256 storedPrice = nodeRegistry.getNodePricing(host1, address(0)); // address(0) = native
-        assertEq(storedPrice, hostMinPrice, "Pricing should be stored");
+        assertEq(storedPrice, HOST_MIN_PRICE_NATIVE, "Pricing should be stored");
 
         // Step 3: Create session above minimum (should succeed)
+        uint256 sessionPrice = HOST_MIN_PRICE_NATIVE + 50000;
         vm.prank(user);
         uint256 sessionId = marketplace.createSessionJob{value: 0.1 ether}(
             host1,
-            hostMinPrice + 500, // Above minimum
+            sessionPrice, // Above minimum
             1 hours,
             100
         );
@@ -115,17 +117,17 @@ contract PricingFlowIntegrationTest is Test {
         assertGt(sessionId, 0, "Session should be created");
 
         // Step 4: Verify session details
-        (uint256 id, , , address sessionHost, , , uint256 sessionPrice, , , , , , , , , ,,) =
+        (uint256 id, , , address sessionHost, , , uint256 storedSessionPrice, , , , , , , , , ,,) =
             marketplace.sessionJobs(sessionId);
 
         assertEq(id, sessionId, "Session ID correct");
         assertEq(sessionHost, host1, "Host correct");
-        assertEq(sessionPrice, hostMinPrice + 500, "Price stored correctly");
+        assertEq(storedSessionPrice, sessionPrice, "Price stored correctly");
     }
 
     function test_UpdatePricingAffectsSessions() public {
         // Step 1: Register host with initial pricing
-        uint256 initialPrice = 2000;
+        uint256 initialNativePrice = HOST_MIN_PRICE_NATIVE;
 
         vm.prank(owner);
         fabToken.mint(host1, MIN_STAKE);
@@ -140,8 +142,8 @@ contract PricingFlowIntegrationTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            initialPrice,  // Native price
-            initialPrice   // Stable price - same for this test
+            initialNativePrice,  // Native price
+            HOST_MIN_PRICE_STABLE   // Stable price
         );
         vm.stopPrank();
 
@@ -149,14 +151,14 @@ contract PricingFlowIntegrationTest is Test {
         vm.prank(user);
         uint256 sessionId1 = marketplace.createSessionJob{value: 0.1 ether}(
             host1,
-            initialPrice,
+            initialNativePrice,
             1 hours,
             100
         );
         assertGt(sessionId1, 0, "Initial session created");
 
         // Step 3: Host updates pricing higher (native token for ETH sessions)
-        uint256 newHigherPrice = 5000;
+        uint256 newHigherPrice = HOST_MIN_PRICE_NATIVE * 2;
         vm.prank(host1);
         nodeRegistry.updatePricingNative(newHigherPrice);
 
@@ -169,7 +171,7 @@ contract PricingFlowIntegrationTest is Test {
         vm.expectRevert("Price below host minimum");
         marketplace.createSessionJob{value: 0.1 ether}(
             host1,
-            initialPrice, // Old price is now too low
+            initialNativePrice, // Old price is now too low
             1 hours,
             100
         );
@@ -187,7 +189,7 @@ contract PricingFlowIntegrationTest is Test {
 
     function test_LowerPricingEnablesMoreSessions() public {
         // Step 1: Register host with high initial pricing
-        uint256 initialHighPrice = 8000;
+        uint256 initialHighPrice = HOST_MIN_PRICE_NATIVE * 2;
 
         vm.prank(owner);
         fabToken.mint(host1, MIN_STAKE);
@@ -203,12 +205,12 @@ contract PricingFlowIntegrationTest is Test {
             "https://api.example.com",
             models,
             initialHighPrice,  // Native price
-            initialHighPrice   // Stable price
+            HOST_MIN_PRICE_STABLE   // Stable price
         );
         vm.stopPrank();
 
         // Step 2: User tries to create session with lower price (fails)
-        uint256 userDesiredPrice = 3000;
+        uint256 userDesiredPrice = HOST_MIN_PRICE_NATIVE + 100000;
         vm.prank(user);
         vm.expectRevert("Price below host minimum");
         marketplace.createSessionJob{value: 0.1 ether}(
@@ -219,7 +221,7 @@ contract PricingFlowIntegrationTest is Test {
         );
 
         // Step 3: Host lowers pricing to be competitive
-        uint256 newLowerPrice = 2500;
+        uint256 newLowerPrice = HOST_MIN_PRICE_NATIVE;
         vm.prank(host1);
         nodeRegistry.updatePricingNative(newLowerPrice);
 
@@ -236,7 +238,7 @@ contract PricingFlowIntegrationTest is Test {
 
     function test_MultipleHostsDifferentPricing() public {
         // Step 1: Register host1 with low pricing
-        uint256 host1Price = 1500;
+        uint256 host1NativePrice = HOST_MIN_PRICE_NATIVE;
         vm.prank(owner);
         fabToken.mint(host1, MIN_STAKE);
 
@@ -250,13 +252,13 @@ contract PricingFlowIntegrationTest is Test {
             "metadata1",
             "https://api1.example.com",
             models,
-            host1Price,  // Native price
-            host1Price   // Stable price
+            host1NativePrice,  // Native price
+            HOST_MIN_PRICE_STABLE   // Stable price
         );
         vm.stopPrank();
 
         // Step 2: Register host2 with medium pricing
-        uint256 host2Price = 3000;
+        uint256 host2NativePrice = HOST_MIN_PRICE_NATIVE * 2;
         vm.prank(owner);
         fabToken.mint(host2, MIN_STAKE);
 
@@ -267,13 +269,13 @@ contract PricingFlowIntegrationTest is Test {
             "metadata2",
             "https://api2.example.com",
             models,
-            host2Price,  // Native price
-            host2Price   // Stable price
+            host2NativePrice,  // Native price
+            HOST_MIN_PRICE_STABLE   // Stable price
         );
         vm.stopPrank();
 
         // Step 3: Register host3 with high pricing
-        uint256 host3Price = 6000;
+        uint256 host3NativePrice = HOST_MIN_PRICE_NATIVE * 3;
         vm.prank(owner);
         fabToken.mint(host3, MIN_STAKE);
 
@@ -284,8 +286,8 @@ contract PricingFlowIntegrationTest is Test {
             "metadata3",
             "https://api3.example.com",
             models,
-            host3Price,  // Native price
-            host3Price   // Stable price
+            host3NativePrice,  // Native price
+            HOST_MIN_PRICE_STABLE   // Stable price
         );
         vm.stopPrank();
 
@@ -295,28 +297,28 @@ contract PricingFlowIntegrationTest is Test {
         vm.prank(user);
         uint256 session1 = marketplace.createSessionJob{value: 0.1 ether}(
             host1,
-            2500, // Above host1's 1500
+            host1NativePrice + 100000, // Above host1's minimum
             1 hours,
             100
         );
         assertGt(session1, 0, "Host1 session created");
 
-        // Session with host2 at medium price (succeeds - at their minimum)
+        // Session with host2 at its minimum price (succeeds - at their minimum)
         vm.prank(user);
         uint256 session2 = marketplace.createSessionJob{value: 0.1 ether}(
             host2,
-            3000, // Exactly host2's minimum
+            host2NativePrice, // Exactly host2's minimum
             1 hours,
             100
         );
         assertGt(session2, 0, "Host2 session created");
 
-        // Session with host3 at medium price (fails - below their minimum)
+        // Session with host3 at host1's price (fails - below their minimum)
         vm.prank(user);
         vm.expectRevert("Price below host minimum");
         marketplace.createSessionJob{value: 0.1 ether}(
             host3,
-            2500, // Below host3's 6000
+            host1NativePrice, // Below host3's minimum
             1 hours,
             100
         );
@@ -325,7 +327,7 @@ contract PricingFlowIntegrationTest is Test {
         vm.prank(user);
         uint256 session3 = marketplace.createSessionJob{value: 0.1 ether}(
             host3,
-            6500, // Above host3's 6000
+            host3NativePrice + 100000, // Above host3's minimum
             1 hours,
             100
         );
@@ -333,11 +335,16 @@ contract PricingFlowIntegrationTest is Test {
     }
 
     function test_GetNodePricingMatchesRegistered() public {
-        // Register multiple hosts with different pricing
-        uint256[] memory prices = new uint256[](3);
-        prices[0] = 1000;
-        prices[1] = 5000;
-        prices[2] = 9000;
+        // Register multiple hosts with different native pricing (above MIN_PRICE_NATIVE)
+        uint256[] memory nativePrices = new uint256[](3);
+        nativePrices[0] = HOST_MIN_PRICE_NATIVE;
+        nativePrices[1] = HOST_MIN_PRICE_NATIVE * 2;
+        nativePrices[2] = HOST_MIN_PRICE_NATIVE * 3;
+
+        uint256[] memory stablePrices = new uint256[](3);
+        stablePrices[0] = 1000;
+        stablePrices[1] = 5000;
+        stablePrices[2] = 9000;
 
         address[] memory hosts = new address[](3);
         hosts[0] = host1;
@@ -358,21 +365,25 @@ contract PricingFlowIntegrationTest is Test {
                 string(abi.encodePacked("metadata", i)),
                 string(abi.encodePacked("https://api", i, ".example.com")),
                 models,
-                prices[i],  // Native price
-                prices[i]   // Stable price - same for this test
+                nativePrices[i],  // Native price
+                stablePrices[i]   // Stable price
             );
             vm.stopPrank();
         }
 
         // Verify all pricing queries match (testing native token queries)
         for (uint i = 0; i < hosts.length; i++) {
-            uint256 queriedPrice = nodeRegistry.getNodePricing(hosts[i], address(0));
-            assertEq(queriedPrice, prices[i], "getNodePricing should match registered price");
+            uint256 queriedNativePrice = nodeRegistry.getNodePricing(hosts[i], address(0));
+            assertEq(queriedNativePrice, nativePrices[i], "getNodePricing native should match registered price");
+
+            uint256 queriedStablePrice = nodeRegistry.getNodePricing(hosts[i], address(usdcToken));
+            assertEq(queriedStablePrice, stablePrices[i], "getNodePricing stable should match registered price");
         }
     }
 
     function test_GetNodeFullInfoMatchesPricing() public {
-        uint256 hostPrice = 4500;
+        uint256 hostNativePrice = HOST_MIN_PRICE_NATIVE;
+        uint256 hostStablePrice = 4500;
 
         vm.prank(owner);
         fabToken.mint(host1, MIN_STAKE);
@@ -387,27 +398,27 @@ contract PricingFlowIntegrationTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            hostPrice,  // Native price
-            hostPrice   // Stable price
+            hostNativePrice,  // Native price
+            hostStablePrice   // Stable price
         );
         vm.stopPrank();
 
         // Query via getNodePricing (native token)
-        uint256 priceFromGetter = nodeRegistry.getNodePricing(host1, address(0));
+        uint256 nativePriceFromGetter = nodeRegistry.getNodePricing(host1, address(0));
 
         // Query via getNodeFullInfo (returns both native and stable)
         (, , , , , , uint256 nativePrice, uint256 stablePrice) = nodeRegistry.getNodeFullInfo(host1);
 
-        // Both should match the registered price
-        assertEq(priceFromGetter, hostPrice, "getNodePricing matches registered");
-        assertEq(nativePrice, hostPrice, "getNodeFullInfo native matches registered");
-        assertEq(stablePrice, hostPrice, "getNodeFullInfo stable matches registered");
-        assertEq(priceFromGetter, nativePrice, "getNodePricing and native price match");
+        // Both should match the registered prices
+        assertEq(nativePriceFromGetter, hostNativePrice, "getNodePricing native matches registered");
+        assertEq(nativePrice, hostNativePrice, "getNodeFullInfo native matches registered");
+        assertEq(stablePrice, hostStablePrice, "getNodeFullInfo stable matches registered");
+        assertEq(nativePriceFromGetter, nativePrice, "getNodePricing and native price match");
     }
 
     function test_CompleteFlowWithTokenPayments() public {
         // Register host with pricing
-        uint256 hostPrice = 3500;
+        uint256 hostStablePrice = 3500;
 
         vm.prank(owner);
         fabToken.mint(host1, MIN_STAKE);
@@ -422,8 +433,8 @@ contract PricingFlowIntegrationTest is Test {
             "metadata",
             "https://api.example.com",
             models,
-            hostPrice,  // Native price
-            hostPrice   // Stable price
+            HOST_MIN_PRICE_NATIVE,  // Native price
+            hostStablePrice   // Stable price
         );
         vm.stopPrank();
 
@@ -431,11 +442,12 @@ contract PricingFlowIntegrationTest is Test {
         vm.startPrank(user);
         usdcToken.approve(address(marketplace), 1000e6);
 
+        uint256 sessionPrice = hostStablePrice + 1000;
         uint256 sessionId = marketplace.createSessionJobWithToken(
             host1,
             address(usdcToken),
             20e6, // 20 USDC
-            hostPrice + 1000, // Above minimum
+            sessionPrice, // Above minimum
             1 hours,
             100
         );
@@ -444,8 +456,8 @@ contract PricingFlowIntegrationTest is Test {
         assertGt(sessionId, 0, "Token session created");
 
         // Verify pricing in session
-        (, , , , , , uint256 sessionPrice, , , , , , , , , ,,) =
+        (, , , , , , uint256 storedSessionPrice, , , , , , , , , ,,) =
             marketplace.sessionJobs(sessionId);
-        assertEq(sessionPrice, hostPrice + 1000, "Token session price correct");
+        assertEq(storedSessionPrice, sessionPrice, "Token session price correct");
     }
 }

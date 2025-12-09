@@ -36,8 +36,9 @@ contract FlexiblePricingFlowTest is Test {
     bytes32 public modelId2 = keccak256(abi.encodePacked("TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF", "/", "TinyLlama-1.1B-Chat-v1.0.Q4_K_M.gguf"));
 
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant HOST_MIN_PRICE_NATIVE = 3_000_000_000;
-    uint256 constant HOST_MIN_PRICE_STABLE = 5000;
+    // With PRICE_PRECISION=1000: prices are 1000x for sub-cent granularity
+    uint256 constant HOST_MIN_PRICE_NATIVE = 3_000_000; // ~$0.013/million @ $4400 ETH
+    uint256 constant HOST_MIN_PRICE_STABLE = 5000; // $5/million
     uint256 constant FEE_BASIS_POINTS = 1000;
     uint256 constant DISPUTE_WINDOW = 30;
     uint256 constant DAI_MIN_DEPOSIT = 1e18; // 1 DAI

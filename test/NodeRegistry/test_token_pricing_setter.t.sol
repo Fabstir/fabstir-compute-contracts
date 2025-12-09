@@ -30,12 +30,13 @@ contract NodeRegistryTokenPricingSetterTest is Test {
     bytes32 public modelId1 = keccak256(abi.encodePacked("CohereForAI/TinyVicuna-1B-32k-GGUF", "/", "tiny-vicuna-1b.q4_k_m.gguf"));
 
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant DEFAULT_NATIVE_PRICE = 3_000_000_000;
-    uint256 constant DEFAULT_STABLE_PRICE = 2000;
+    // With PRICE_PRECISION=1000: prices are 1000x for sub-cent granularity
+    uint256 constant DEFAULT_NATIVE_PRICE = 3_000_000; // ~$0.013/million
+    uint256 constant DEFAULT_STABLE_PRICE = 2000; // $2/million
 
     // Price range constants (same as contract)
-    uint256 constant MIN_PRICE_PER_TOKEN_STABLE = 10;
-    uint256 constant MAX_PRICE_PER_TOKEN_STABLE = 100_000;
+    uint256 constant MIN_PRICE_PER_TOKEN_STABLE = 1;
+    uint256 constant MAX_PRICE_PER_TOKEN_STABLE = 100_000_000;
 
     // Event to test
     event TokenPricingUpdated(address indexed operator, address indexed token, uint256 price);
@@ -163,11 +164,18 @@ contract NodeRegistryTokenPricingSetterTest is Test {
         nodeRegistry.setTokenPricing(address(0), 5000);
     }
 
-    /// @notice Test that price below minimum is rejected
-    function test_InvalidPriceTooLow() public {
+    /// @notice Test that price of 0 clears override (allowed for clearing custom pricing)
+    /// @dev With MIN_PRICE_PER_TOKEN_STABLE=1, there is no valid non-zero value below minimum
+    function test_ZeroPriceAllowedForClearing() public {
+        // First set a price
         vm.prank(host);
-        vm.expectRevert("Price below minimum");
-        nodeRegistry.setTokenPricing(USDC_ADDRESS, MIN_PRICE_PER_TOKEN_STABLE - 1);
+        nodeRegistry.setTokenPricing(USDC_ADDRESS, 5000);
+        assertEq(nodeRegistry.customTokenPricing(host, USDC_ADDRESS), 5000, "Price should be set");
+
+        // Setting to 0 clears the override (allowed)
+        vm.prank(host);
+        nodeRegistry.setTokenPricing(USDC_ADDRESS, 0);
+        assertEq(nodeRegistry.customTokenPricing(host, USDC_ADDRESS), 0, "Price should be cleared");
     }
 
     /// @notice Test that price above maximum is rejected

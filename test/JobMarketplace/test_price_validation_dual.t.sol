@@ -85,8 +85,9 @@ contract JobMarketplaceDualPricingValidationTest is Test {
         models[0] = modelId;
 
         // Register with DIFFERENT prices: ETH cheaper, USDC more expensive
-        uint256 nativePrice = 3_000_000_000; // Above MIN_PRICE_NATIVE
-        uint256 stablePrice = 5000; // 0.005 USDC per AI token
+        // With PRICE_PRECISION=1000: prices are 1000x for sub-cent granularity
+        uint256 nativePrice = 3_000_000; // ~$0.013/million @ $4400 ETH
+        uint256 stablePrice = 5000; // $5/million
 
         nodeRegistry.registerNode(
             "metadata",
@@ -108,9 +109,9 @@ contract JobMarketplaceDualPricingValidationTest is Test {
     function test_ETHSession_ValidatesNativePrice() public {
         vm.startPrank(renter);
 
-        uint256 ethPrice = 3_500_000_000; // Above host's native minimum (3_000_000_000)
+        uint256 ethPrice = 3_500_000; // Above host's native minimum (3_000_000)
 
-        // Should succeed because 3_500_000_000 >= 3_000_000_000 (native minimum)
+        // Should succeed because 3_500_000 >= 3_000_000 (native minimum)
         uint256 jobId = marketplace.createSessionJob{value: 0.001 ether}(
             host,
             ethPrice,
@@ -127,9 +128,9 @@ contract JobMarketplaceDualPricingValidationTest is Test {
     function test_ETHSession_RejectsBelowNativePrice() public {
         vm.startPrank(renter);
 
-        uint256 ethPrice = 2_500_000_000; // Below host's native minimum (3_000_000_000)
+        uint256 ethPrice = 2_500_000; // Below host's native minimum (3_000_000)
 
-        // Should fail because 2_500_000_000 < 3_000_000_000 (native minimum)
+        // Should fail because 2_500_000 < 3_000_000 (native minimum)
         vm.expectRevert("Price below host minimum");
         marketplace.createSessionJob{value: 0.001 ether}(
             host,
@@ -188,19 +189,19 @@ contract JobMarketplaceDualPricingValidationTest is Test {
 
     /// @notice Test that ETH and USDC pricing are independent
     function test_DualPricing_Independence() public {
-        // ETH price is 3_000_000_000, USDC price is 5000
+        // ETH price is 3_000_000, USDC price is 5000
 
         vm.startPrank(renter);
 
-        // ETH session with price 3_500_000_000 should work (3_500_000_000 >= 3_000_000_000)
+        // ETH session with price 3_500_000 should work (3_500_000 >= 3_000_000)
         uint256 ethJobId = marketplace.createSessionJob{value: 0.001 ether}(
             host,
-            3_500_000_000,
+            3_500_000,
             3600,
             100
         );
 
-        // USDC session with same price 3_500_000_000 should also work (way above 5000)
+        // USDC session with same price 3_500_000 should also work (way above 5000)
         // Let's use a price below USDC minimum instead
         usdcToken.approve(address(marketplace), 10_000_000);
 
@@ -225,11 +226,11 @@ contract JobMarketplaceDualPricingValidationTest is Test {
         vm.startPrank(renter);
 
         // Try ETH session with USDC's minimum price (5000)
-        // This should work because 5000 >= 3_000_000_000 is FALSE, but we want to test the other direction
-        // Let's test with 4_000_000_000 which is above ETH minimum
+        // This should work because 5000 >= 3_000_000 is FALSE, but we want to test the other direction
+        // Let's test with 4_000_000 which is above ETH minimum
         uint256 jobId = marketplace.createSessionJob{value: 0.001 ether}(
             host,
-            4_000_000_000, // Well above ETH minimum
+            4_000_000, // Well above ETH minimum
             3600,
             1000
         );
@@ -274,7 +275,7 @@ contract JobMarketplaceDualPricingValidationTest is Test {
             host,
             address(0), // Native token
             0.001 ether,
-            2_500_000_000, // Below native minimum (3_000_000_000)
+            2_500_000, // Below native minimum (3_000_000)
             3600,
             1000
         );

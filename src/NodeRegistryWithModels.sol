@@ -16,10 +16,22 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     IERC20 public immutable fabToken;
     ModelRegistry public modelRegistry;
     uint256 public constant MIN_STAKE = 1000 * 10**18; // 1000 FAB tokens
-    uint256 public constant MIN_PRICE_PER_TOKEN_STABLE = 10; // Minimum for stablecoins: 0.00001 USDC per AI token
-    uint256 public constant MIN_PRICE_PER_TOKEN_NATIVE = 2_272_727_273; // Minimum for native tokens: ~0.00001 USD @ $4400 ETH
-    uint256 public constant MAX_PRICE_PER_TOKEN_STABLE = 100_000; // Maximum for stablecoins: 0.1 USDC per AI token
-    uint256 public constant MAX_PRICE_PER_TOKEN_NATIVE = 22_727_272_727_273; // Maximum for native tokens: ~0.1 USD @ $4400 ETH
+
+    // Price precision: prices are stored with 1000x precision for sub-cent granularity
+    // To get actual USDC amount: (tokensUsed * pricePerToken) / PRICE_PRECISION
+    uint256 public constant PRICE_PRECISION = 1000;
+
+    // Stable pricing (with 1000x precision):
+    // MIN = 1 means $0.001 per million tokens (1/1000 = 0.001 USDC per 1M tokens)
+    // MAX = 100_000_000 means $100,000 per million tokens
+    uint256 public constant MIN_PRICE_PER_TOKEN_STABLE = 1; // $0.001 per million tokens
+    uint256 public constant MAX_PRICE_PER_TOKEN_STABLE = 100_000_000; // $100,000 per million tokens
+
+    // Native pricing (with 1000x precision, calibrated for ~$4400 ETH):
+    // MIN ~= $0.001/million in ETH terms: 0.001 / 4400 * 1e18 / 1e6 * 1000 = 227,272 wei (with precision)
+    // MAX ~= $100,000/million in ETH terms
+    uint256 public constant MIN_PRICE_PER_TOKEN_NATIVE = 227_273; // ~$0.001 per million tokens @ $4400 ETH
+    uint256 public constant MAX_PRICE_PER_TOKEN_NATIVE = 22_727_272_727_273_000; // ~$100,000 per million tokens @ $4400 ETH
 
     struct Node {
         address operator;
@@ -28,8 +40,8 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
         string metadata;        // JSON formatted metadata
         string apiUrl;          // API endpoint URL
         bytes32[] supportedModels; // Array of model IDs this node supports
-        uint256 minPricePerTokenNative;  // Minimum price per token for native tokens (ETH/BNB) - 18 decimals
-        uint256 minPricePerTokenStable;  // Minimum price per token for stablecoins (USDC) - 6 decimals
+        uint256 minPricePerTokenNative;  // Min price for native tokens (with PRICE_PRECISION, divide by 1000 for actual)
+        uint256 minPricePerTokenStable;  // Min price for stablecoins (with PRICE_PRECISION, divide by 1000 for actual)
     }
 
     // Mappings
@@ -71,8 +83,8 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
      * @param metadata JSON formatted metadata with hardware specs, capabilities, etc.
      * @param apiUrl The API endpoint URL for the node
      * @param modelIds Array of model IDs this node supports
-     * @param minPricePerTokenNative Minimum price for native tokens (ETH/BNB) per AI token (2,272,727,273-22,727,272,727,273 wei)
-     * @param minPricePerTokenStable Minimum price for stablecoins (USDC) per AI token (10-100,000)
+     * @param minPricePerTokenNative Minimum price for native tokens with 1000x precision (divide by PRICE_PRECISION for actual)
+     * @param minPricePerTokenStable Minimum price for stablecoins with 1000x precision (e.g., 60 = $0.06/million tokens)
      */
     function registerNode(
         string memory metadata,

@@ -19,12 +19,13 @@ contract NodeRegistryPricingQueriesTest is Test {
     bytes32 public modelId = keccak256(abi.encodePacked("CohereForAI/TinyVicuna-1B-32k-GGUF", "/", "tiny-vicuna-1b.q4_k_m.gguf"));
 
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant MIN_PRICE_STABLE = 10; // 0.00001 USDC per token
-    uint256 constant MIN_PRICE_NATIVE = 2_272_727_273; // ~0.00001 USD @ $4400 ETH
-    uint256 constant MAX_PRICE_STABLE = 100_000; // 0.1 USDC per token
-    uint256 constant MAX_PRICE_NATIVE = 22_727_272_727_273; // ~0.1 USD @ $4400 ETH
-    uint256 constant INITIAL_PRICE_NATIVE = 3_000_000_000; // Above MIN_PRICE_NATIVE
-    uint256 constant INITIAL_PRICE_STABLE = 1500; // Above MIN_PRICE_STABLE
+    // With PRICE_PRECISION=1000: prices are 1000x for sub-cent granularity
+    uint256 constant MIN_PRICE_STABLE = 1; // $0.001 per million tokens
+    uint256 constant MIN_PRICE_NATIVE = 227_273; // ~$0.001 per million @ $4400 ETH
+    uint256 constant MAX_PRICE_STABLE = 100_000_000; // $100,000 per million tokens
+    uint256 constant MAX_PRICE_NATIVE = 22_727_272_727_273_000; // ~$100,000 per million @ $4400 ETH
+    uint256 constant INITIAL_PRICE_NATIVE = 3_000_000; // ~$0.013/million - Above MIN_PRICE_NATIVE
+    uint256 constant INITIAL_PRICE_STABLE = 1500; // $1.50/million - Above MIN_PRICE_STABLE
 
     function setUp() public {
         vm.startPrank(owner);

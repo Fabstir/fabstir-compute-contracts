@@ -44,9 +44,10 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
   - SHA256 hash verification for model integrity
   - FAB token voting for community proposals
   - Emergency model deactivation capability
-- **Approved Models** (MVP Testing - ONLY THESE TWO):
+- **Approved Models** (3 models):
   - TinyVicuna-1B-32k (CohereForAI/TinyVicuna-1B-32k-GGUF)
   - TinyLlama-1.1B Chat (TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF)
+  - OpenAI-GPT-OSS-20B (bartowski/openai_gpt-oss-20b-GGUF) - MXFP4 quantization
 
 ### NodeRegistryWithModels
 - **Address**: 0x48aa4A8047A45862Da8412FAB71ef66C17c7766d ✅ NEW - Per-Model Pricing

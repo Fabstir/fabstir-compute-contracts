@@ -26,8 +26,9 @@ contract NodeRegistryModelPricingStorageTest is Test {
     bytes32 public modelId2 = keccak256(abi.encodePacked("TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF", "/", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"));
 
     uint256 constant MIN_STAKE = 1000 * 10**18;
-    uint256 constant MIN_PRICE_NATIVE = 2_272_727_273;
-    uint256 constant MIN_PRICE_STABLE = 10;
+    // With PRICE_PRECISION=1000: prices are 1000x for sub-cent granularity
+    uint256 constant MIN_PRICE_NATIVE = 227_273;
+    uint256 constant MIN_PRICE_STABLE = 1;
 
     function setUp() public {
         vm.startPrank(owner);

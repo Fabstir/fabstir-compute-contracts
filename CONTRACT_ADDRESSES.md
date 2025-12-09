@@ -25,7 +25,7 @@ Last Updated: December 9, 2025
 |----------|---------|-------------|
 | **JobMarketplaceWithModels** | `0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1` | ✅ ACTIVE - Flexible pricing, model-aware sessions (Dec 9, 2025) |
 | **NodeRegistryWithModels** | `0x48aa4A8047A45862Da8412FAB71ef66C17c7766d` | ✅ ACTIVE - Per-model pricing, multi-token support (Dec 9, 2025) |
-| **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | Model governance (2 approved models) |
+| **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | Model governance (3 approved models) |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | EZKL proof verification |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | Host earnings accumulation |
 
@@ -39,10 +39,13 @@ Last Updated: December 9, 2025
 
 ## Approved Models
 
-| Model | HuggingFace Repo | File |
-|-------|------------------|------|
-| **TinyVicuna-1B** | CohereForAI/TinyVicuna-1B-32k-GGUF | tiny-vicuna-1b.q4_k_m.gguf |
-| **TinyLlama-1.1B** | TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF | tinyllama-1b.Q4_K_M.gguf |
+| Model | HuggingFace Repo | File | Model ID |
+|-------|------------------|------|----------|
+| **TinyVicuna-1B** | CohereForAI/TinyVicuna-1B-32k-GGUF | tiny-vicuna-1b.q4_k_m.gguf | `0x0b75a206...` |
+| **TinyLlama-1.1B** | TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF | tinyllama-1b.Q4_K_M.gguf | `0x14843424...` |
+| **OpenAI-GPT-OSS-20B** | bartowski/openai_gpt-oss-20b-GGUF | openai_gpt-oss-20b-MXFP4.gguf | `0x7583557c...` |
+
+> See [API Reference](docs/API_REFERENCE.md) for full model IDs.
 
 ## Token Contracts
 

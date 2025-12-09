@@ -98,12 +98,13 @@ contract JobMarketplaceS5ProofStorageTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
 
+        // With PRICE_PRECISION=1000: prices are 1000x for sub-cent granularity
         nodeRegistry.registerNode(
             "metadata",
             "https://api.example.com",
             models,
-            3_000_000_000, // Native price
-            5000           // Stable price
+            3_000_000, // Native price (~$0.013/million @ $4400 ETH)
+            5000       // Stable price ($5/million)
         );
 
         vm.stopPrank();
@@ -115,9 +116,9 @@ contract JobMarketplaceS5ProofStorageTest is Test {
         vm.prank(renter);
         testJobId = marketplace.createSessionJob{value: 0.01 ether}(
             host,
-            3_000_000_000, // Price per token
-            3600,          // 1 hour
-            100            // Proof interval
+            3_000_000, // Price per token (with PRICE_PRECISION)
+            3600,      // 1 hour
+            100        // Proof interval
         );
     }
 
@@ -287,14 +288,17 @@ contract JobMarketplaceS5ProofStorageTest is Test {
 
     /// @notice Test cannot exceed deposit
     function test_SubmitProofOfWork_CannotExceedDeposit() public {
-        // Try to claim more tokens than deposit allows
-        uint256 excessiveTokens = 100000000; // Way more than deposit allows
+        // With PRICE_PRECISION=1000: maxTokens = deposit * PRICE_PRECISION / pricePerToken
+        // deposit = 0.01 ether = 10^16 wei, pricePerToken = 3_000_000
+        // maxTokens = 10^16 * 1000 / 3_000_000 = 10^19 / 3_000_000 ≈ 3.33 * 10^12
+        // We need tokens way above that
+        uint256 excessiveTokens = 10_000_000_000_000_000; // 10^16 - Way more than deposit allows
 
-        // Warp enough time to pass time validation (100000000 tokens / 10 tokens per second / 2 for buffer = 5000000 seconds)
-        vm.warp(block.timestamp + 10000000);
+        // Warp enough time to pass time validation
+        vm.warp(block.timestamp + 100000000000);
 
         vm.prank(host);
-        vm.expectRevert("Exceeds deposit");
+        vm.expectRevert("Excessive tokens claimed");
         marketplace.submitProofOfWork(testJobId, excessiveTokens, MOCK_PROOF_HASH, MOCK_PROOF_CID);
     }
 
