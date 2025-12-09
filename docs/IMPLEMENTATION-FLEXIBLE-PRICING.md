@@ -39,7 +39,7 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (63%)**
+**Overall Status: IN PROGRESS (69%)**
 
 - [x] **Phase 1: Per-Model Pricing Infrastructure** (5/5 sub-phases) ✅
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
@@ -52,9 +52,10 @@ This ensures existing code always gets valid pricing via the default fallback.
   - [x] Sub-phase 2.2: Add setTokenPricing() Function ✅
   - [x] Sub-phase 2.3: Update getNodePricing() with Token Fallback ✅
   - [x] Sub-phase 2.4: Add Admin Token Acceptance Function ✅
-- [ ] **Phase 3: Model-Aware Sessions** (2/3 sub-phases)
+- [x] **Phase 3: Model-Aware Sessions** (3/3 sub-phases) ✅
   - [x] Sub-phase 3.1: Add Session Model Tracking ✅
   - [x] Sub-phase 3.2: Add createSessionJobForModel() Function ✅
+  - [x] Sub-phase 3.3: Add createSessionJobForModelWithToken() Function ✅
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
 - [ ] **Phase 5: Deployment** (0/4 sub-phases)
 
@@ -720,15 +721,15 @@ function test_CreateSessionJobForModel_TracksNativeDeposits() public { /* ... */
 Token version of model-aware session creation.
 
 **Tasks:**
-- [ ] Create `createSessionJobForModelWithToken(address host, bytes32 modelId, address token, ...)` function
-- [ ] Validate host supports the specified model
-- [ ] Query model-specific pricing for the token
-- [ ] Validate pricePerToken >= model-specific minimum for token
-- [ ] Store modelId in sessionModel mapping
-- [ ] Write test file `test/JobMarketplace/test_session_model_token.t.sol`
-- [ ] Test: Session created with USDC and model pricing
-- [ ] Test: Fails if price below model-specific stable minimum
-- [ ] Test: Works with custom token pricing for model
+- [x] Create `createSessionJobForModelWithToken(address host, bytes32 modelId, address token, ...)` function
+- [x] Validate host supports the specified model
+- [x] Query model-specific pricing for the token
+- [x] Validate pricePerToken >= model-specific minimum for token
+- [x] Store modelId in sessionModel mapping
+- [x] Write test file `test/JobMarketplace/test_session_model_token.t.sol`
+- [x] Test: Session created with USDC and model pricing
+- [x] Test: Fails if price below model-specific stable minimum
+- [x] Test: Works with custom token pricing for model
 
 **Implementation:**
 ```solidity
@@ -800,10 +801,38 @@ function createSessionJobForModelWithToken(
 **Tests:**
 ```solidity
 // test/JobMarketplace/test_session_model_token.t.sol
-function test_SessionCreatedWithUSDCAndModelPricing() public { /* ... */ }
-function test_FailsIfPriceBelowModelStableMinimum() public { /* ... */ }
-function test_WorksWithCustomTokenPricingForModel() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_Success() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_StoresModelId() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_FailsIfHostDoesNotSupportModel() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_FailsIfPriceBelowModelMinimum() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_UsesModelOverridePricing() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_FallsBackToDefaultPricing() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_EmitsEvents() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_FailsIfTokenNotAccepted() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_ValidatesMinDeposit() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_ValidatesZeroDeposit() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_ValidatesPrice() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_ValidatesDuration() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_ValidatesProofInterval() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_ValidatesHostAddress() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_IncrementsNextJobId() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_TransfersTokens() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_TracksTokenDeposits() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_UpdatesSessionArrays() public { /* ... */ }
+function test_CreateSessionJobForModelWithToken_DifferentModelsHaveDifferentPrices() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added createSessionJobForModelWithToken function at lines 405-468 in JobMarketplaceWithModels.sol
+- Uses nodeSupportsModel() to validate host supports model
+- Uses getModelPricing() to get model-specific stable pricing (falls back to default)
+- Stores modelId in sessionModel mapping
+- Transfers tokens from user to marketplace
+- Emits both SessionJobCreated and SessionJobCreatedForModel events
+- 19 new tests in test_session_model_token.t.sol (all passing)
+- 269 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
+- Phase 3 complete!
 
 ---
 

@@ -393,6 +393,80 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         return jobId;
     }
 
+    /// @notice Create a session job for a specific model with token payment
+    /// @param host The host address to create the session with
+    /// @param modelId The model ID to use for this session
+    /// @param token The token address for payment (e.g., USDC)
+    /// @param deposit The deposit amount in tokens
+    /// @param pricePerToken The price per token offered
+    /// @param maxDuration Maximum duration of the session
+    /// @param proofInterval Interval between proofs
+    /// @return jobId The created session ID
+    function createSessionJobForModelWithToken(
+        address host,
+        bytes32 modelId,
+        address token,
+        uint256 deposit,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval
+    ) external returns (uint256 jobId) {
+        // Token validations
+        require(acceptedTokens[token], "Token not accepted");
+        uint256 minRequired = tokenMinDeposits[token];
+        require(minRequired > 0, "Token not configured");
+        require(deposit >= minRequired, "Insufficient deposit");
+        require(deposit > 0, "Zero deposit");
+        require(deposit <= 1000 ether, "Deposit too large");
+
+        // Standard validations
+        require(pricePerToken > 0, "Invalid price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
+        require(proofInterval > 0, "Invalid proof interval");
+        require(host != address(0), "Invalid host");
+
+        // Model-specific validations
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
+
+        _validateHostRegistration(host);
+        _validateProofRequirements(proofInterval, deposit, pricePerToken);
+
+        // Get model-specific pricing for this token (falls back to default stable if not set)
+        uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, token);
+        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+
+        IERC20(token).transferFrom(msg.sender, address(this), deposit);
+
+        jobId = nextJobId++;
+
+        // Store model for this session (Phase 3.1)
+        sessionModel[jobId] = modelId;
+
+        // Create session (same pattern as createSessionJobWithToken)
+        SessionJob storage session = sessionJobs[jobId];
+        session.id = jobId;
+        session.depositor = msg.sender;
+        session.requester = msg.sender;
+        session.host = host;
+        session.paymentToken = token;
+        session.deposit = deposit;
+        session.pricePerToken = pricePerToken;
+        session.maxDuration = maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = proofInterval;
+        session.status = SessionStatus.Active;
+
+        userDepositsToken[msg.sender][token] += deposit;
+        userSessions[msg.sender].push(jobId);
+        hostSessions[host].push(jobId);
+
+        emit SessionJobCreated(jobId, msg.sender, host, deposit);
+        emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, deposit);
+
+        return jobId;
+    }
+
     function _validateHostRegistration(address host) internal view {
         // For now, just check if host address is not zero
         // Full validation would require proper struct handling
