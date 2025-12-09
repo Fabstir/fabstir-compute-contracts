@@ -402,6 +402,47 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Get all model prices for a host in a single batch query
+     * @dev Returns arrays of model IDs and their effective prices (model-specific or default)
+     * @param operator The address of the node operator
+     * @return modelIds Array of model IDs the host supports
+     * @return nativePrices Array of effective native token prices for each model
+     * @return stablePrices Array of effective stablecoin prices for each model
+     */
+    function getHostModelPrices(address operator) external view returns (
+        bytes32[] memory modelIds,
+        uint256[] memory nativePrices,
+        uint256[] memory stablePrices
+    ) {
+        // Return empty arrays for non-registered operator
+        if (nodes[operator].operator == address(0)) {
+            return (new bytes32[](0), new uint256[](0), new uint256[](0));
+        }
+
+        Node storage node = nodes[operator];
+        uint256 modelCount = node.supportedModels.length;
+
+        modelIds = new bytes32[](modelCount);
+        nativePrices = new uint256[](modelCount);
+        stablePrices = new uint256[](modelCount);
+
+        for (uint256 i = 0; i < modelCount; i++) {
+            bytes32 modelId = node.supportedModels[i];
+            modelIds[i] = modelId;
+
+            // Get effective native price (model-specific or default)
+            uint256 nativeOverride = modelPricingNative[operator][modelId];
+            nativePrices[i] = nativeOverride > 0 ? nativeOverride : node.minPricePerTokenNative;
+
+            // Get effective stable price (model-specific or default)
+            uint256 stableOverride = modelPricingStable[operator][modelId];
+            stablePrices[i] = stableOverride > 0 ? stableOverride : node.minPricePerTokenStable;
+        }
+
+        return (modelIds, nativePrices, stablePrices);
+    }
+
+    /**
      * @notice Get all active nodes
      */
     function getAllActiveNodes() external view returns (address[] memory) {

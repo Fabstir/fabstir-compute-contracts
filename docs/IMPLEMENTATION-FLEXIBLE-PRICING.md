@@ -39,13 +39,14 @@ This ensures existing code always gets valid pricing via the default fallback.
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (22%)**
+**Overall Status: IN PROGRESS (28%)**
 
-- [ ] **Phase 1: Per-Model Pricing Infrastructure** (4/5 sub-phases)
+- [x] **Phase 1: Per-Model Pricing Infrastructure** (5/5 sub-phases) ✅
   - [x] Sub-phase 1.1: Add Per-Model Pricing Mappings ✅
   - [x] Sub-phase 1.2: Add setModelPricing() Function ✅
   - [x] Sub-phase 1.3: Add getModelPricing() View Function ✅
   - [x] Sub-phase 1.4: Add clearModelPricing() Function ✅
+  - [x] Sub-phase 1.5: Add getHostModelPrices() Batch Query ✅
 - [ ] **Phase 2: Multi-Token Support** (0/4 sub-phases)
 - [ ] **Phase 3: Model-Aware Sessions** (0/3 sub-phases)
 - [ ] **Phase 4: Integration Testing** (0/2 sub-phases)
@@ -278,13 +279,13 @@ function test_NonRegisteredCannotClear() public { /* ... */ }
 Efficient batch query for all model prices for a host.
 
 **Tasks:**
-- [ ] Create `getHostModelPrices(address operator)` view function
-- [ ] Return arrays: modelIds[], nativePrices[], stablePrices[]
-- [ ] Include both model-specific overrides and effective prices
-- [ ] Write test file `test/NodeRegistry/test_model_pricing_batch.t.sol`
-- [ ] Test: Returns all supported models with prices
-- [ ] Test: Returns effective price (override or default)
-- [ ] Test: Empty arrays for non-registered operator
+- [x] Create `getHostModelPrices(address operator)` view function
+- [x] Return arrays: modelIds[], nativePrices[], stablePrices[]
+- [x] Include both model-specific overrides and effective prices
+- [x] Write test file `test/NodeRegistry/test_model_pricing_batch.t.sol`
+- [x] Test: Returns all supported models with prices
+- [x] Test: Returns effective price (override or default)
+- [x] Test: Empty arrays for non-registered operator
 
 **Implementation:**
 ```solidity
@@ -325,6 +326,14 @@ function test_ReturnsAllSupportedModelsWithPrices() public { /* ... */ }
 function test_ReturnsEffectivePriceOverrideOrDefault() public { /* ... */ }
 function test_EmptyArraysForNonRegisteredOperator() public { /* ... */ }
 ```
+
+**Completion Notes (2025-12-09):**
+- Added getHostModelPrices function at lines 412-443
+- Returns effective prices (model-specific override or default)
+- 10 new tests in test_model_pricing_batch.t.sol (all passing)
+- 188 total tests passing (backward compatible)
+- TDD: RED phase confirmed, GREEN phase achieved
+- Phase 1 complete!
 
 ---
 
