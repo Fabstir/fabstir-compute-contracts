@@ -123,23 +123,18 @@ await marketplace.completeSessionJob(jobId, conversationCID);
 
 ## Documentation
 
-### 📚 Technical Documentation
-- [Technical README](docs/technical/README.md) - Comprehensive technical reference
-- [Architecture](docs/ARCHITECTURE.md) - System architecture and S5 proof storage
-- [Contract Addresses](CONTRACT_ADDRESSES.md) - All deployed contracts
+### 📚 Core Documentation
+- [Client ABIs & Integration](client-abis/README.md) - Contract ABIs and SDK integration guide
+- [API Reference](docs/API_REFERENCE.md) - Complete API documentation
+- [Breaking Changes](docs/BREAKING_CHANGES.md) - Migration guide for SDK developers
 
-### 📖 Contract Documentation
-- [JobMarketplace](docs/technical/contracts/JobMarketplace.md) - Session jobs with S5 storage
-- [NodeRegistry](docs/technical/contracts/NodeRegistry.md) - Host registration and dual pricing
-- [ProofSystem](docs/technical/contracts/ProofSystem.md) - S5 proof verification
-
-### 🚀 Deployment Guides
-- [S5 Proof Storage Deployment](docs/S5_PROOF_STORAGE_DEPLOYMENT.md) - S5 deployment guide
+### 🚀 Deployment
 - [Contract Deployment Checklist](docs/CONTRACT_DEPLOYMENT_CHECKLIST.md) - Complete deployment steps
 
-### 📝 Implementation Guides
-- [Session Jobs](docs/SESSION_JOBS.md) - Session-based streaming payments
-- [Multi-Chain Deployment](docs/MULTI_CHAIN_DEPLOYMENT.md) - Multi-chain support
+### 📖 Additional Resources
+- [Best Practices](docs/best-practices/) - Security, performance, and operations
+- [Examples](docs/examples/) - Code examples (basic to advanced)
+- [Guides](docs/guides/) - Developer and operator guides
 
 ## Development
 
@@ -269,7 +264,7 @@ function submitProofOfWork(
 - Upload proofs to S5 before blockchain submission
 - Calculate SHA256 hash and submit with CID
 
-See [S5_PROOF_STORAGE_DEPLOYMENT.md](docs/S5_PROOF_STORAGE_DEPLOYMENT.md) for migration guide.
+See [Breaking Changes](docs/BREAKING_CHANGES.md) for migration guide.
 
 ## Security
 
