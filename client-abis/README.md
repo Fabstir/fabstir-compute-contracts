@@ -2,16 +2,16 @@
 
 This directory contains the Application Binary Interfaces (ABIs) for client integration.
 
-## Current Deployed Contracts (December 9, 2025 - Flexible Pricing)
+## Current Deployed Contracts (December 10, 2025 - Rate Limit Fix)
 
 ### JobMarketplaceWithModels
-- **Address**: 0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1
+- **Address**: 0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97
 - **Network**: Base Sepolia
-- **Status**: ✅ FLEXIBLE PRICING (December 9, 2025)
+- **Status**: ✅ PRICE_PRECISION=1000, 2000 tokens/sec rate limit (December 10, 2025)
 - **Configuration**:
   - ProofSystem: 0x2ACcc60893872A499700908889B38C5420CBcFD1 ✅ SET
   - Authorized in HostEarnings: ✅ CONFIRMED
-  - NodeRegistry: 0x48aa4A8047A45862Da8412FAB71ef66C17c7766d (Per-model pricing support)
+  - NodeRegistry: 0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999 (PRICE_PRECISION support)
 - **Key Features**:
   - 🆕 **Per-Model Pricing Support**: Query model-specific pricing with `getModelPricing()`
   - 🆕 **Model-Aware Sessions**: Create sessions tied to specific models
@@ -50,10 +50,10 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
   - OpenAI-GPT-OSS-20B (bartowski/openai_gpt-oss-20b-GGUF) - MXFP4 quantization
 
 ### NodeRegistryWithModels
-- **Address**: 0x48aa4A8047A45862Da8412FAB71ef66C17c7766d ✅ NEW - Per-Model Pricing
-- **Previous**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6 (Dual pricing only - deprecated)
+- **Address**: 0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999 ✅ NEW - PRICE_PRECISION=1000
+- **Previous**: 0x48aa4A8047A45862Da8412FAB71ef66C17c7766d (Without PRICE_PRECISION - deprecated)
 - **Network**: Base Sepolia
-- **Status**: ✅ PER-MODEL & MULTI-TOKEN PRICING (December 9, 2025)
+- **Status**: ✅ PRICE_PRECISION=1000 for sub-$1/million pricing (December 9, 2025)
 - **Stake Required**: 1000 FAB tokens
 - **Key Features**:
   - 🆕 **Per-Model Pricing**: Set different prices for different AI models
@@ -95,7 +95,7 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 - **Address**: 0x908962e8c6CE72610021586f85ebDE09aAc97776
 - **Network**: Base Sepolia
 - **Purpose**: Tracks accumulated earnings for hosts with batch withdrawal support
-- **Authorized Marketplace**: 0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E ✅ UPDATED (S5 Proof Storage)
+- **Authorized Marketplace**: 0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97 ✅ UPDATED (2000 tok/sec Rate Limit - Dec 10, 2025)
 
 ## Model Registry Usage (NEW)
 
@@ -671,11 +671,25 @@ const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
 
 ## Deprecated Contracts
 
+### JobMarketplaceWithModels (200 tok/sec Rate Limit)
+- **Address**: 0x5497a28B4bE6b1219F93e6Fcd631E8aCdC173709
+- **Deprecated**: December 10, 2025
+- **Reason**: Rate limit of 200 tokens/sec still too slow for small models on high-end GPUs (800-1500 tok/sec)
+- **Replacement**: 0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97
+- **Migration Required**: Update contract address in SDK config
+
+### JobMarketplaceWithModels (20 tok/sec Rate Limit)
+- **Address**: 0xfD764804C5A5808b79D66746BAF4B65fb4413731
+- **Deprecated**: December 10, 2025
+- **Reason**: Rate limit of 20 tokens/sec was too slow for real LLM inference (50-100+ tokens/sec)
+- **Replacement**: 0x5497a28B4bE6b1219F93e6Fcd631E8aCdC173709 (also deprecated)
+- **Migration Required**: Update contract address in SDK config
+
 ### JobMarketplaceWithModels (Pre-S5 Storage)
 - **Address**: 0xe169A4B57700080725f9553E3Cc69885fea13629
 - **Deprecated**: October 14, 2025
 - **Reason**: Replaced by S5 proof storage (on-chain proofs exceeded 128KB RPC limit, causing 100% failure rate)
-- **Replacement**: 0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E
+- **Replacement**: 0xfD764804C5A5808b79D66746BAF4B65fb4413731 (also deprecated)
 - **Migration Required**: Update to S5 proof submission workflow (4-parameter submitProofOfWork)
 
 ### JobMarketplaceWithModels (Incorrect MAX_PRICE_NATIVE)
@@ -691,4 +705,18 @@ const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
 - **Replacement**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6
 
 ## Last Updated
-October 14, 2025 - S5 off-chain proof storage deployment with hash + CID architecture
+December 10, 2025 - Rate limit fix (200 tokens/sec) for real LLM inference speeds
+
+### PRICE_PRECISION Breaking Change
+
+With PRICE_PRECISION=1000, all prices are now stored with 1000x multiplier:
+
+| USD Price/Million | OLD pricePerToken | NEW pricePerToken |
+|-------------------|-------------------|-------------------|
+| $0.06/million | Not supported | 60 |
+| $0.27/million | Not supported | 270 |
+| $1/million | 1 | 1,000 |
+| $5/million | 5 | 5,000 |
+| $10/million | 10 | 10,000 |
+
+See `/docs/BREAKING_CHANGES.md` for full migration guide.

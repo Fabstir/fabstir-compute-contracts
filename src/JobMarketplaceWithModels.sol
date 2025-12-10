@@ -499,7 +499,9 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         require(tokensClaimed >= MIN_PROVEN_TOKENS, "Must claim minimum tokens");
 
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
-        uint256 expectedTokens = timeSinceLastProof * 10;
+        // Rate limit: 1000 tokens/sec base * 2x buffer = 2000 tokens/sec max
+        // Supports small models on high-end GPUs (e.g., TinyLlama 1.1B on RTX 5090: 800-1500 tok/sec)
+        uint256 expectedTokens = timeSinceLastProof * 1000;
         require(tokensClaimed <= expectedTokens * 2, "Excessive tokens claimed");
 
         uint256 newTotal = session.tokensUsed + tokensClaimed;
