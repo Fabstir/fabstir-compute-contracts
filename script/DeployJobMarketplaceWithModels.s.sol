@@ -10,7 +10,7 @@ contract DeployJobMarketplaceWithModels is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         // Contract addresses
-        address nodeRegistryWithModels = 0xC8dDD546e0993eEB4Df03591208aEDF6336342D7; // NEW: with pricing support
+        address nodeRegistryWithModels = 0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999; // NEW: with PRICE_PRECISION
         address payable hostEarnings = payable(0x908962e8c6CE72610021586f85ebDE09aAc97776);
 
         vm.startBroadcast(deployerPrivateKey);

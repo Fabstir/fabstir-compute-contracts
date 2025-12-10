@@ -130,7 +130,7 @@ console.log(`Active: ${model.active}`);
 
 // For hosts - register with approved models AND dual pricing
 const nodeRegistry = new ethers.Contract(
-  '0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6',  // NodeRegistryWithModels - Corrected dual pricing
+  '0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999',  // NodeRegistryWithModels - PRICE_PRECISION=1000
   NodeRegistryABI,
   signer
 );
@@ -163,7 +163,7 @@ import NodeRegistryABI from './NodeRegistryWithModels-CLIENT-ABI.json';
 import { ethers } from 'ethers';
 
 const nodeRegistry = new ethers.Contract(
-  '0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6',
+  '0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999',
   NodeRegistryABI,
   signer
 );
@@ -205,13 +205,13 @@ import NodeRegistryABI from './NodeRegistryWithModels-CLIENT-ABI.json';
 import { ethers } from 'ethers';
 
 const nodeRegistry = new ethers.Contract(
-  '0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6',
+  '0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999',
   NodeRegistryABI,
   provider
 );
 
 const marketplace = new ethers.Contract(
-  '0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E',  // S5 Proof Storage
+  '0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97',  // PRICE_PRECISION + 2000 tok/sec
   JobMarketplaceABI,
   signer
 );
@@ -335,7 +335,7 @@ import { ethers } from 'ethers';
 
 const s5 = new S5Client('https://s5.lumeweb.com');
 const marketplace = new ethers.Contract(
-  '0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E',
+  '0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97',
   JobMarketplaceABI,
   signer
 );
@@ -380,7 +380,7 @@ import { ethers } from 'ethers';
 
 const s5 = new S5Client('https://s5.lumeweb.com');
 const marketplace = new ethers.Contract(
-  '0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E',
+  '0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97',
   JobMarketplaceABI,
   signer
 );
@@ -516,7 +516,7 @@ import { ethers } from 'ethers';
 
 const provider = new ethers.providers.JsonRpcProvider('https://base-sepolia.g.alchemy.com/v2/YOUR_KEY');
 const nodeRegistry = new ethers.Contract(
-  '0x2B745E45818e1dE570f253259dc46b91A82E3204',
+  '0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999',
   NodeRegistryABI,
   provider
 );
@@ -553,13 +553,13 @@ const provider = new ethers.providers.JsonRpcProvider('https://base-sepolia.g.al
 
 // Create contract instances
 const marketplace = new ethers.Contract(
-  '0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E', // CURRENT deployment with S5 proof storage
+  '0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97', // CURRENT - PRICE_PRECISION + 2000 tok/sec
   JobMarketplaceABI,
   provider
 );
 
 const nodeRegistry = new ethers.Contract(
-  '0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6', // NodeRegistryWithModels with corrected dual pricing
+  '0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999', // NodeRegistryWithModels - PRICE_PRECISION=1000
   NodeRegistryABI,
   provider
 );
@@ -653,8 +653,8 @@ await nodeRegistry.updateApiUrl('http://your-host.com:8080');
 ### For SDK Developers
 Update contract addresses and integrate S5 proof storage:
 ```javascript
-const NODE_REGISTRY = '0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6'; // Dual pricing
-const JOB_MARKETPLACE = '0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E'; // ✅ S5 Proof Storage (Oct 14, 2025)
+const NODE_REGISTRY = '0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999'; // PRICE_PRECISION=1000
+const JOB_MARKETPLACE = '0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97'; // ✅ PRICE_PRECISION + 2000 tok/sec (Dec 10, 2025)
 const MODEL_REGISTRY = '0x92b2De840bB2171203011A6dBA928d855cA8183E';
 const PROOF_SYSTEM = '0x2ACcc60893872A499700908889B38C5420CBcFD1';
 const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
@@ -705,7 +705,7 @@ const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
 - **Replacement**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6
 
 ## Last Updated
-December 10, 2025 - Rate limit fix (200 tokens/sec) for real LLM inference speeds
+December 10, 2025 - Rate limit fix (2000 tokens/sec) for high-speed inference on small models
 
 ### PRICE_PRECISION Breaking Change
 
