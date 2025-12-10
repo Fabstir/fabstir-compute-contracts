@@ -1,6 +1,6 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** December 9, 2025
+**Last Updated:** December 10, 2025
 **Network:** Base Sepolia (Chain ID: 84532)
 **PRICE_PRECISION:** 1000 (all prices multiplied by 1000 for sub-$1/million support)
 
@@ -12,8 +12,8 @@
 
 ```javascript
 const contracts = {
-  jobMarketplace: "0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1",
-  nodeRegistry: "0x48aa4A8047A45862Da8412FAB71ef66C17c7766d",
+  jobMarketplace: "0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97",
+  nodeRegistry: "0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999",
   modelRegistry: "0x92b2De840bB2171203011A6dBA928d855cA8183E",
   proofSystem: "0x2ACcc60893872A499700908889B38C5420CBcFD1",
   hostEarnings: "0x908962e8c6CE72610021586f85ebDE09aAc97776",
@@ -45,7 +45,7 @@ const GPT_OSS_20B = "0x7583557c14f71d2bf21d48ffb7cde9329f9494090869d2d311ea481b2
 
 Host registration and pricing management.
 
-**Address:** `0x48aa4A8047A45862Da8412FAB71ef66C17c7766d`
+**Address:** `0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999`
 
 ### Constants
 
@@ -344,7 +344,7 @@ function isActiveNode(address operator) external view returns (bool)
 
 Session management and payments.
 
-**Address:** `0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1`
+**Address:** `0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97`
 
 ### Constants
 
@@ -907,8 +907,8 @@ const config = {
   rpcUrl: "https://sepolia.base.org",
   explorer: "https://sepolia.basescan.org",
   contracts: {
-    jobMarketplace: "0x0c942eADAF86855F69Ee4fa7f765bc6466f254A1",
-    nodeRegistry: "0x48aa4A8047A45862Da8412FAB71ef66C17c7766d",
+    jobMarketplace: "0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97",
+    nodeRegistry: "0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999",
     modelRegistry: "0x92b2De840bB2171203011A6dBA928d855cA8183E",
     proofSystem: "0x2ACcc60893872A499700908889B38C5420CBcFD1",
     hostEarnings: "0x908962e8c6CE72610021586f85ebDE09aAc97776",
