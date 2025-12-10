@@ -49,15 +49,15 @@ Fabstir Compute is a **peer-to-peer AI inference marketplace** that connects GPU
 
 | Contract | Address | Status |
 |----------|---------|--------|
-| **JobMarketplaceWithModels** | `0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E` | ✅ S5 Storage (Oct 14, 2025) |
-| **NodeRegistryWithModels** | `0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6` | ✅ Dual Pricing (Jan 28, 2025) |
+| **JobMarketplaceWithModels** | `0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97` | ✅ PRICE_PRECISION + 2000 tok/sec (Dec 10, 2025) |
+| **NodeRegistryWithModels** | `0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999` | ✅ PRICE_PRECISION=1000 (Dec 9, 2025) |
 | **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | ✅ Active |
 | **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ Configured |
 | **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ Active |
 | **FAB Token** | `0xC78949004B4EB6dEf2D66e49Cd81231472612D62` | Testnet |
 | **USDC** | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Testnet |
 
-See [CONTRACT_ADDRESSES.md](CONTRACT_ADDRESSES.md) for full details.
+See [client-abis/README.md](client-abis/README.md) for full integration details.
 
 ## Quick Start
 
@@ -71,7 +71,7 @@ const [nativeMin, stableMin] = await nodeRegistry.getNodePricing(hostAddress);
 
 // 2. Create session with ETH
 const marketplace = new ethers.Contract(
-  '0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E',
+  '0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97',
   JobMarketplaceABI,
   signer
 );
@@ -206,7 +206,7 @@ forge verify-contract <ADDRESS> <CONTRACT> \
   --etherscan-api-key $BASESCAN_API_KEY
 
 # Query contract (example)
-cast call 0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E \
+cast call 0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97 \
   "nextJobId()" \
   --rpc-url "https://sepolia.base.org"
 ```
@@ -254,7 +254,7 @@ function submitProofOfWork(
 ) external
 ```
 
-**New Contract**: `0xc6D44D7f2DfA8fdbb1614a8b6675c78D3cfA376E`
+**New Contract**: `0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97`
 ```solidity
 function submitProofOfWork(
     uint256 jobId,

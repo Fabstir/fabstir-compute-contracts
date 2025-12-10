@@ -172,7 +172,7 @@ Before deploying ANY contract:
      --broadcast \
      --private-key $PRIVATE_KEY \
      --rpc-url "https://sepolia.base.org" \
-     --constructor-args 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6 \
+     --constructor-args 0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999 \
                         0x908962e8c6CE72610021586f85ebDE09aAc97776 \
                         1000 30 \
      --legacy
@@ -684,7 +684,7 @@ forge create src/JobMarketplaceWithModels.sol:JobMarketplaceWithModels \
   --broadcast \
   --private-key $PRIVATE_KEY \
   --rpc-url "https://sepolia.base.org" \
-  --constructor-args 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6 \
+  --constructor-args 0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999 \
                      0x908962e8c6CE72610021586f85ebDE09aAc97776 \
                      1000 30 \
   --legacy
