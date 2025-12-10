@@ -119,6 +119,9 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     mapping(address => uint256[]) public userSessions;
     mapping(address => uint256[]) public hostSessions;
 
+    // Session model tracking (sessionId => modelId) - Phase 3.1
+    mapping(uint256 => bytes32) public sessionModel;
+
     uint256 public nextJobId = 1;
     // NOTE: This immutable value is set from TREASURY_FEE_PERCENTAGE env var during deployment
     // FEE_BASIS_POINTS = TREASURY_FEE_PERCENTAGE * 100 (e.g., 10% = 1000 basis points)
@@ -134,6 +137,11 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
 
     // USDC-specific configuration
     uint256 public constant USDC_MIN_DEPOSIT = 800000; // 0.80 USDC
+
+    // Price precision: prices are stored with 1000x precision for sub-cent granularity
+    // Payment calculation: (tokensUsed * pricePerToken) / PRICE_PRECISION
+    uint256 public constant PRICE_PRECISION = 1000;
+
     mapping(address => bool) public acceptedTokens;
     mapping(address => uint256) public tokenMinDeposits;
 
@@ -181,6 +189,18 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         uint256 indexed sessionId,
         address indexed depositor,
         address indexed host,
+        uint256 deposit
+    );
+
+    // Token acceptance event (Phase 2.4)
+    event TokenAccepted(address indexed token, uint256 minDeposit);
+
+    // Model-aware session event (Phase 3.2)
+    event SessionJobCreatedForModel(
+        uint256 indexed jobId,
+        address indexed requester,
+        address indexed host,
+        bytes32 modelId,
         uint256 deposit
     );
 
@@ -263,6 +283,68 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         return jobId;
     }
 
+    /// @notice Create a session job for a specific model with native token payment
+    /// @param host The host address to create the session with
+    /// @param modelId The model ID to use for this session
+    /// @param pricePerToken The price per token offered
+    /// @param maxDuration Maximum duration of the session
+    /// @param proofInterval Interval between proofs
+    /// @return jobId The created session ID
+    function createSessionJobForModel(
+        address host,
+        bytes32 modelId,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval
+    ) external payable nonReentrant returns (uint256 jobId) {
+        // Standard validations
+        require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
+        require(msg.value <= 1000 ether, "Deposit too large");
+        require(pricePerToken > 0, "Invalid price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
+        require(proofInterval > 0, "Invalid proof interval");
+        require(host != address(0), "Invalid host");
+
+        // Model-specific validations
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
+
+        _validateProofRequirements(proofInterval, msg.value, pricePerToken);
+        _validateHostRegistration(host);
+
+        // Get model-specific pricing (falls back to default if not set)
+        uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, address(0));
+        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+
+        jobId = nextJobId++;
+
+        // Store model for this session (Phase 3.1)
+        sessionModel[jobId] = modelId;
+
+        // Create session (same pattern as createSessionJob)
+        SessionJob storage session = sessionJobs[jobId];
+        session.id = jobId;
+        session.depositor = msg.sender;
+        session.requester = msg.sender;
+        session.host = host;
+        session.paymentToken = address(0);
+        session.deposit = msg.value;
+        session.pricePerToken = pricePerToken;
+        session.maxDuration = maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = proofInterval;
+        session.status = SessionStatus.Active;
+
+        userDepositsNative[msg.sender] += msg.value;
+        userSessions[msg.sender].push(jobId);
+        hostSessions[host].push(jobId);
+
+        emit SessionJobCreated(jobId, msg.sender, host, msg.value);
+        emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, msg.value);
+
+        return jobId;
+    }
+
     function createSessionJobWithToken(
         address host, address token, uint256 deposit,
         uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval
@@ -316,6 +398,80 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         return jobId;
     }
 
+    /// @notice Create a session job for a specific model with token payment
+    /// @param host The host address to create the session with
+    /// @param modelId The model ID to use for this session
+    /// @param token The token address for payment (e.g., USDC)
+    /// @param deposit The deposit amount in tokens
+    /// @param pricePerToken The price per token offered
+    /// @param maxDuration Maximum duration of the session
+    /// @param proofInterval Interval between proofs
+    /// @return jobId The created session ID
+    function createSessionJobForModelWithToken(
+        address host,
+        bytes32 modelId,
+        address token,
+        uint256 deposit,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval
+    ) external returns (uint256 jobId) {
+        // Token validations
+        require(acceptedTokens[token], "Token not accepted");
+        uint256 minRequired = tokenMinDeposits[token];
+        require(minRequired > 0, "Token not configured");
+        require(deposit >= minRequired, "Insufficient deposit");
+        require(deposit > 0, "Zero deposit");
+        require(deposit <= 1000 ether, "Deposit too large");
+
+        // Standard validations
+        require(pricePerToken > 0, "Invalid price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
+        require(proofInterval > 0, "Invalid proof interval");
+        require(host != address(0), "Invalid host");
+
+        // Model-specific validations
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
+
+        _validateHostRegistration(host);
+        _validateProofRequirements(proofInterval, deposit, pricePerToken);
+
+        // Get model-specific pricing for this token (falls back to default stable if not set)
+        uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, token);
+        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+
+        IERC20(token).transferFrom(msg.sender, address(this), deposit);
+
+        jobId = nextJobId++;
+
+        // Store model for this session (Phase 3.1)
+        sessionModel[jobId] = modelId;
+
+        // Create session (same pattern as createSessionJobWithToken)
+        SessionJob storage session = sessionJobs[jobId];
+        session.id = jobId;
+        session.depositor = msg.sender;
+        session.requester = msg.sender;
+        session.host = host;
+        session.paymentToken = token;
+        session.deposit = deposit;
+        session.pricePerToken = pricePerToken;
+        session.maxDuration = maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = proofInterval;
+        session.status = SessionStatus.Active;
+
+        userDepositsToken[msg.sender][token] += deposit;
+        userSessions[msg.sender].push(jobId);
+        hostSessions[host].push(jobId);
+
+        emit SessionJobCreated(jobId, msg.sender, host, deposit);
+        emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, deposit);
+
+        return jobId;
+    }
+
     function _validateHostRegistration(address host) internal view {
         // For now, just check if host address is not zero
         // Full validation would require proper struct handling
@@ -324,7 +480,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     }
 
     function _validateProofRequirements(uint256 proofInterval, uint256 deposit, uint256 pricePerToken) internal pure {
-        uint256 maxTokens = deposit / pricePerToken;
+        // With PRICE_PRECISION: maxTokens = deposit * PRICE_PRECISION / pricePerToken
+        uint256 maxTokens = (deposit * PRICE_PRECISION) / pricePerToken;
         uint256 tokensPerProof = proofInterval;
         require(tokensPerProof >= MIN_PROVEN_TOKENS, "Proof interval too small");
         require(maxTokens >= tokensPerProof, "Deposit too small for proof interval");
@@ -342,11 +499,14 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
         require(tokensClaimed >= MIN_PROVEN_TOKENS, "Must claim minimum tokens");
 
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
-        uint256 expectedTokens = timeSinceLastProof * 10;
+        // Rate limit: 1000 tokens/sec base * 2x buffer = 2000 tokens/sec max
+        // Supports small models on high-end GPUs (e.g., TinyLlama 1.1B on RTX 5090: 800-1500 tok/sec)
+        uint256 expectedTokens = timeSinceLastProof * 1000;
         require(tokensClaimed <= expectedTokens * 2, "Excessive tokens claimed");
 
         uint256 newTotal = session.tokensUsed + tokensClaimed;
-        uint256 maxTokens = session.deposit / session.pricePerToken;
+        // With PRICE_PRECISION: maxTokens = deposit * PRICE_PRECISION / pricePerToken
+        uint256 maxTokens = (session.deposit * PRICE_PRECISION) / session.pricePerToken;
         require(newTotal <= maxTokens, "Exceeds deposit");
 
         // S5: Store proof hash and CID instead of full proof
@@ -387,7 +547,8 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
     function _settleSessionPayments(uint256 jobId, address completedBy) internal {
         SessionJob storage session = sessionJobs[jobId];
 
-        uint256 hostPayment = session.tokensUsed * session.pricePerToken;
+        // With PRICE_PRECISION: hostPayment = (tokensUsed * pricePerToken) / PRICE_PRECISION
+        uint256 hostPayment = (session.tokensUsed * session.pricePerToken) / PRICE_PRECISION;
         uint256 userRefund = session.deposit > hostPayment ? session.deposit - hostPayment : 0;
 
         if (hostPayment > 0) {
@@ -532,6 +693,24 @@ contract JobMarketplaceWithModels is ReentrancyGuard {
                 emit TreasuryWithdrawal(tokens[i], amount);
             }
         }
+    }
+
+    /**
+     * @notice Add a new accepted stablecoin token (treasury only)
+     * @dev Allows treasury to add support for new stablecoins (e.g., EUR stablecoin)
+     * @param token The stablecoin token address to accept
+     * @param minDeposit The minimum deposit required for sessions with this token
+     */
+    function addAcceptedToken(address token, uint256 minDeposit) external {
+        require(msg.sender == treasuryAddress, "Only treasury");
+        require(!acceptedTokens[token], "Token already accepted");
+        require(minDeposit > 0, "Invalid minimum deposit");
+        require(token != address(0), "Invalid token address");
+
+        acceptedTokens[token] = true;
+        tokenMinDeposits[token] = minDeposit;
+
+        emit TokenAccepted(token, minDeposit);
     }
 
     // Wallet-agnostic deposit functions (Phase 1.2)

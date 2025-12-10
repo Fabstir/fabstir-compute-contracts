@@ -16,10 +16,22 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     IERC20 public immutable fabToken;
     ModelRegistry public modelRegistry;
     uint256 public constant MIN_STAKE = 1000 * 10**18; // 1000 FAB tokens
-    uint256 public constant MIN_PRICE_PER_TOKEN_STABLE = 10; // Minimum for stablecoins: 0.00001 USDC per AI token
-    uint256 public constant MIN_PRICE_PER_TOKEN_NATIVE = 2_272_727_273; // Minimum for native tokens: ~0.00001 USD @ $4400 ETH
-    uint256 public constant MAX_PRICE_PER_TOKEN_STABLE = 100_000; // Maximum for stablecoins: 0.1 USDC per AI token
-    uint256 public constant MAX_PRICE_PER_TOKEN_NATIVE = 22_727_272_727_273; // Maximum for native tokens: ~0.1 USD @ $4400 ETH
+
+    // Price precision: prices are stored with 1000x precision for sub-cent granularity
+    // To get actual USDC amount: (tokensUsed * pricePerToken) / PRICE_PRECISION
+    uint256 public constant PRICE_PRECISION = 1000;
+
+    // Stable pricing (with 1000x precision):
+    // MIN = 1 means $0.001 per million tokens (1/1000 = 0.001 USDC per 1M tokens)
+    // MAX = 100_000_000 means $100,000 per million tokens
+    uint256 public constant MIN_PRICE_PER_TOKEN_STABLE = 1; // $0.001 per million tokens
+    uint256 public constant MAX_PRICE_PER_TOKEN_STABLE = 100_000_000; // $100,000 per million tokens
+
+    // Native pricing (with 1000x precision, calibrated for ~$4400 ETH):
+    // MIN ~= $0.001/million in ETH terms: 0.001 / 4400 * 1e18 / 1e6 * 1000 = 227,272 wei (with precision)
+    // MAX ~= $100,000/million in ETH terms
+    uint256 public constant MIN_PRICE_PER_TOKEN_NATIVE = 227_273; // ~$0.001 per million tokens @ $4400 ETH
+    uint256 public constant MAX_PRICE_PER_TOKEN_NATIVE = 22_727_272_727_273_000; // ~$100,000 per million tokens @ $4400 ETH
 
     struct Node {
         address operator;
@@ -28,14 +40,23 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
         string metadata;        // JSON formatted metadata
         string apiUrl;          // API endpoint URL
         bytes32[] supportedModels; // Array of model IDs this node supports
-        uint256 minPricePerTokenNative;  // Minimum price per token for native tokens (ETH/BNB) - 18 decimals
-        uint256 minPricePerTokenStable;  // Minimum price per token for stablecoins (USDC) - 6 decimals
+        uint256 minPricePerTokenNative;  // Min price for native tokens (with PRICE_PRECISION, divide by 1000 for actual)
+        uint256 minPricePerTokenStable;  // Min price for stablecoins (with PRICE_PRECISION, divide by 1000 for actual)
     }
 
     // Mappings
     mapping(address => Node) public nodes;
     mapping(address => uint256) public activeNodesIndex;
     mapping(bytes32 => address[]) public modelToNodes; // modelId => array of nodes supporting it
+
+    // Per-model pricing overrides (operator => modelId => price)
+    // When set (> 0), these override the default minPricePerTokenNative/Stable
+    mapping(address => mapping(bytes32 => uint256)) public modelPricingNative;
+    mapping(address => mapping(bytes32 => uint256)) public modelPricingStable;
+
+    // Per-token pricing overrides (operator => tokenAddress => price)
+    // When set (> 0), these override the default minPricePerTokenStable for that specific token
+    mapping(address => mapping(address => uint256)) public customTokenPricing;
 
     address[] public activeNodesList;
 
@@ -47,6 +68,8 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     event ModelsUpdated(address indexed operator, bytes32[] newModels);
     event ModelRegistryUpdated(address indexed newRegistry);
     event PricingUpdated(address indexed operator, uint256 newMinPrice);
+    event ModelPricingUpdated(address indexed operator, bytes32 indexed modelId, uint256 nativePrice, uint256 stablePrice);
+    event TokenPricingUpdated(address indexed operator, address indexed token, uint256 price);
 
     constructor(address _fabToken, address _modelRegistry) Ownable(msg.sender) {
         require(_fabToken != address(0), "Invalid FAB token address");
@@ -60,8 +83,8 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
      * @param metadata JSON formatted metadata with hardware specs, capabilities, etc.
      * @param apiUrl The API endpoint URL for the node
      * @param modelIds Array of model IDs this node supports
-     * @param minPricePerTokenNative Minimum price for native tokens (ETH/BNB) per AI token (2,272,727,273-22,727,272,727,273 wei)
-     * @param minPricePerTokenStable Minimum price for stablecoins (USDC) per AI token (10-100,000)
+     * @param minPricePerTokenNative Minimum price for native tokens with 1000x precision (divide by PRICE_PRECISION for actual)
+     * @param minPricePerTokenStable Minimum price for stablecoins with 1000x precision (e.g., 60 = $0.06/million tokens)
      */
     function registerNode(
         string memory metadata,
@@ -220,6 +243,80 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Set per-model pricing overrides
+     * @dev Setting price to 0 clears the override (uses default pricing)
+     * @param modelId The model ID to set pricing for (must be in host's supportedModels)
+     * @param nativePrice Price for native tokens (0 = use default, otherwise MIN_PRICE_PER_TOKEN_NATIVE to MAX_PRICE_PER_TOKEN_NATIVE)
+     * @param stablePrice Price for stablecoins (0 = use default, otherwise MIN_PRICE_PER_TOKEN_STABLE to MAX_PRICE_PER_TOKEN_STABLE)
+     */
+    function setModelPricing(bytes32 modelId, uint256 nativePrice, uint256 stablePrice) external {
+        require(nodes[msg.sender].operator != address(0), "Not registered");
+        require(nodes[msg.sender].active, "Node not active");
+        require(_nodeSupportsModel(msg.sender, modelId), "Model not supported");
+
+        // Validate prices (0 means use default, otherwise must be in range)
+        if (nativePrice > 0) {
+            require(nativePrice >= MIN_PRICE_PER_TOKEN_NATIVE, "Native price below minimum");
+            require(nativePrice <= MAX_PRICE_PER_TOKEN_NATIVE, "Native price above maximum");
+        }
+        if (stablePrice > 0) {
+            require(stablePrice >= MIN_PRICE_PER_TOKEN_STABLE, "Stable price below minimum");
+            require(stablePrice <= MAX_PRICE_PER_TOKEN_STABLE, "Stable price above maximum");
+        }
+
+        modelPricingNative[msg.sender][modelId] = nativePrice;
+        modelPricingStable[msg.sender][modelId] = stablePrice;
+
+        emit ModelPricingUpdated(msg.sender, modelId, nativePrice, stablePrice);
+    }
+
+    /**
+     * @notice Clear per-model pricing overrides (revert to default pricing)
+     * @dev Sets both native and stable model pricing to 0, causing getModelPricing to return defaults
+     * @param modelId The model ID to clear pricing for
+     */
+    function clearModelPricing(bytes32 modelId) external {
+        require(nodes[msg.sender].operator != address(0), "Not registered");
+
+        modelPricingNative[msg.sender][modelId] = 0;
+        modelPricingStable[msg.sender][modelId] = 0;
+
+        emit ModelPricingUpdated(msg.sender, modelId, 0, 0);
+    }
+
+    /**
+     * @notice Set token-specific pricing for a stablecoin
+     * @dev Allows hosts to set different minimum prices for different stablecoins (e.g., USDC vs EUR stable)
+     * @param token The stablecoin token address (cannot be address(0), use updatePricingNative for native)
+     * @param price The minimum price per token (0 = use default minPricePerTokenStable)
+     */
+    function setTokenPricing(address token, uint256 price) external {
+        require(nodes[msg.sender].operator != address(0), "Not registered");
+        require(nodes[msg.sender].active, "Node not active");
+        require(token != address(0), "Use updatePricingNative for native token");
+
+        if (price > 0) {
+            require(price >= MIN_PRICE_PER_TOKEN_STABLE, "Price below minimum");
+            require(price <= MAX_PRICE_PER_TOKEN_STABLE, "Price above maximum");
+        }
+
+        customTokenPricing[msg.sender][token] = price;
+
+        emit TokenPricingUpdated(msg.sender, token, price);
+    }
+
+    /**
+     * @notice Check if a node supports a specific model (internal helper)
+     */
+    function _nodeSupportsModel(address operator, bytes32 modelId) internal view returns (bool) {
+        bytes32[] memory models = nodes[operator].supportedModels;
+        for (uint i = 0; i < models.length; i++) {
+            if (models[i] == modelId) return true;
+        }
+        return false;
+    }
+
+    /**
      * @notice Unregister node and return stake
      */
     function unregisterNode() external nonReentrant {
@@ -306,18 +403,86 @@ contract NodeRegistryWithModels is Ownable, ReentrancyGuard {
 
     /**
      * @notice Get node's minimum price per token for a specific payment token
+     * @dev For stablecoins, checks customTokenPricing first, falls back to default minPricePerTokenStable
      * @param operator The address of the node operator
      * @param token The payment token address (address(0) for native ETH/BNB, USDC address for stablecoin)
      * @return Minimum price per token (0 if not registered)
      */
     function getNodePricing(address operator, address token) external view returns (uint256) {
         if (token == address(0)) {
-            // Native token (ETH on Base, BNB on opBNB)
+            // Native token (ETH on Base, BNB on opBNB) - unchanged behavior
             return nodes[operator].minPricePerTokenNative;
         } else {
-            // Stablecoin (USDC or other)
+            // Stablecoin - check custom token pricing first, fall back to default
+            uint256 customPrice = customTokenPricing[operator][token];
+            if (customPrice > 0) {
+                return customPrice;
+            }
             return nodes[operator].minPricePerTokenStable;
         }
+    }
+
+    /**
+     * @notice Get model-specific pricing with fallback to default
+     * @dev Returns model-specific price if set (> 0), otherwise falls back to default pricing
+     * @param operator The address of the node operator
+     * @param modelId The model ID to query pricing for
+     * @param token The payment token address (address(0) for native, any other for stablecoin)
+     * @return Effective minimum price per token (0 if operator not registered)
+     */
+    function getModelPricing(address operator, bytes32 modelId, address token) external view returns (uint256) {
+        if (nodes[operator].operator == address(0)) return 0;
+
+        if (token == address(0)) {
+            // Native token - check model-specific, fall back to default
+            uint256 modelPrice = modelPricingNative[operator][modelId];
+            return modelPrice > 0 ? modelPrice : nodes[operator].minPricePerTokenNative;
+        } else {
+            // Stablecoin - check model-specific, fall back to default
+            uint256 modelPrice = modelPricingStable[operator][modelId];
+            return modelPrice > 0 ? modelPrice : nodes[operator].minPricePerTokenStable;
+        }
+    }
+
+    /**
+     * @notice Get all model prices for a host in a single batch query
+     * @dev Returns arrays of model IDs and their effective prices (model-specific or default)
+     * @param operator The address of the node operator
+     * @return modelIds Array of model IDs the host supports
+     * @return nativePrices Array of effective native token prices for each model
+     * @return stablePrices Array of effective stablecoin prices for each model
+     */
+    function getHostModelPrices(address operator) external view returns (
+        bytes32[] memory modelIds,
+        uint256[] memory nativePrices,
+        uint256[] memory stablePrices
+    ) {
+        // Return empty arrays for non-registered operator
+        if (nodes[operator].operator == address(0)) {
+            return (new bytes32[](0), new uint256[](0), new uint256[](0));
+        }
+
+        Node storage node = nodes[operator];
+        uint256 modelCount = node.supportedModels.length;
+
+        modelIds = new bytes32[](modelCount);
+        nativePrices = new uint256[](modelCount);
+        stablePrices = new uint256[](modelCount);
+
+        for (uint256 i = 0; i < modelCount; i++) {
+            bytes32 modelId = node.supportedModels[i];
+            modelIds[i] = modelId;
+
+            // Get effective native price (model-specific or default)
+            uint256 nativeOverride = modelPricingNative[operator][modelId];
+            nativePrices[i] = nativeOverride > 0 ? nativeOverride : node.minPricePerTokenNative;
+
+            // Get effective stable price (model-specific or default)
+            uint256 stableOverride = modelPricingStable[operator][modelId];
+            stablePrices[i] = stableOverride > 0 ? stableOverride : node.minPricePerTokenStable;
+        }
+
+        return (modelIds, nativePrices, stablePrices);
     }
 
     /**
