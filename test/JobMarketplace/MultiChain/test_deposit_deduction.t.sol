@@ -61,7 +61,7 @@ contract DepositDeductionTest is Test {
         marketplace.depositNative{value: 0.05 ether}();
 
         // Try to create session with more than deposited
-        vm.expectRevert("Insufficient native deposit");
+        vm.expectRevert("Insufficient native balance");
         marketplace.createSessionFromDeposit(
             host,
             address(0),
@@ -89,7 +89,7 @@ contract DepositDeductionTest is Test {
         marketplace.depositToken(actualUsdcAddress, 150e6);
 
         // Try to create session with more than deposited
-        vm.expectRevert("Insufficient token deposit");
+        vm.expectRevert("Insufficient token balance");
         marketplace.createSessionFromDeposit(
             host,
             actualUsdcAddress,

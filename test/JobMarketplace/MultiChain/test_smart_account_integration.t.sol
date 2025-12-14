@@ -85,7 +85,7 @@ contract TestSmartAccountIntegration is Test {
         // Create session directly with Smart Account
         vm.prank(address(smartAccount));
         uint256 sessionId = marketplace.createSessionJob{value: 0.5 ether}(
-            host, 0.001 ether, 1 days, 10
+            host, 0.001 ether, 1 days, 100
         );
 
         // Random address completes (not user, not host)

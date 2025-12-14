@@ -14,7 +14,7 @@ contract WithdrawNativeTest is Test {
     address constant ALICE = address(0x1111);
     address constant BOB = address(0x2222);
 
-    event WithdrawalProcessed(address indexed depositor, uint256 amount, address token);
+    event WithdrawalProcessed(address indexed depositor, uint256 amount, address indexed token);
 
     function setUp() public {
         // Deploy marketplace with required dependencies

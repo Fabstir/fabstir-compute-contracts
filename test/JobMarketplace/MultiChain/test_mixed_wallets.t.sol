@@ -63,7 +63,7 @@ contract TestMixedWallets is Test {
         // EOA creates session
         vm.prank(eoaUser);
         uint256 sessionId = marketplace.createSessionJob{value: 0.5 ether}(
-            eoaHost, 0.001 ether, 1 days, 10
+            eoaHost, 0.001 ether, 1 days, 100
         );
 
         // Wait for dispute window
@@ -88,7 +88,7 @@ contract TestMixedWallets is Test {
         // Smart Wallet creates session
         vm.prank(address(smartWallet));
         uint256 sessionId = marketplace.createSessionFromDeposit(
-            eoaHost, address(0), 1 ether, 0.001 ether, 1 days, 10
+            eoaHost, address(0), 1 ether, 0.001 ether, 1 days, 100
         );
 
         // Wait for dispute window
@@ -107,7 +107,7 @@ contract TestMixedWallets is Test {
         // Test old createSessionJob still works
         vm.prank(eoaUser);
         uint256 sessionId = marketplace.createSessionJob{value: 0.3 ether}(
-            eoaHost, 0.001 ether, 1 days, 10
+            eoaHost, 0.001 ether, 1 days, 100
         );
 
         // Wait for dispute window

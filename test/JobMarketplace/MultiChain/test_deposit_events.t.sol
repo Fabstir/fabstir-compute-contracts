@@ -15,9 +15,9 @@ contract DepositEventsTest is Test {
     address constant BOB = address(0x2222);
     address constant USDC_TOKEN = address(0x3333);
 
-    // Define expected events
-    event DepositReceived(address indexed depositor, uint256 amount, address token);
-    event WithdrawalProcessed(address indexed depositor, uint256 amount, address token);
+    // Define expected events - must match contract signatures
+    event DepositReceived(address indexed depositor, uint256 amount, address indexed token);
+    event WithdrawalProcessed(address indexed depositor, uint256 amount, address indexed token);
 
     function setUp() public {
         // Deploy marketplace with required dependencies
@@ -33,40 +33,49 @@ contract DepositEventsTest is Test {
     }
 
     function test_DepositReceivedEventSignature() public {
-        // Test that DepositReceived event can be expected
-        // This will fail initially as event doesn't exist
-        vm.expectEmit(true, false, false, true);
+        // Fund ALICE and test native deposit emits correct event
+        vm.deal(ALICE, 2 ether);
+
+        vm.expectEmit(true, false, true, true);
         emit DepositReceived(ALICE, 1 ether, address(0));
 
-        // This would trigger the event (once implemented)
-        // For now, just checking event signature exists
+        vm.prank(ALICE);
+        marketplace.depositNative{value: 1 ether}();
     }
 
     function test_WithdrawalProcessedEventSignature() public {
-        // Test that WithdrawalProcessed event can be expected
-        vm.expectEmit(true, false, false, true);
+        // Fund BOB, deposit, then withdraw
+        vm.deal(BOB, 2 ether);
+
+        vm.prank(BOB);
+        marketplace.depositNative{value: 1 ether}();
+
+        vm.expectEmit(true, false, true, true);
         emit WithdrawalProcessed(BOB, 0.5 ether, address(0));
 
-        // This would trigger the event (once implemented)
+        vm.prank(BOB);
+        marketplace.withdrawNative(0.5 ether);
     }
 
     function test_EventsHaveCorrectIndexedParams() public {
-        // Verify depositor is indexed in DepositReceived
-        vm.expectEmit(true, false, false, false);
-        emit DepositReceived(ALICE, 0, address(0));
+        // Verify depositor and token are indexed in DepositReceived
+        vm.deal(ALICE, 2 ether);
 
-        // Verify depositor is indexed in WithdrawalProcessed
-        vm.expectEmit(true, false, false, false);
-        emit WithdrawalProcessed(ALICE, 0, address(0));
+        vm.expectEmit(true, false, true, true);
+        emit DepositReceived(ALICE, 1 ether, address(0));
+
+        vm.prank(ALICE);
+        marketplace.depositNative{value: 1 ether}();
     }
 
     function test_EventsDistinguishNativeFromToken() public {
         // Native token uses address(0)
-        vm.expectEmit(false, false, false, true);
+        vm.deal(ALICE, 2 ether);
+
+        vm.expectEmit(true, false, true, true);
         emit DepositReceived(ALICE, 1 ether, address(0));
 
-        // ERC20 token uses token address
-        vm.expectEmit(false, false, false, true);
-        emit DepositReceived(ALICE, 1000, USDC_TOKEN);
+        vm.prank(ALICE);
+        marketplace.depositNative{value: 1 ether}();
     }
 }

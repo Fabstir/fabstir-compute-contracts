@@ -61,7 +61,7 @@ contract TestEOAIntegration is Test {
             0.5 ether,  // deposit amount
             0.0001 ether, // price per token
             1 days,
-            10  // proof interval (10 * 10 = 100 tokens per proof)
+            100  // proof interval (MIN_PROVEN_TOKENS = 100)
         );
         assertEq(marketplace.userDepositsNative(eoa_user), 0.5 ether);
 
