@@ -77,7 +77,7 @@ JobMarketplaceWithModels (depends on NodeRegistry, HostEarnings, ProofSystem)
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (84%)**
+**Overall Status: IN PROGRESS (87%)**
 
 - [x] **Phase 1: Infrastructure Setup** (3/3 sub-phases complete) ✅
 - [x] **Phase 2: ModelRegistry Upgrade** (4/4 sub-phases complete) ✅
@@ -85,7 +85,7 @@ JobMarketplaceWithModels (depends on NodeRegistry, HostEarnings, ProofSystem)
 - [x] **Phase 4: HostEarnings Upgrade** (4/4 sub-phases complete) ✅
 - [x] **Phase 5: NodeRegistryWithModels Upgrade** (4/4 sub-phases complete) ✅
 - [x] **Phase 6: JobMarketplaceWithModels Upgrade** (5/5 sub-phases complete) ✅
-- [ ] **Phase 7: Integration & Deployment** (2/4 sub-phases complete)
+- [ ] **Phase 7: Integration & Deployment** (3/4 sub-phases complete)
 - [ ] **Phase 8: Cleanup for Audit** (0/3 sub-phases complete)
 
 **Last Updated:** 2025-12-14
@@ -717,18 +717,34 @@ Create single script to deploy entire upgradeable system.
 
 ---
 
-### Sub-phase 7.3: Deploy to Base Sepolia
+### Sub-phase 7.3: Deploy to Base Sepolia ✅
 
 Deploy upgradeable contracts to testnet.
 
 **Tasks:**
-- [ ] Deploy all implementation contracts
-- [ ] Deploy all proxy contracts
-- [ ] Initialize all proxies
-- [ ] Configure cross-contract references
-- [ ] Verify all contracts on BaseScan
-- [ ] Record all addresses (implementation + proxy)
-- [ ] Test basic operations through proxies
+- [x] Deploy all implementation contracts
+- [x] Deploy all proxy contracts
+- [x] Initialize all proxies
+- [x] Configure cross-contract references
+- [x] Verify all contracts on BaseScan
+- [x] Record all addresses (implementation + proxy)
+- [x] Test basic operations through proxies
+
+**Deployed Addresses (Base Sepolia - December 14, 2025):**
+
+| Contract | Proxy Address | Implementation Address |
+|----------|---------------|------------------------|
+| ModelRegistryUpgradeable | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xd7Df5c6D4ffe6961d47753D1dd32f844e0F73f50` |
+| ProofSystemUpgradeable | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` | `0x83eB050Aa3443a76a4De64aBeD90cA8d525E7A3A` |
+| HostEarningsUpgradeable | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x588c42249F85C6ac4B4E27f97416C0289980aabB` |
+| NodeRegistryUpgradeable | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0x68298e2b74a106763aC99E3D973E98012dB5c75F` |
+| JobMarketplaceUpgradeable | `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D` | `0xa2FDB6fe686262CC11314f33689b9057443A3001` |
+
+**Configuration:**
+- FAB Token: `0xC78949004B4EB6dEf2D66e49Cd81231472612D62`
+- Fee Basis Points: 1000 (10%)
+- Dispute Window: 30 seconds
+- Approved Models: TinyVicuna-1B, TinyLlama-1.1B
 
 **Commands:**
 ```bash
