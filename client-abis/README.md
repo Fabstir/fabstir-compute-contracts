@@ -2,7 +2,81 @@
 
 This directory contains the Application Binary Interfaces (ABIs) for client integration.
 
-## Current Deployed Contracts (December 10, 2025 - Rate Limit Fix)
+---
+
+## UPGRADEABLE CONTRACTS (December 14, 2025 - UUPS Proxy Pattern)
+
+> **RECOMMENDED**: Use these upgradeable contracts for all new integrations. They support future upgrades without data migration.
+
+### JobMarketplaceWithModelsUpgradeable
+- **Proxy Address**: `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D`
+- **Implementation**: `0xa2FDB6fe686262CC11314f33689b9057443A3001`
+- **Network**: Base Sepolia
+- **Status**: ✅ ACTIVE - UUPS Upgradeable
+- **ABI File**: `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json`
+- **Key Features**:
+  - All features from non-upgradeable version
+  - UUPS proxy pattern for future upgrades
+  - Emergency pause/unpause functions
+  - Owner-only upgrade authorization
+
+### NodeRegistryWithModelsUpgradeable
+- **Proxy Address**: `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22`
+- **Implementation**: `0x68298e2b74a106763aC99E3D973E98012dB5c75F`
+- **Network**: Base Sepolia
+- **Status**: ✅ ACTIVE - UUPS Upgradeable
+- **ABI File**: `NodeRegistryWithModelsUpgradeable-CLIENT-ABI.json`
+- **Key Features**:
+  - All features from non-upgradeable version
+  - UUPS proxy pattern for future upgrades
+  - Owner-only upgrade authorization
+
+### ModelRegistryUpgradeable
+- **Proxy Address**: `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2`
+- **Implementation**: `0xd7Df5c6D4ffe6961d47753D1dd32f844e0F73f50`
+- **Network**: Base Sepolia
+- **Status**: ✅ ACTIVE - UUPS Upgradeable
+- **ABI File**: `ModelRegistryUpgradeable-CLIENT-ABI.json`
+- **Approved Models** (2 models):
+  - TinyVicuna-1B-32k (CohereForAI/TinyVicuna-1B-32k-GGUF)
+  - TinyLlama-1.1B Chat (TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF)
+
+### HostEarningsUpgradeable
+- **Proxy Address**: `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0`
+- **Implementation**: `0x588c42249F85C6ac4B4E27f97416C0289980aabB`
+- **Network**: Base Sepolia
+- **Status**: ✅ ACTIVE - UUPS Upgradeable
+- **ABI File**: `HostEarningsUpgradeable-CLIENT-ABI.json`
+
+### ProofSystemUpgradeable
+- **Proxy Address**: `0x5afB91977e69Cc5003288849059bc62d47E7deeb`
+- **Implementation**: `0x83eB050Aa3443a76a4De64aBeD90cA8d525E7A3A`
+- **Network**: Base Sepolia
+- **Status**: ✅ ACTIVE - UUPS Upgradeable
+- **ABI File**: `ProofSystemUpgradeable-CLIENT-ABI.json`
+
+### Upgradeable Contracts Configuration
+
+```javascript
+// Use these addresses for all new integrations
+const upgradeableContracts = {
+  jobMarketplace: "0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D",
+  nodeRegistry: "0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22",
+  modelRegistry: "0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2",
+  hostEarnings: "0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0",
+  proofSystem: "0x5afB91977e69Cc5003288849059bc62d47E7deeb",
+  fabToken: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
+  usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+};
+```
+
+---
+
+## LEGACY CONTRACTS (Deprecated - December 10, 2025)
+
+> **WARNING**: These contracts are deprecated. Migrate to upgradeable versions above.
+
+## Current Deployed Contracts (December 10, 2025 - Rate Limit Fix) ⚠️ DEPRECATED
 
 ### JobMarketplaceWithModels
 - **Address**: 0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97
