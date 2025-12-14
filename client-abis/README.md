@@ -10,15 +10,20 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ### JobMarketplaceWithModelsUpgradeable
 - **Proxy Address**: `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D`
-- **Implementation**: `0xa2FDB6fe686262CC11314f33689b9057443A3001`
+- **Implementation**: `0xe0ee96FC4Cc7a05a6e9d5191d070c5d1d13f143F`
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json`
+- **Minimum Deposits**:
+  - ETH: 0.0001 ETH (~$0.50)
+  - USDC: 500000 (0.50 USDC)
 - **Key Features**:
   - All features from non-upgradeable version
   - UUPS proxy pattern for future upgrades
   - Emergency pause/unpause functions
   - Owner-only upgrade authorization
+  - `updateTokenMinDeposit(address, uint256)` - Admin function to update minimum deposits
+  - `TokenMinDepositUpdated` event - Emitted when minimum deposit is changed
 
 ### NodeRegistryWithModelsUpgradeable
 - **Proxy Address**: `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22`
@@ -705,7 +710,8 @@ For treasury address only:
 
 ## Constants
 
-- `MIN_DEPOSIT`: 200000000000000 wei (0.0002 ETH)
+- `MIN_DEPOSIT`: 100000000000000 wei (0.0001 ETH ~$0.50)
+- `USDC_MIN_DEPOSIT`: 500000 (0.50 USDC)
 - `MIN_PROVEN_TOKENS`: 100
 - `TREASURY_FEE_PERCENT`: 2.5
 - `MIN_SESSION_DURATION`: 1 hour
@@ -779,7 +785,7 @@ const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
 - **Replacement**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6
 
 ## Last Updated
-December 10, 2025 - Rate limit fix (2000 tokens/sec) for high-speed inference on small models
+December 14, 2025 - UUPS Upgradeable + Minimum deposits reduced to ~$0.50 + updateTokenMinDeposit function
 
 ### PRICE_PRECISION Breaking Change
 

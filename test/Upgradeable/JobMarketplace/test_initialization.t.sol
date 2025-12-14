@@ -255,7 +255,7 @@ contract JobMarketplaceInitializationTest is Test {
     function test_CreateSessionJobRejectsInsufficientDeposit() public {
         vm.prank(user1);
         vm.expectRevert("Insufficient deposit");
-        marketplace.createSessionJob{value: 0.0001 ether}(
+        marketplace.createSessionJob{value: 0.00005 ether}( // Below MIN_DEPOSIT of 0.0001 ether
             host1,
             MIN_PRICE_NATIVE,
             1 days,
@@ -290,10 +290,10 @@ contract JobMarketplaceInitializationTest is Test {
     // ============================================================
 
     function test_ConstantsAreCorrect() public view {
-        assertEq(marketplace.MIN_DEPOSIT(), 0.0002 ether);
+        assertEq(marketplace.MIN_DEPOSIT(), 0.0001 ether); // ~$0.50 @ $5000/ETH
         assertEq(marketplace.MIN_PROVEN_TOKENS(), 100);
         assertEq(marketplace.ABANDONMENT_TIMEOUT(), 24 hours);
-        assertEq(marketplace.USDC_MIN_DEPOSIT(), 800000);
+        assertEq(marketplace.USDC_MIN_DEPOSIT(), 500000); // $0.50 USDC
         assertEq(marketplace.PRICE_PRECISION(), 1000);
     }
 }

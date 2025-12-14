@@ -116,7 +116,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     }
 
     // Constants (non-upgradeable)
-    uint256 public constant MIN_DEPOSIT = 0.0002 ether;
+    uint256 public constant MIN_DEPOSIT = 0.0001 ether; // ~$0.50 @ $5000/ETH
     uint256 public constant MIN_PROVEN_TOKENS = 100;
     uint256 public constant ABANDONMENT_TIMEOUT = 24 hours;
 
@@ -145,7 +145,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     HostEarningsUpgradeable public hostEarnings;
 
     // USDC-specific configuration
-    uint256 public constant USDC_MIN_DEPOSIT = 800000; // 0.80 USDC
+    uint256 public constant USDC_MIN_DEPOSIT = 500000; // 0.50 USDC
 
     // Price precision: prices are stored with 1000x precision for sub-cent granularity
     // Payment calculation: (tokensUsed * pricePerToken) / PRICE_PRECISION
@@ -205,6 +205,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     // Token acceptance event (Phase 2.4)
     event TokenAccepted(address indexed token, uint256 minDeposit);
+    event TokenMinDepositUpdated(address indexed token, uint256 oldMinDeposit, uint256 newMinDeposit);
 
     // Model-aware session event (Phase 3.2)
     event SessionJobCreatedForModel(
@@ -313,7 +314,16 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     function setUsdcAddress(address _usdc) external onlyOwner {
         require(_usdc != address(0), "Invalid USDC address");
+
+        // Remove old USDC from accepted tokens if it exists
+        if (usdcAddress != address(0) && acceptedTokens[usdcAddress]) {
+            acceptedTokens[usdcAddress] = false;
+        }
+
+        // Set new USDC address and add to accepted tokens
         usdcAddress = _usdc;
+        acceptedTokens[_usdc] = true;
+        tokenMinDeposits[_usdc] = USDC_MIN_DEPOSIT;
     }
 
     // Initialize chain configuration (Phase 4.1)
@@ -798,6 +808,22 @@ contract JobMarketplaceWithModelsUpgradeable is
         tokenMinDeposits[token] = minDeposit;
 
         emit TokenAccepted(token, minDeposit);
+    }
+
+    /**
+     * @notice Update minimum deposit for an accepted token (treasury or owner only)
+     * @param token The token address to update
+     * @param minDeposit The new minimum deposit amount
+     */
+    function updateTokenMinDeposit(address token, uint256 minDeposit) external {
+        require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
+        require(acceptedTokens[token], "Token not accepted");
+        require(minDeposit > 0, "Invalid minimum deposit");
+
+        uint256 oldMinDeposit = tokenMinDeposits[token];
+        tokenMinDeposits[token] = minDeposit;
+
+        emit TokenMinDepositUpdated(token, oldMinDeposit, minDeposit);
     }
 
     // ============================================================
