@@ -86,11 +86,13 @@ JobMarketplaceWithModels (depends on NodeRegistry, HostEarnings, ProofSystem)
 - [x] **Phase 5: NodeRegistryWithModels Upgrade** (4/4 sub-phases complete) ✅
 - [x] **Phase 6: JobMarketplaceWithModels Upgrade** (5/5 sub-phases complete) ✅
 - [x] **Phase 7: Integration & Deployment** (4/4 sub-phases complete) ✅
-- [ ] **Phase 8: Cleanup for Audit** (1/3 sub-phases complete)
+- [x] **Phase 8: Cleanup for Audit** (3/3 sub-phases complete) ✅
 
 **Last Updated:** 2025-12-14
 
-**Progress: 29/31 sub-phases complete (94%)**
+**Progress: 31/31 sub-phases complete (100%)** ✅
+
+**IMPLEMENTATION COMPLETE**
 
 ---
 
@@ -827,70 +829,97 @@ forge test --match-path "test/Upgradeable/**"  # 252 tests passed
 
 ---
 
-### Sub-phase 8.2: Delete Original Contracts
+### Sub-phase 8.2: Delete Original Contracts ✅
 
 Remove original non-upgradeable contracts after verification.
 
 **Tasks:**
-- [ ] Delete `src/ModelRegistry.sol` (original)
-- [ ] Delete `src/ProofSystem.sol` (original)
-- [ ] Delete `src/HostEarnings.sol` (original)
-- [ ] Delete `src/NodeRegistryWithModels.sol` (original)
-- [ ] Delete `src/JobMarketplaceWithModels.sol` (original)
-- [ ] Verify build still succeeds
-- [ ] Verify all tests still pass
+- [x] Delete `src/ModelRegistry.sol` (original)
+- [x] Delete `src/ProofSystem.sol` (original)
+- [x] Delete `src/HostEarnings.sol` (original)
+- [x] Delete `src/NodeRegistryWithModels.sol` (original)
+- [x] Delete `src/JobMarketplaceWithModels.sol` (original)
+- [x] Delete non-upgradeable tests in `test/JobMarketplace/`, `test/NodeRegistry/`, etc.
+- [x] Update upgradeable contracts to import upgradeable dependencies
+- [x] Update test files to use upgradeable dependencies
+- [x] Delete old deployment scripts
+- [x] Verify build succeeds
+- [x] Verify all tests pass (255 tests passed)
+
+**Additional Cleanup Performed:**
+- Deleted test directories: `test/JobMarketplace/`, `test/NodeRegistry/`, `test/ProofSystem/`, `test/Integration/`, `test/Deploy/`
+- Updated `JobMarketplaceWithModelsUpgradeable.sol` imports: `NodeRegistryWithModels` → `NodeRegistryWithModelsUpgradeable`, `HostEarnings` → `HostEarningsUpgradeable`
+- Updated `NodeRegistryWithModelsUpgradeable.sol` imports: `ModelRegistry` → `ModelRegistryUpgradeable`
+- Deleted old deployment scripts: `DeployModelRegistry.s.sol`, `DeployJobMarketplace.s.sol`, etc.
 
 **Commands:**
 ```bash
-rm src/ModelRegistry.sol
-rm src/ProofSystem.sol
-rm src/HostEarnings.sol
-rm src/NodeRegistryWithModels.sol
-rm src/JobMarketplaceWithModels.sol
+# Delete original contracts
+rm src/ModelRegistry.sol src/ProofSystem.sol src/HostEarnings.sol
+rm src/NodeRegistryWithModels.sol src/JobMarketplaceWithModels.sol
 
-forge build
-forge test
+# Delete non-upgradeable tests
+rm -rf test/JobMarketplace test/NodeRegistry test/ProofSystem test/Integration test/Deploy
+
+# Build and test
+forge build  # Success with warnings only
+forge test   # 255 tests passed, 0 failed
 ```
 
 ---
 
-### Sub-phase 8.3: Rename Upgradeable Contracts (Optional)
+### Sub-phase 8.3: Final Verification ✅
 
-Optionally rename contracts to remove "Upgradeable" suffix for cleaner codebase.
+Keep "Upgradeable" suffix to clearly indicate proxy pattern usage.
 
-**Tasks:**
-- [ ] Rename `ModelRegistryUpgradeable.sol` → `ModelRegistry.sol`
-- [ ] Rename `ProofSystemUpgradeable.sol` → `ProofSystem.sol`
-- [ ] Rename `HostEarningsUpgradeable.sol` → `HostEarnings.sol`
-- [ ] Rename `NodeRegistryWithModelsUpgradeable.sol` → `NodeRegistryWithModels.sol`
-- [ ] Rename `JobMarketplaceWithModelsUpgradeable.sol` → `JobMarketplaceWithModels.sol`
-- [ ] Update all import statements across codebase
-- [ ] Update contract names inside files (remove "Upgradeable" suffix)
-- [ ] Verify build succeeds
-- [ ] Verify all tests pass
-- [ ] Update deployment scripts with new names
+**Decision:** Option A - Keep "Upgradeable" suffix
 
-**Note:** This step is optional. Keeping "Upgradeable" suffix clearly indicates the contracts use proxy pattern.
+**Rationale:**
+- Clearly indicates contracts use UUPS proxy pattern
+- Distinguishes from potential non-upgradeable versions
+- Self-documenting for auditors
+- No need for massive renaming effort
 
-**Files After Cleanup (Option A - Keep suffix):**
+**Final Directory Structure:**
 ```
 src/
 ├── ModelRegistryUpgradeable.sol
 ├── ProofSystemUpgradeable.sol
 ├── HostEarningsUpgradeable.sol
 ├── NodeRegistryWithModelsUpgradeable.sol
-└── JobMarketplaceWithModelsUpgradeable.sol
+├── JobMarketplaceWithModelsUpgradeable.sol
+├── interfaces/
+│   ├── IJobMarketplace.sol
+│   ├── IProofSystem.sol
+│   └── IReputationSystem.sol
+└── utils/
+    └── ReentrancyGuardUpgradeable.sol
+
+test/
+├── Upgradeable/           # All upgradeable contract tests
+│   ├── JobMarketplace/
+│   ├── NodeRegistry/
+│   ├── ModelRegistry/
+│   ├── ProofSystem/
+│   ├── HostEarnings/
+│   └── Integration/
+├── mocks/                 # Mock contracts for testing
+└── TestSetup.t.sol       # Base test setup
+
+script/
+├── DeployUpgradeable.s.sol           # Base deployment helper
+├── DeployAllUpgradeable.s.sol        # Deploy all contracts
+├── DeployModelRegistryUpgradeable.s.sol
+├── DeployProofSystemUpgradeable.s.sol
+├── DeployHostEarningsUpgradeable.s.sol
+├── DeployNodeRegistryUpgradeable.s.sol
+├── DeployJobMarketplaceUpgradeable.s.sol
+└── VerifyContracts.s.sol
 ```
 
-**Files After Cleanup (Option B - Remove suffix):**
-```
-src/
-├── ModelRegistry.sol
-├── ProofSystem.sol
-├── HostEarnings.sol
-├── NodeRegistryWithModels.sol
-└── JobMarketplaceWithModels.sol
-```
+**Final Test Results:**
+- **Total Tests:** 255 passed, 0 failed
+- **Build:** Success with warnings only (unused parameters in mocks)
 
 ---
 

@@ -2,8 +2,9 @@
 pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
-import {ModelRegistry} from "../../../src/ModelRegistry.sol";
+import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 import {DeployNodeRegistryUpgradeable} from "../../../script/DeployNodeRegistryUpgradeable.s.sol";
 
@@ -14,7 +15,7 @@ import {DeployNodeRegistryUpgradeable} from "../../../script/DeployNodeRegistryU
 contract NodeRegistryDeploymentScriptTest is Test {
     DeployNodeRegistryUpgradeable public deployScript;
     ERC20Mock public fabToken;
-    ModelRegistry public modelRegistry;
+    ModelRegistryUpgradeable public modelRegistry;
 
     address public owner = address(this);
 
@@ -22,8 +23,13 @@ contract NodeRegistryDeploymentScriptTest is Test {
         // Deploy mock FAB token
         fabToken = new ERC20Mock("FAB Token", "FAB");
 
-        // Deploy ModelRegistry
-        modelRegistry = new ModelRegistry(address(fabToken));
+        // Deploy ModelRegistry as proxy
+        ModelRegistryUpgradeable modelRegistryImpl = new ModelRegistryUpgradeable();
+        address modelRegistryProxy = address(new ERC1967Proxy(
+            address(modelRegistryImpl),
+            abi.encodeCall(ModelRegistryUpgradeable.initialize, (address(fabToken)))
+        ));
+        modelRegistry = ModelRegistryUpgradeable(modelRegistryProxy);
 
         // Set environment variables for deployment script
         vm.setEnv("FAB_TOKEN", vm.toString(address(fabToken)));

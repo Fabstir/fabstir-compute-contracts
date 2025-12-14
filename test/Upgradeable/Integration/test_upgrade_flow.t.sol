@@ -9,9 +9,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol";
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWithModelsUpgradeable.sol";
-
-// Non-upgradeable dependencies
-import {ModelRegistry} from "../../../src/ModelRegistry.sol";
+import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
 
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
@@ -60,7 +58,7 @@ contract UpgradeFlowIntegrationTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     JobMarketplaceWithModelsUpgradeable public jobMarketplace;
 
-    ModelRegistry public modelRegistryNonUpgradeable;
+    ModelRegistryUpgradeable public modelRegistry;
     ERC20Mock public fabToken;
 
     address public deployer = address(0x1);
@@ -80,10 +78,15 @@ contract UpgradeFlowIntegrationTest is Test {
         // Deploy mock token
         fabToken = new ERC20Mock("FAB Token", "FAB");
 
-        // Deploy ModelRegistry
-        modelRegistryNonUpgradeable = new ModelRegistry(address(fabToken));
-        modelRegistryNonUpgradeable.addTrustedModel("Model1/Repo", "model1.gguf", bytes32(uint256(1)));
-        modelId1 = modelRegistryNonUpgradeable.getModelId("Model1/Repo", "model1.gguf");
+        // Deploy ModelRegistry as proxy
+        ModelRegistryUpgradeable modelRegistryImpl = new ModelRegistryUpgradeable();
+        address modelRegistryProxy = address(new ERC1967Proxy(
+            address(modelRegistryImpl),
+            abi.encodeCall(ModelRegistryUpgradeable.initialize, (address(fabToken)))
+        ));
+        modelRegistry = ModelRegistryUpgradeable(modelRegistryProxy);
+        modelRegistry.addTrustedModel("Model1/Repo", "model1.gguf", bytes32(uint256(1)));
+        modelId1 = modelRegistry.getModelId("Model1/Repo", "model1.gguf");
 
         // Deploy HostEarnings
         hostEarningsImpl = new HostEarningsUpgradeable();
@@ -99,7 +102,7 @@ contract UpgradeFlowIntegrationTest is Test {
             address(nodeRegistryImpl),
             abi.encodeCall(NodeRegistryWithModelsUpgradeable.initialize, (
                 address(fabToken),
-                address(modelRegistryNonUpgradeable)
+                address(modelRegistry)
             ))
         ));
         nodeRegistry = NodeRegistryWithModelsUpgradeable(nodeRegistryProxy);

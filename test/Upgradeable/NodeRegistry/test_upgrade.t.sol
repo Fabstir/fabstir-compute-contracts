@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
-import {ModelRegistry} from "../../../src/ModelRegistry.sol";
+import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
@@ -33,7 +33,7 @@ contract NodeRegistryWithModelsUpgradeableV2 is NodeRegistryWithModelsUpgradeabl
 contract NodeRegistryUpgradeTest is Test {
     NodeRegistryWithModelsUpgradeable public implementation;
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
-    ModelRegistry public modelRegistry;
+    ModelRegistryUpgradeable public modelRegistry;
     ERC20Mock public fabToken;
 
     address public owner = address(0x1);
@@ -52,12 +52,16 @@ contract NodeRegistryUpgradeTest is Test {
         // Deploy mock FAB token
         fabToken = new ERC20Mock("FAB Token", "FAB");
 
-        // Deploy ModelRegistry
-        vm.prank(owner);
-        modelRegistry = new ModelRegistry(address(fabToken));
+        // Deploy ModelRegistry as proxy
+        vm.startPrank(owner);
+        ModelRegistryUpgradeable modelRegistryImpl = new ModelRegistryUpgradeable();
+        address modelRegistryProxy = address(new ERC1967Proxy(
+            address(modelRegistryImpl),
+            abi.encodeCall(ModelRegistryUpgradeable.initialize, (address(fabToken)))
+        ));
+        modelRegistry = ModelRegistryUpgradeable(modelRegistryProxy);
 
         // Add approved models
-        vm.startPrank(owner);
         modelRegistry.addTrustedModel("Model1/Repo", "model1.gguf", bytes32(uint256(1)));
         modelRegistry.addTrustedModel("Model2/Repo", "model2.gguf", bytes32(uint256(2)));
         vm.stopPrank();

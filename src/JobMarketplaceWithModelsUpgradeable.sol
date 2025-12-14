@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.19;
 
-import "./NodeRegistryWithModels.sol";
+import "./NodeRegistryWithModelsUpgradeable.sol";
 import "./interfaces/IJobMarketplace.sol";
 import "./interfaces/IReputationSystem.sol";
-import "./HostEarnings.sol";
+import "./HostEarningsUpgradeable.sol";
 import "./utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -139,10 +139,10 @@ contract JobMarketplaceWithModelsUpgradeable is
     address public treasuryAddress;
     address public usdcAddress;
 
-    NodeRegistryWithModels public nodeRegistry;
+    NodeRegistryWithModelsUpgradeable public nodeRegistry;
     IReputationSystem public reputationSystem;
     IProofSystemUpgradeable public proofSystem;
-    HostEarnings public hostEarnings;
+    HostEarningsUpgradeable public hostEarnings;
 
     // USDC-specific configuration
     uint256 public constant USDC_MIN_DEPOSIT = 800000; // 0.80 USDC
@@ -255,8 +255,8 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         FEE_BASIS_POINTS = _feeBasisPoints;
         DISPUTE_WINDOW = _disputeWindow;
-        nodeRegistry = NodeRegistryWithModels(_nodeRegistry);
-        hostEarnings = HostEarnings(_hostEarnings);
+        nodeRegistry = NodeRegistryWithModelsUpgradeable(_nodeRegistry);
+        hostEarnings = HostEarningsUpgradeable(_hostEarnings);
 
         // Set defaults
         nextJobId = 1;

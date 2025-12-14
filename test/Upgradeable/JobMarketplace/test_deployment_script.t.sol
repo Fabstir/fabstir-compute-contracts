@@ -2,10 +2,11 @@
 pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWithModelsUpgradeable.sol";
-import {NodeRegistryWithModels} from "../../../src/NodeRegistryWithModels.sol";
-import {ModelRegistry} from "../../../src/ModelRegistry.sol";
-import {HostEarnings} from "../../../src/HostEarnings.sol";
+import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
+import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
+import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 import {DeployJobMarketplaceUpgradeable} from "../../../script/DeployJobMarketplaceUpgradeable.s.sol";
 
@@ -15,9 +16,9 @@ import {DeployJobMarketplaceUpgradeable} from "../../../script/DeployJobMarketpl
  */
 contract JobMarketplaceDeploymentScriptTest is Test {
     DeployJobMarketplaceUpgradeable public deployScript;
-    NodeRegistryWithModels public nodeRegistry;
-    ModelRegistry public modelRegistry;
-    HostEarnings public hostEarnings;
+    NodeRegistryWithModelsUpgradeable public nodeRegistry;
+    ModelRegistryUpgradeable public modelRegistry;
+    HostEarningsUpgradeable public hostEarnings;
     ERC20Mock public fabToken;
 
     address public owner = address(this);
@@ -29,14 +30,29 @@ contract JobMarketplaceDeploymentScriptTest is Test {
         // Deploy mock token
         fabToken = new ERC20Mock("FAB Token", "FAB");
 
-        // Deploy ModelRegistry
-        modelRegistry = new ModelRegistry(address(fabToken));
+        // Deploy ModelRegistry as proxy
+        ModelRegistryUpgradeable modelRegistryImpl = new ModelRegistryUpgradeable();
+        address modelRegistryProxy = address(new ERC1967Proxy(
+            address(modelRegistryImpl),
+            abi.encodeCall(ModelRegistryUpgradeable.initialize, (address(fabToken)))
+        ));
+        modelRegistry = ModelRegistryUpgradeable(modelRegistryProxy);
 
-        // Deploy NodeRegistryWithModels
-        nodeRegistry = new NodeRegistryWithModels(address(fabToken), address(modelRegistry));
+        // Deploy NodeRegistry as proxy
+        NodeRegistryWithModelsUpgradeable nodeRegistryImpl = new NodeRegistryWithModelsUpgradeable();
+        address nodeRegistryProxy = address(new ERC1967Proxy(
+            address(nodeRegistryImpl),
+            abi.encodeCall(NodeRegistryWithModelsUpgradeable.initialize, (address(fabToken), address(modelRegistry)))
+        ));
+        nodeRegistry = NodeRegistryWithModelsUpgradeable(nodeRegistryProxy);
 
-        // Deploy HostEarnings
-        hostEarnings = new HostEarnings();
+        // Deploy HostEarnings as proxy
+        HostEarningsUpgradeable hostEarningsImpl = new HostEarningsUpgradeable();
+        address hostEarningsProxy = address(new ERC1967Proxy(
+            address(hostEarningsImpl),
+            abi.encodeCall(HostEarningsUpgradeable.initialize, ())
+        ));
+        hostEarnings = HostEarningsUpgradeable(payable(hostEarningsProxy));
 
         // Set environment variables for deployment script
         vm.setEnv("NODE_REGISTRY", vm.toString(address(nodeRegistry)));

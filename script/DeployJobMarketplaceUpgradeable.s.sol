@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 
 import "./DeployUpgradeable.s.sol";
 import {JobMarketplaceWithModelsUpgradeable} from "../src/JobMarketplaceWithModelsUpgradeable.sol";
-import {HostEarnings} from "../src/HostEarnings.sol";
 
 /**
  * @title DeployJobMarketplaceUpgradeable

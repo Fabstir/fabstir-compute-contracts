@@ -11,9 +11,6 @@ import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol"
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWithModelsUpgradeable.sol";
 
-// Non-upgradeable dependencies (ModelRegistry is used by NodeRegistry)
-import {ModelRegistry} from "../../../src/ModelRegistry.sol";
-
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
@@ -35,9 +32,6 @@ contract FullFlowIntegrationTest is Test {
     HostEarningsUpgradeable public hostEarnings;
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     JobMarketplaceWithModelsUpgradeable public jobMarketplace;
-
-    // Non-upgradeable ModelRegistry for NodeRegistry compatibility
-    ModelRegistry public modelRegistryNonUpgradeable;
 
     ERC20Mock public fabToken;
     ERC20Mock public usdcToken;
@@ -66,15 +60,20 @@ contract FullFlowIntegrationTest is Test {
         usdcToken = new ERC20Mock("USDC", "USDC");
 
         // ============================================================
-        // Deploy ModelRegistry (non-upgradeable for NodeRegistry compatibility)
+        // Deploy ModelRegistry Upgradeable
         // ============================================================
-        modelRegistryNonUpgradeable = new ModelRegistry(address(fabToken));
+        ModelRegistryUpgradeable modelRegistryImpl = new ModelRegistryUpgradeable();
+        address modelRegistryProxy = address(new ERC1967Proxy(
+            address(modelRegistryImpl),
+            abi.encodeCall(ModelRegistryUpgradeable.initialize, (address(fabToken)))
+        ));
+        modelRegistry = ModelRegistryUpgradeable(modelRegistryProxy);
 
         // Add approved models
-        modelRegistryNonUpgradeable.addTrustedModel("Model1/Repo", "model1.gguf", bytes32(uint256(1)));
-        modelRegistryNonUpgradeable.addTrustedModel("Model2/Repo", "model2.gguf", bytes32(uint256(2)));
-        modelId1 = modelRegistryNonUpgradeable.getModelId("Model1/Repo", "model1.gguf");
-        modelId2 = modelRegistryNonUpgradeable.getModelId("Model2/Repo", "model2.gguf");
+        modelRegistry.addTrustedModel("Model1/Repo", "model1.gguf", bytes32(uint256(1)));
+        modelRegistry.addTrustedModel("Model2/Repo", "model2.gguf", bytes32(uint256(2)));
+        modelId1 = modelRegistry.getModelId("Model1/Repo", "model1.gguf");
+        modelId2 = modelRegistry.getModelId("Model2/Repo", "model2.gguf");
 
         // ============================================================
         // Deploy ProofSystem Upgradeable
@@ -104,7 +103,7 @@ contract FullFlowIntegrationTest is Test {
             address(nodeRegistryImpl),
             abi.encodeCall(NodeRegistryWithModelsUpgradeable.initialize, (
                 address(fabToken),
-                address(modelRegistryNonUpgradeable)
+                address(modelRegistry)
             ))
         ));
         nodeRegistry = NodeRegistryWithModelsUpgradeable(nodeRegistryProxy);

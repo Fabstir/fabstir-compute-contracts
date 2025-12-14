@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./utils/ReentrancyGuardUpgradeable.sol";
-import "./ModelRegistry.sol";
+import "./ModelRegistryUpgradeable.sol";
 
 /**
  * @title NodeRegistryWithModelsUpgradeable
@@ -22,7 +22,7 @@ contract NodeRegistryWithModelsUpgradeable is
 {
     // Storage (was immutable, now regular storage)
     IERC20 public fabToken;
-    ModelRegistry public modelRegistry;
+    ModelRegistryUpgradeable public modelRegistry;
 
     uint256 public constant MIN_STAKE = 1000 * 10**18; // 1000 FAB tokens
 
@@ -94,7 +94,7 @@ contract NodeRegistryWithModelsUpgradeable is
         require(_fabToken != address(0), "Invalid FAB token address");
         require(_modelRegistry != address(0), "Invalid model registry address");
         fabToken = IERC20(_fabToken);
-        modelRegistry = ModelRegistry(_modelRegistry);
+        modelRegistry = ModelRegistryUpgradeable(_modelRegistry);
     }
 
     /**
@@ -483,7 +483,7 @@ contract NodeRegistryWithModelsUpgradeable is
      */
     function updateModelRegistry(address newRegistry) external onlyOwner {
         require(newRegistry != address(0), "Invalid registry address");
-        modelRegistry = ModelRegistry(newRegistry);
+        modelRegistry = ModelRegistryUpgradeable(newRegistry);
         emit ModelRegistryUpdated(newRegistry);
     }
 

@@ -4,9 +4,9 @@ pragma solidity ^0.8.19;
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWithModelsUpgradeable.sol";
-import {NodeRegistryWithModels} from "../../../src/NodeRegistryWithModels.sol";
-import {ModelRegistry} from "../../../src/ModelRegistry.sol";
-import {HostEarnings} from "../../../src/HostEarnings.sol";
+import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
+import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
+import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
@@ -16,9 +16,9 @@ import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 contract JobMarketplacePauseTest is Test {
     JobMarketplaceWithModelsUpgradeable public implementation;
     JobMarketplaceWithModelsUpgradeable public marketplace;
-    NodeRegistryWithModels public nodeRegistry;
-    ModelRegistry public modelRegistry;
-    HostEarnings public hostEarnings;
+    NodeRegistryWithModelsUpgradeable public nodeRegistry;
+    ModelRegistryUpgradeable public modelRegistry;
+    HostEarningsUpgradeable public hostEarnings;
     ERC20Mock public fabToken;
 
     address public owner = address(0x1);
@@ -37,22 +37,35 @@ contract JobMarketplacePauseTest is Test {
         // Deploy mock token
         fabToken = new ERC20Mock("FAB Token", "FAB");
 
-        // Deploy ModelRegistry
-        vm.prank(owner);
-        modelRegistry = new ModelRegistry(address(fabToken));
+        // Deploy ModelRegistry as proxy
+        vm.startPrank(owner);
+        ModelRegistryUpgradeable modelRegistryImpl = new ModelRegistryUpgradeable();
+        address modelRegistryProxy = address(new ERC1967Proxy(
+            address(modelRegistryImpl),
+            abi.encodeCall(ModelRegistryUpgradeable.initialize, (address(fabToken)))
+        ));
+        modelRegistry = ModelRegistryUpgradeable(modelRegistryProxy);
 
         // Add approved model
-        vm.prank(owner);
         modelRegistry.addTrustedModel("Model1/Repo", "model1.gguf", bytes32(uint256(1)));
         modelId1 = modelRegistry.getModelId("Model1/Repo", "model1.gguf");
 
-        // Deploy NodeRegistryWithModels
-        vm.prank(owner);
-        nodeRegistry = new NodeRegistryWithModels(address(fabToken), address(modelRegistry));
+        // Deploy NodeRegistry as proxy
+        NodeRegistryWithModelsUpgradeable nodeRegistryImpl = new NodeRegistryWithModelsUpgradeable();
+        address nodeRegistryProxy = address(new ERC1967Proxy(
+            address(nodeRegistryImpl),
+            abi.encodeCall(NodeRegistryWithModelsUpgradeable.initialize, (address(fabToken), address(modelRegistry)))
+        ));
+        nodeRegistry = NodeRegistryWithModelsUpgradeable(nodeRegistryProxy);
 
-        // Deploy HostEarnings
-        vm.prank(owner);
-        hostEarnings = new HostEarnings();
+        // Deploy HostEarnings as proxy
+        HostEarningsUpgradeable hostEarningsImpl = new HostEarningsUpgradeable();
+        address hostEarningsProxy = address(new ERC1967Proxy(
+            address(hostEarningsImpl),
+            abi.encodeCall(HostEarningsUpgradeable.initialize, ())
+        ));
+        hostEarnings = HostEarningsUpgradeable(payable(hostEarningsProxy));
+        vm.stopPrank();
 
         // Deploy implementation
         implementation = new JobMarketplaceWithModelsUpgradeable();
