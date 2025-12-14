@@ -77,13 +77,13 @@ JobMarketplaceWithModels (depends on NodeRegistry, HostEarnings, ProofSystem)
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (50%)**
+**Overall Status: IN PROGRESS (62.5%)**
 
 - [x] **Phase 1: Infrastructure Setup** (3/3 sub-phases complete) ✅
 - [x] **Phase 2: ModelRegistry Upgrade** (4/4 sub-phases complete) ✅
 - [x] **Phase 3: ProofSystem Upgrade** (4/4 sub-phases complete) ✅
 - [x] **Phase 4: HostEarnings Upgrade** (4/4 sub-phases complete) ✅
-- [ ] **Phase 5: NodeRegistryWithModels Upgrade** (0/4 sub-phases complete)
+- [x] **Phase 5: NodeRegistryWithModels Upgrade** (4/4 sub-phases complete) ✅
 - [ ] **Phase 6: JobMarketplaceWithModels Upgrade** (0/5 sub-phases complete)
 - [ ] **Phase 7: Integration & Deployment** (0/4 sub-phases complete)
 - [ ] **Phase 8: Cleanup for Audit** (0/3 sub-phases complete)
@@ -444,57 +444,27 @@ Create new UUPS version alongside original (kept for comparison).
 
 ---
 
-## Phase 5: NodeRegistryWithModels Upgrade
+## Phase 5: NodeRegistryWithModels Upgrade ✅
 
-### Sub-phase 5.1: Create NodeRegistryWithModelsUpgradeable Contract
+### Sub-phase 5.1: Create NodeRegistryWithModelsUpgradeable Contract ✅
 
 Create new UUPS version alongside original (kept for comparison). **Most complex due to immutable fabToken**.
 
 **Tasks:**
-- [ ] Create `src/NodeRegistryWithModelsUpgradeable.sol` (copy from original)
-- [ ] Replace `Ownable` with `OwnableUpgradeable`
-- [ ] Replace `ReentrancyGuard` with `ReentrancyGuardUpgradeable`
-- [ ] Add `Initializable` and `UUPSUpgradeable`
-- [ ] Convert `immutable fabToken` to regular storage
-- [ ] Replace `constructor` with `initialize(address _fabToken, address _modelRegistry)`
-- [ ] Add `_authorizeUpgrade()` function
-- [ ] Add `__gap` storage (50 slots)
-- [ ] Verify contract compiles
+- [x] Create `src/NodeRegistryWithModelsUpgradeable.sol` (copy from original)
+- [x] Replace `Ownable` with `OwnableUpgradeable`
+- [x] Replace `ReentrancyGuard` with `ReentrancyGuardUpgradeable`
+- [x] Add `Initializable` and `UUPSUpgradeable`
+- [x] Convert `immutable fabToken` to regular storage
+- [x] Replace `constructor` with `initialize(address _fabToken, address _modelRegistry)`
+- [x] Add `_authorizeUpgrade()` function
+- [x] Add `__gap` storage (40 slots)
+- [x] Verify contract compiles
 
-**Implementation:**
-```solidity
-// src/NodeRegistryWithModelsUpgradeable.sol (NEW FILE)
-contract NodeRegistryWithModelsUpgradeable is
-    Initializable,
-    OwnableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    UUPSUpgradeable
-{
-    // Was immutable, now regular storage
-    IERC20 public fabToken;
-    ModelRegistryUpgradeable public modelRegistry;
-
-    // ... existing storage copied from NodeRegistryWithModels.sol ...
-    uint256[48] private __gap; // 48 because fabToken and modelRegistry now use 2 slots
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initialize(address _fabToken, address _modelRegistry) public initializer {
-        __Ownable_init(msg.sender);
-        __ReentrancyGuard_init();
-        __UUPSUpgradeable_init();
-        require(_fabToken != address(0), "Invalid FAB token");
-        require(_modelRegistry != address(0), "Invalid model registry");
-        fabToken = IERC20(_fabToken);
-        modelRegistry = ModelRegistryUpgradeable(_modelRegistry);
-    }
-
-    function _authorizeUpgrade(address) internal override onlyOwner {}
-}
-```
+**Implementation Notes:**
+- Uses `ModelRegistry` (not `ModelRegistryUpgradeable`) since NodeRegistry doesn't need ModelRegistry to be upgradeable
+- OZ 5.x doesn't require `__UUPSUpgradeable_init()` call
+- 40-slot storage gap accounting for all storage variables
 
 **Files Created:**
 - `src/NodeRegistryWithModelsUpgradeable.sol`
@@ -504,45 +474,51 @@ contract NodeRegistryWithModelsUpgradeable is
 
 ---
 
-### Sub-phase 5.2: Write NodeRegistry Upgrade Tests
+### Sub-phase 5.2: Write NodeRegistry Upgrade Tests ✅
 
 **Tasks:**
-- [ ] Create `test/Upgradeable/NodeRegistry/test_initialization.t.sol`
-- [ ] Create `test/Upgradeable/NodeRegistry/test_upgrade.t.sol`
-- [ ] Test: Initialize sets fabToken and modelRegistry correctly
-- [ ] Test: Initialize can only be called once
-- [ ] Test: Node registration works through proxy
-- [ ] Test: Upgrade preserves all node data (nodes mapping)
-- [ ] Test: Upgrade preserves model-to-nodes mapping
-- [ ] Test: Upgrade preserves pricing data
-- [ ] Test: Only owner can upgrade
+- [x] Create `test/Upgradeable/NodeRegistry/test_initialization.t.sol`
+- [x] Create `test/Upgradeable/NodeRegistry/test_upgrade.t.sol`
+- [x] Test: Initialize sets fabToken and modelRegistry correctly
+- [x] Test: Initialize can only be called once
+- [x] Test: Node registration works through proxy
+- [x] Test: Upgrade preserves all node data (nodes mapping)
+- [x] Test: Upgrade preserves model-to-nodes mapping
+- [x] Test: Upgrade preserves pricing data
+- [x] Test: Only owner can upgrade
 
 **Files Created:**
-- `test/Upgradeable/NodeRegistry/test_initialization.t.sol`
-- `test/Upgradeable/NodeRegistry/test_upgrade.t.sol`
+- `test/Upgradeable/NodeRegistry/test_initialization.t.sol` (20 tests)
+- `test/Upgradeable/NodeRegistry/test_upgrade.t.sol` (16 tests)
 
 ---
 
-### Sub-phase 5.3: Verify Tests Pass (RED → GREEN)
+### Sub-phase 5.3: Verify Tests Pass (RED → GREEN) ✅
 
 **Tasks:**
-- [ ] Run tests, verify they FAIL initially (RED)
-- [ ] Fix any issues in implementation
-- [ ] Run tests, verify they PASS (GREEN)
-- [ ] Verify all existing NodeRegistry tests still pass with upgradeable version
+- [x] Run tests, verify they FAIL initially (RED)
+- [x] Fix any issues in implementation
+- [x] Run tests, verify they PASS (GREEN)
+- [x] Verify all existing NodeRegistry tests still pass with upgradeable version
+
+**Results:** 36 tests passing
 
 ---
 
-### Sub-phase 5.4: Create NodeRegistry Deployment Script
+### Sub-phase 5.4: Create NodeRegistry Deployment Script ✅
 
 **Tasks:**
-- [ ] Create `script/DeployNodeRegistryUpgradeable.s.sol`
-- [ ] Deploy after ModelRegistry proxy is deployed
-- [ ] Pass ModelRegistry proxy address to initialize
-- [ ] Verify on local anvil
+- [x] Create `script/DeployNodeRegistryUpgradeable.s.sol`
+- [x] Deploy after ModelRegistry proxy is deployed
+- [x] Pass ModelRegistry proxy address to initialize
+- [x] Create deployment script tests
+- [x] Verify on local anvil
 
 **Files Created:**
 - `script/DeployNodeRegistryUpgradeable.s.sol`
+- `test/Upgradeable/NodeRegistry/test_deployment_script.t.sol` (6 tests)
+
+**Total Phase 5 Tests:** 42 tests passing
 
 ---
 
