@@ -29,7 +29,7 @@ const contracts = {
 
 // Implementation addresses (for verification only)
 const implementations = {
-  jobMarketplace: "0xa2FDB6fe686262CC11314f33689b9057443A3001",
+  jobMarketplace: "0xe0ee96FC4Cc7a05a6e9d5191d070c5d1d13f143F",
   nodeRegistry: "0x68298e2b74a106763aC99E3D973E98012dB5c75F",
   modelRegistry: "0xd7Df5c6D4ffe6961d47753D1dd32f844e0F73f50",
   proofSystem: "0x83eB050Aa3443a76a4De64aBeD90cA8d525E7A3A",
@@ -361,14 +361,14 @@ function isActiveNode(address operator) external view returns (bool)
 Session management and payments.
 
 **Proxy Address:** `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D`
-**Implementation:** `0xa2FDB6fe686262CC11314f33689b9057443A3001`
+**Implementation:** `0xe0ee96FC4Cc7a05a6e9d5191d070c5d1d13f143F`
 
 ### Constants
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `MIN_DEPOSIT` | 0.0002 ETH | Minimum ETH deposit |
-| `USDC_MIN_DEPOSIT` | 800,000 (0.80 USDC) | Minimum USDC deposit |
+| `MIN_DEPOSIT` | 0.0001 ETH (~$0.50) | Minimum ETH deposit |
+| `USDC_MIN_DEPOSIT` | 500,000 (0.50 USDC) | Minimum USDC deposit |
 | `PRICE_PRECISION` | 1000 | Prices stored with 1000x multiplier |
 | `FEE_BASIS_POINTS` | 1000 | 10% platform fee |
 | `DISPUTE_WINDOW` | 30 seconds | Time for disputes |
@@ -396,7 +396,7 @@ function createSessionJob(
 ```
 
 **Requirements:**
-- `msg.value >= MIN_DEPOSIT` (0.0002 ETH)
+- `msg.value >= MIN_DEPOSIT` (0.0001 ETH)
 - `pricePerToken >= host's minPricePerTokenNative`
 - Host must be registered and active
 
@@ -752,6 +752,37 @@ Add a new accepted payment token (treasury only).
 function addAcceptedToken(address token, uint256 minDeposit) external
 ```
 
+#### `updateTokenMinDeposit`
+
+Update minimum deposit for an accepted token (treasury or owner only).
+
+```solidity
+function updateTokenMinDeposit(address token, uint256 minDeposit) external
+```
+
+**Requirements:**
+- Caller must be treasury or owner
+- Token must already be accepted
+- minDeposit must be > 0
+
+**Events:**
+```solidity
+event TokenMinDepositUpdated(
+    address indexed token,
+    uint256 oldMinDeposit,
+    uint256 newMinDeposit
+)
+```
+
+**Example:**
+```javascript
+// Update USDC minimum deposit to $0.25
+await marketplace.updateTokenMinDeposit(
+  "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC
+  250000  // 0.25 USDC (6 decimals)
+);
+```
+
 ---
 
 ## Common Workflows
@@ -937,7 +968,7 @@ const config = {
 
   // Implementation addresses (for contract verification)
   implementations: {
-    jobMarketplace: "0xa2FDB6fe686262CC11314f33689b9057443A3001",
+    jobMarketplace: "0xe0ee96FC4Cc7a05a6e9d5191d070c5d1d13f143F",
     nodeRegistry: "0x68298e2b74a106763aC99E3D973E98012dB5c75F",
     modelRegistry: "0xd7Df5c6D4ffe6961d47753D1dd32f844e0F73f50",
     proofSystem: "0x83eB050Aa3443a76a4De64aBeD90cA8d525E7A3A",
