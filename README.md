@@ -6,7 +6,7 @@
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg)](https://getfoundry.sh/)
 [![Base Sepolia](https://img.shields.io/badge/Network-Base%20Sepolia-0052FF.svg)](https://sepolia.basescan.org)
 
-**Last Updated**: October 14, 2025
+**Last Updated**: December 14, 2025
 
 ## Overview
 
@@ -45,15 +45,23 @@ Fabstir Compute is a **peer-to-peer AI inference marketplace** that connects GPU
 - Anyone-can-complete: Gasless UX for renters
 - S5 storage: ~$0.001 vs ~$50 for on-chain proofs
 
+🔄 **Upgradeable (UUPS)**
+- All contracts use UUPS proxy pattern
+- Future upgrades without data migration
+- Owner-controlled upgrade authorization
+
 ## Current Deployment (Base Sepolia)
 
-| Contract | Address | Status |
-|----------|---------|--------|
-| **JobMarketplaceWithModels** | `0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97` | ✅ PRICE_PRECISION + 2000 tok/sec (Dec 10, 2025) |
-| **NodeRegistryWithModels** | `0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999` | ✅ PRICE_PRECISION=1000 (Dec 9, 2025) |
-| **ModelRegistry** | `0x92b2De840bB2171203011A6dBA928d855cA8183E` | ✅ Active |
-| **ProofSystem** | `0x2ACcc60893872A499700908889B38C5420CBcFD1` | ✅ Configured |
-| **HostEarnings** | `0x908962e8c6CE72610021586f85ebDE09aAc97776` | ✅ Active |
+> **All contracts use UUPS Upgradeable pattern** (December 14, 2025)
+> Minimum deposits reduced to ~$0.50 (ETH: 0.0001, USDC: 500000)
+
+| Contract | Proxy Address | Status |
+|----------|---------------|--------|
+| **JobMarketplace** | `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D` | ✅ UUPS + updateTokenMinDeposit |
+| **NodeRegistry** | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | ✅ UUPS + PRICE_PRECISION=1000 |
+| **ModelRegistry** | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | ✅ UUPS |
+| **ProofSystem** | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` | ✅ UUPS |
+| **HostEarnings** | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | ✅ UUPS |
 | **FAB Token** | `0xC78949004B4EB6dEf2D66e49Cd81231472612D62` | Testnet |
 | **USDC** | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Testnet |
 
@@ -71,7 +79,7 @@ const [nativeMin, stableMin] = await nodeRegistry.getNodePricing(hostAddress);
 
 // 2. Create session with ETH
 const marketplace = new ethers.Contract(
-  '0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97',
+  '0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D',  // UUPS Proxy
   JobMarketplaceABI,
   signer
 );
@@ -201,7 +209,7 @@ forge verify-contract <ADDRESS> <CONTRACT> \
   --etherscan-api-key $BASESCAN_API_KEY
 
 # Query contract (example)
-cast call 0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97 \
+cast call 0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D \
   "nextJobId()" \
   --rpc-url "https://sepolia.base.org"
 ```
@@ -236,9 +244,18 @@ cast call 0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97 \
                    └──────────────┘
 ```
 
-## Breaking Changes (October 14, 2025)
+## Breaking Changes
 
-### S5 Off-Chain Proof Storage
+### December 14, 2025: UUPS Upgradeable Migration
+
+All contracts migrated to UUPS pattern with new proxy addresses:
+- Minimum deposits reduced to ~$0.50
+- New admin function: `updateTokenMinDeposit(address, uint256)`
+- Emergency pause functionality added to JobMarketplace
+
+See [Migration Guide for Node Developers](docs/MIGRATION-NODE-DEVELOPER.md) and [SDK Developers](docs/MIGRATION-SDK-DEVELOPER.md).
+
+### October 14, 2025: S5 Off-Chain Proof Storage
 
 **Old Contract**: `0xe169A4B57700080725f9553E3Cc69885fea13629`
 ```solidity
@@ -249,7 +266,7 @@ function submitProofOfWork(
 ) external
 ```
 
-**New Contract**: `0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97`
+**New Contract**: `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D` (UUPS Proxy)
 ```solidity
 function submitProofOfWork(
     uint256 jobId,
@@ -259,12 +276,7 @@ function submitProofOfWork(
 ) external
 ```
 
-**Migration Required**:
-- Node operators must integrate S5 client
-- Upload proofs to S5 before blockchain submission
-- Calculate SHA256 hash and submit with CID
-
-See [Breaking Changes](docs/BREAKING_CHANGES.md) for migration guide.
+See [Breaking Changes](docs/BREAKING_CHANGES.md) for full migration guide.
 
 ## Security
 
@@ -319,6 +331,7 @@ See [LICENSE](LICENSE), [NOTICE](NOTICE), and [NETWORKS.md](NETWORKS.md) for com
 - [x] Session-based streaming payments (Jan 2025)
 - [x] Dual pricing (native + stable) (Jan 2025)
 - [x] S5 off-chain proof storage (Oct 2025)
+- [x] UUPS upgradeable contracts (Dec 2025)
 - [ ] Base Mainnet deployment
 - [ ] opBNB testnet deployment
 - [ ] Additional approved models
