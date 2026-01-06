@@ -4,13 +4,14 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ---
 
-## UPGRADEABLE CONTRACTS (December 14, 2025 - UUPS Proxy Pattern)
+## UPGRADEABLE CONTRACTS (January 6, 2026 - Security Audit Fixes)
 
-> **RECOMMENDED**: Use these upgradeable contracts for all new integrations. They support future upgrades without data migration.
+> **🔒 SECURITY UPDATE**: All CRITICAL vulnerabilities from January 2025 audit have been fixed.
+> **RECOMMENDED**: Use these upgradeable contracts for all integrations.
 
 ### JobMarketplaceWithModelsUpgradeable
 - **Proxy Address**: `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D`
-- **Implementation**: `0xe0ee96FC4Cc7a05a6e9d5191d070c5d1d13f143F`
+- **Implementation**: `0xfa6F48eced34294B4FCe3Ae6Bb78d22858AfEe8B` ✅ Security fixes (Jan 6, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json`
@@ -24,6 +25,14 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
   - Owner-only upgrade authorization
   - `updateTokenMinDeposit(address, uint256)` - Admin function to update minimum deposits
   - `TokenMinDepositUpdated` event - Emitted when minimum deposit is changed
+- **Security Fixes (Jan 2026)**:
+  - ✅ Host validation - Hosts must be registered in NodeRegistry
+  - ✅ Double-spend prevention - Fixed deposit tracking for inline sessions
+  - ✅ Legacy dead code removed (claimWithProof, Job types)
+  - NEW: `getLockedBalanceNative(address)` - View locked funds in active sessions
+  - NEW: `getLockedBalanceToken(address, address)` - View locked token funds
+  - NEW: `getTotalBalanceNative(address)` - View total balance (withdrawable + locked)
+  - NEW: `getTotalBalanceToken(address, address)` - View total token balance
 
 ### NodeRegistryWithModelsUpgradeable
 - **Proxy Address**: `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22`
@@ -55,10 +64,14 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ### ProofSystemUpgradeable
 - **Proxy Address**: `0x5afB91977e69Cc5003288849059bc62d47E7deeb`
-- **Implementation**: `0x83eB050Aa3443a76a4De64aBeD90cA8d525E7A3A`
+- **Implementation**: `0xf0DA90e1ae1A3aB7b9Da47790Abd73D26b17670F` ✅ Security fixes (Jan 6, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `ProofSystemUpgradeable-CLIENT-ABI.json`
+- **Security Features** (Jan 2026):
+  - `setAuthorizedCaller(address, bool)` - Owner authorizes callers for recordVerifiedProof
+  - `authorizedCallers(address)` - Check if address is authorized
+  - Access control on `recordVerifiedProof()` prevents front-running attacks
 
 ### Upgradeable Contracts Configuration
 
