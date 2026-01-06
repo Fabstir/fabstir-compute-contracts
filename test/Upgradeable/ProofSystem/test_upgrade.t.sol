@@ -60,11 +60,10 @@ contract ProofSystemUpgradeTest is Test {
         // Set up some state to test preservation
         vm.startPrank(owner);
         proofSystem.registerModelCircuit(modelAddress, CIRCUIT_HASH);
-        vm.stopPrank();
-
-        // Record some verified proofs
+        // Record verified proofs (requires owner authorization after security fix)
         proofSystem.recordVerifiedProof(PROOF_HASH_1);
         proofSystem.recordVerifiedProof(PROOF_HASH_2);
+        vm.stopPrank();
     }
 
     // ============================================================
@@ -235,8 +234,9 @@ contract ProofSystemUpgradeTest is Test {
 
         ProofSystemUpgradeableV2 proofSystemV2 = ProofSystemUpgradeableV2(address(proofSystem));
 
-        // Record a new proof
+        // Record a new proof (requires owner authorization after security fix)
         bytes32 newProofHash = bytes32(uint256(0x7777));
+        vm.prank(owner);
         proofSystemV2.recordVerifiedProof(newProofHash);
 
         assertTrue(proofSystemV2.verifiedProofs(newProofHash));

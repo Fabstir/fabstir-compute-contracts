@@ -108,6 +108,7 @@ contract ProofSystemInitializationTest is Test {
     function test_RecordVerifiedProofWorks() public {
         bytes32 proofHash = bytes32(uint256(0xABCD));
 
+        vm.prank(owner);  // Owner authorization required after security fix
         proofSystem.recordVerifiedProof(proofHash);
 
         assertTrue(proofSystem.verifiedProofs(proofHash));

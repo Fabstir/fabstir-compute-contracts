@@ -20,13 +20,17 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     mapping(bytes32 => bool) public registeredCircuits;
     mapping(address => bytes32) public modelCircuits;
 
+    // Access control for recordVerifiedProof (Sub-phase 1.1 security fix)
+    mapping(address => bool) public authorizedCallers;
+
     // Events
     event ProofVerified(bytes32 indexed proofHash, address indexed prover, uint256 tokens);
     event CircuitRegistered(bytes32 indexed circuitHash, address indexed model);
     event BatchProofVerified(bytes32[] proofHashes, address indexed prover, uint256 totalTokens);
+    event AuthorizedCallerUpdated(address indexed caller, bool authorized);
 
-    // Storage gap for future upgrades
-    uint256[47] private __gap;
+    // Storage gap for future upgrades (reduced by 1 for authorizedCallers mapping)
+    uint256[46] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -45,6 +49,18 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
      * @notice Authorize upgrade (only owner can upgrade)
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /**
+     * @notice Set authorized caller status for recordVerifiedProof
+     * @dev Only owner can authorize/revoke callers. Typically JobMarketplace is authorized.
+     * @param caller The address to authorize or revoke
+     * @param authorized True to authorize, false to revoke
+     */
+    function setAuthorizedCaller(address caller, bool authorized) external onlyOwner {
+        require(caller != address(0), "Invalid caller");
+        authorizedCallers[caller] = authorized;
+        emit AuthorizedCallerUpdated(caller, authorized);
+    }
 
     /**
      * @notice Basic EZKL verification (simplified for now)
@@ -85,9 +101,12 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Record a verified proof (only for testing now)
+     * @notice Record a verified proof to prevent replay attacks
+     * @dev Only callable by authorized contracts (e.g., JobMarketplace) or owner
+     * @param proofHash The hash of the verified proof
      */
     function recordVerifiedProof(bytes32 proofHash) external {
+        require(authorizedCallers[msg.sender] || msg.sender == owner(), "Unauthorized");
         verifiedProofs[proofHash] = true;
         emit ProofVerified(proofHash, msg.sender, 0);
     }
