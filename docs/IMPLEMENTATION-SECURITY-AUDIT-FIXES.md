@@ -42,15 +42,16 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (29%)**
+**Overall Status: IN PROGRESS (35%)**
 
 - [x] **Phase 1: ProofSystem Security Fixes** (4/4 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 1.1: Add Access Control to recordVerifiedProof ✅
   - [x] Sub-phase 1.2: Implement Signature-Based Proof Verification ✅
   - [x] Sub-phase 1.3: Document and Fix estimateBatchGas ✅
   - [x] Sub-phase 1.4: Remove Unsafe Testing Functions ✅
-- [ ] **Phase 2: Host Validation Fix** (1/3 sub-phases)
+- [ ] **Phase 2: Host Validation Fix** (2/3 sub-phases)
   - [x] Sub-phase 2.1: Implement Proper _validateHostRegistration ✅
+  - [x] Sub-phase 2.2: Add Host Validation to All Session Creation Functions ✅
 - [ ] **Phase 3: Double-Spend Fix** (0/3 sub-phases)
 - [ ] **Phase 4: Legacy Code Cleanup** (0/3 sub-phases)
 - [ ] **Phase 5: Final Verification & Deployment** (0/4 sub-phases)
@@ -383,28 +384,35 @@ function test_UnregisteredAfterRegistrationFailsValidation()
 **Issue**: Need to ensure _validateHostRegistration is called in all session creation paths.
 
 **Tasks:**
-- [ ] Write test file `test/JobMarketplace/test_host_validation_all_paths.t.sol`
-- [ ] Test: createSessionJob validates host
-- [ ] Test: createSessionJobWithToken validates host
-- [ ] Test: createSessionJobForModel validates host
-- [ ] Test: createSessionJobForModelWithToken validates host
-- [ ] Test: createSessionFromDeposit validates host
-- [ ] Audit all session creation functions for _validateHostRegistration call
-- [ ] Ensure validation happens BEFORE any state changes
-- [ ] Verify all tests pass
+- [x] Write test file `test/SecurityFixes/JobMarketplace/test_host_validation_all_paths.t.sol`
+- [x] Test: createSessionJob validates host
+- [x] Test: createSessionJobWithToken validates host
+- [x] Test: createSessionJobForModel validates host
+- [x] Test: createSessionJobForModelWithToken validates host
+- [x] Test: createSessionFromDeposit validates host
+- [x] Audit all session creation functions for _validateHostRegistration call
+- [x] Ensure validation happens BEFORE any state changes
+- [x] Verify all tests pass (103/103 JobMarketplace tests passing)
 
-**Files Modified:**
-- `src/JobMarketplaceWithModelsUpgradeable.sol` (verify calls at lines 354, 460, 408, 524, 911)
+**Audit Results:**
+All 5 session creation functions call `_validateHostRegistration` BEFORE state changes:
+- `createSessionJob` - line 354 (before `nextJobId++` at 360)
+- `createSessionJobWithToken` - line 462 (before token transfer at 469)
+- `createSessionJobForModel` - line 405 (before `nextJobId++` at 416)
+- `createSessionJobForModelWithToken` - line 524 (before token transfer at 535)
+- `createSessionFromDeposit` - line 932 (before balance changes at 943/950)
 
-**Tests:**
+**Files Created:**
+- `test/SecurityFixes/JobMarketplace/test_host_validation_all_paths.t.sol` (19 tests)
+
+**Tests (19 passing):**
 ```solidity
-// test/JobMarketplace/test_host_validation_all_paths.t.sol
-function test_CreateSessionJobValidatesHost() public { /* ... */ }
-function test_CreateSessionJobWithTokenValidatesHost() public { /* ... */ }
-function test_CreateSessionJobForModelValidatesHost() public { /* ... */ }
-function test_CreateSessionJobForModelWithTokenValidatesHost() public { /* ... */ }
-function test_CreateSessionFromDepositValidatesHost() public { /* ... */ }
-function test_UnregisteredHostRevertsAllPaths() public { /* ... */ }
+// All 5 paths tested for:
+// - Unregistered host reverts with "Host not registered"
+// - Registered host succeeds
+// - No state change on revert
+// - Validation happens before model check (for model functions)
+// - Inactive host reverts with "Host not active"
 ```
 
 ---
