@@ -42,14 +42,15 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (24%)**
+**Overall Status: IN PROGRESS (29%)**
 
 - [x] **Phase 1: ProofSystem Security Fixes** (4/4 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 1.1: Add Access Control to recordVerifiedProof ✅
   - [x] Sub-phase 1.2: Implement Signature-Based Proof Verification ✅
   - [x] Sub-phase 1.3: Document and Fix estimateBatchGas ✅
   - [x] Sub-phase 1.4: Remove Unsafe Testing Functions ✅
-- [ ] **Phase 2: Host Validation Fix** (0/3 sub-phases)
+- [ ] **Phase 2: Host Validation Fix** (1/3 sub-phases)
+  - [x] Sub-phase 2.1: Implement Proper _validateHostRegistration ✅
 - [ ] **Phase 3: Double-Spend Fix** (0/3 sub-phases)
 - [ ] **Phase 4: Legacy Code Cleanup** (0/3 sub-phases)
 - [ ] **Phase 5: Final Verification & Deployment** (0/4 sub-phases)
@@ -306,15 +307,15 @@ function test_EventsEmittedCorrectly()
 **Issue**: `_validateHostRegistration()` only checks for non-zero address, allowing any address as host.
 
 **Tasks:**
-- [ ] Write test file `test/JobMarketplace/test_host_validation.t.sol`
-- [ ] Test: Registered and active host passes validation
-- [ ] Test: Unregistered address fails with "Host not registered"
-- [ ] Test: Inactive (deactivated) host fails with "Host not active"
-- [ ] Test: Zero address fails with "Invalid host address"
-- [ ] Remove TODO comment from _validateHostRegistration
-- [ ] Query NodeRegistry to check host registration
-- [ ] Query NodeRegistry to check host active status
-- [ ] Verify all tests pass
+- [x] Write test file `test/SecurityFixes/JobMarketplace/test_host_validation.t.sol`
+- [x] Test: Registered and active host passes validation
+- [x] Test: Unregistered address fails with "Host not registered"
+- [x] Test: Inactive (deactivated) host fails with "Host not active"
+- [x] Test: Zero address fails with "Invalid host address"
+- [x] Remove TODO comment from _validateHostRegistration
+- [x] Query NodeRegistry to check host registration
+- [x] Query NodeRegistry to check host active status
+- [x] Verify all tests pass (84/84 JobMarketplace tests passing)
 
 **Implementation:**
 ```solidity
@@ -344,16 +345,35 @@ function _validateHostRegistration(address host) internal view {
 ```
 
 **Files Modified:**
-- `src/JobMarketplaceWithModelsUpgradeable.sol` (lines 567-572)
+- `src/JobMarketplaceWithModelsUpgradeable.sol`:
+  - `_validateHostRegistration()` (lines 567-589) - Complete rewrite with NodeRegistry query
+  - `createSessionJobForModel()` (line 405) - Moved `_validateHostRegistration` before model check
+  - `createSessionJobForModelWithToken()` (line 524) - Moved `_validateHostRegistration` before model check
 
-**Tests:**
+**Files Created:**
+- `test/SecurityFixes/JobMarketplace/test_host_validation.t.sol` (13 tests)
+
+**Tests (13 passing):**
 ```solidity
-// test/JobMarketplace/test_host_validation.t.sol
-function test_RegisteredActiveHostPassesValidation() public { /* ... */ }
-function test_UnregisteredHostFailsValidation() public { /* ... */ }
-function test_InactiveHostFailsValidation() public { /* ... */ }
-function test_ZeroAddressFailsValidation() public { /* ... */ }
+// test/SecurityFixes/JobMarketplace/test_host_validation.t.sol
+function test_ZeroAddressFailsValidation()
+function test_ZeroAddressFailsValidationWithToken()
+function test_UnregisteredHostFailsValidation()
+function test_UnregisteredHostFailsValidationWithToken()
+function test_UnregisteredHostFailsValidationForModel()
+function test_UnregisteredHostFailsValidationForModelWithToken()
+function test_InactiveHostFailsValidation()
+function test_InactiveHostFailsValidationWithToken()
+function test_RegisteredActiveHostPassesValidation()
+function test_RegisteredActiveHostPassesValidationWithToken()
+function test_RegisteredActiveHostPassesValidationForModel()
+function test_RegisteredActiveHostPassesValidationForModelWithToken()
+function test_UnregisteredAfterRegistrationFailsValidation()
 ```
+
+**Additional Notes:**
+- Fixed validation order in model functions: host registration now validated BEFORE model support check
+- This provides clearer error messages ("Host not registered" instead of "Host does not support model")
 
 ---
 

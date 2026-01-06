@@ -401,11 +401,13 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(proofInterval > 0, "Invalid proof interval");
         require(host != address(0), "Invalid host");
 
+        // Host validation MUST come before model validation
+        _validateHostRegistration(host);
+
         // Model-specific validations
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
 
         _validateProofRequirements(proofInterval, msg.value, pricePerToken);
-        _validateHostRegistration(host);
 
         // Get model-specific pricing (falls back to default if not set)
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, address(0));
@@ -518,10 +520,12 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(proofInterval > 0, "Invalid proof interval");
         require(host != address(0), "Invalid host");
 
+        // Host validation MUST come before model validation
+        _validateHostRegistration(host);
+
         // Model-specific validations
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
 
-        _validateHostRegistration(host);
         _validateProofRequirements(proofInterval, deposit, pricePerToken);
 
         // Get model-specific pricing for this token (falls back to default stable if not set)
@@ -564,11 +568,28 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Internal Validation Functions
     // ============================================================
 
+    /**
+     * @notice Validate that host is registered and active in NodeRegistry
+     * @dev Queries NodeRegistry for host registration status and active flag
+     * @param host Address of the host to validate
+     */
     function _validateHostRegistration(address host) internal view {
-        // For now, just check if host address is not zero
-        // Full validation would require proper struct handling
         require(host != address(0), "Invalid host address");
-        // TODO: Add proper validation once we handle the struct properly
+
+        // Query NodeRegistry for host info
+        (
+            address operator,
+            ,  // stakedAmount
+            bool active,
+            ,  // metadata
+            ,  // apiUrl
+            ,  // supportedModels
+            ,  // minPricePerTokenNative
+               // minPricePerTokenStable
+        ) = nodeRegistry.getNodeFullInfo(host);
+
+        require(operator != address(0), "Host not registered");
+        require(active, "Host not active");
     }
 
     function _validateProofRequirements(uint256 proofInterval, uint256 deposit, uint256 pricePerToken) internal pure {
