@@ -373,8 +373,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         session.proofInterval = proofInterval;
         session.status = SessionStatus.Active;
 
-        // Track inline deposit (Phase 2.3)
-        userDepositsNative[msg.sender] += msg.value;
+        // NOTE: Do NOT credit userDepositsNative here - inline session deposits
+        // are locked in the session, not available for withdrawal (security fix)
 
         userSessions[msg.sender].push(jobId);
         hostSessions[host].push(jobId);
@@ -433,7 +433,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         session.proofInterval = proofInterval;
         session.status = SessionStatus.Active;
 
-        userDepositsNative[msg.sender] += msg.value;
+        // NOTE: Do NOT credit userDepositsNative - inline deposits are locked (security fix)
         userSessions[msg.sender].push(jobId);
         hostSessions[host].push(jobId);
 
@@ -484,8 +484,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         session.proofInterval = proofInterval;
         session.status = SessionStatus.Active;
 
-        // Track inline token deposit (Phase 2.3)
-        userDepositsToken[msg.sender][token] += deposit;
+        // NOTE: Do NOT credit userDepositsToken - inline deposits are locked in the session,
+        // not available for withdrawal (security fix for double-spend vulnerability)
 
         userSessions[msg.sender].push(jobId);
         hostSessions[host].push(jobId);
@@ -554,7 +554,9 @@ contract JobMarketplaceWithModelsUpgradeable is
         session.proofInterval = proofInterval;
         session.status = SessionStatus.Active;
 
-        userDepositsToken[msg.sender][token] += deposit;
+        // NOTE: Do NOT credit userDepositsToken - inline deposits are locked in the session,
+        // not available for withdrawal (security fix for double-spend vulnerability)
+
         userSessions[msg.sender].push(jobId);
         hostSessions[host].push(jobId);
 
@@ -908,6 +910,72 @@ contract JobMarketplaceWithModelsUpgradeable is
                 : userDepositsToken[account][tokens[i]];
         }
         return balances;
+    }
+
+    /**
+     * @notice Get total funds locked in active sessions for a user (native token)
+     * @dev Iterates through user's sessions to sum remaining deposits in active sessions
+     * @param account User address
+     * @return locked Total ETH/BNB locked in active sessions (deposit - tokensUsed*price)
+     */
+    function getLockedBalanceNative(address account) external view returns (uint256 locked) {
+        uint256[] memory sessions = userSessions[account];
+        for (uint256 i = 0; i < sessions.length; i++) {
+            SessionJob storage session = sessionJobs[sessions[i]];
+            if (session.status == SessionStatus.Active && session.paymentToken == address(0)) {
+                // Calculate remaining deposit after proofs
+                uint256 used = (session.tokensUsed * session.pricePerToken) / PRICE_PRECISION;
+                if (session.deposit > used) {
+                    locked += session.deposit - used;
+                }
+            }
+        }
+        return locked;
+    }
+
+    /**
+     * @notice Get total funds locked in active sessions for a user (ERC20 token)
+     * @dev Iterates through user's sessions to sum remaining deposits in active sessions
+     * @param account User address
+     * @param token ERC20 token address
+     * @return locked Total tokens locked in active sessions
+     */
+    function getLockedBalanceToken(address account, address token) external view returns (uint256 locked) {
+        uint256[] memory sessions = userSessions[account];
+        for (uint256 i = 0; i < sessions.length; i++) {
+            SessionJob storage session = sessionJobs[sessions[i]];
+            if (session.status == SessionStatus.Active && session.paymentToken == token) {
+                // Calculate remaining deposit after proofs
+                uint256 used = (session.tokensUsed * session.pricePerToken) / PRICE_PRECISION;
+                if (session.deposit > used) {
+                    locked += session.deposit - used;
+                }
+            }
+        }
+        return locked;
+    }
+
+    /**
+     * @notice Get total balance (withdrawable + locked) for a user (native token)
+     * @param account User address
+     * @return Total ETH/BNB balance (pre-deposit + locked in sessions)
+     */
+    function getTotalBalanceNative(address account) external view returns (uint256) {
+        uint256 withdrawable = userDepositsNative[account];
+        uint256 locked = this.getLockedBalanceNative(account);
+        return withdrawable + locked;
+    }
+
+    /**
+     * @notice Get total balance (withdrawable + locked) for a user (ERC20 token)
+     * @param account User address
+     * @param token ERC20 token address
+     * @return Total token balance (pre-deposit + locked in sessions)
+     */
+    function getTotalBalanceToken(address account, address token) external view returns (uint256) {
+        uint256 withdrawable = userDepositsToken[account][token];
+        uint256 locked = this.getLockedBalanceToken(account, token);
+        return withdrawable + locked;
     }
 
     // ============================================================

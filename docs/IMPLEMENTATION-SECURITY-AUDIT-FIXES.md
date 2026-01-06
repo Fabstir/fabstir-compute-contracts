@@ -449,7 +449,7 @@ function test_MultipleHostsValidation()
 
 ## Phase 3: Double-Spend Fix
 
-### Sub-phase 3.1: Fix Deposit Tracking Logic
+### Sub-phase 3.1: Fix Deposit Tracking Logic ✅ COMPLETED
 
 **Severity**: CRITICAL
 **Issue**: When creating inline sessions (with msg.value), the deposit is BOTH stored in the session AND credited to `userDepositsNative`, allowing immediate withdrawal.
@@ -465,17 +465,17 @@ userDepositsNative[msg.sender] += msg.value;    // Line 377 - BUG: Also credits 
 **Design Decision**: The `userDepositsNative` and `userDepositsToken` mappings should ONLY track pre-deposited funds that are NOT yet committed to a session. Inline session creation should NOT credit these mappings.
 
 **Tasks:**
-- [ ] Write test file `test/JobMarketplace/test_double_spend_prevention.t.sol`
-- [ ] Test: Create session with ETH, attempt immediate withdrawal - FAILS
-- [ ] Test: Create session with USDC, attempt immediate withdrawal - FAILS
-- [ ] Test: Pre-deposit ETH, create session from deposit, cannot withdraw locked funds
-- [ ] Test: Pre-deposit ETH, partial session, can withdraw unlocked remainder
-- [ ] Test: Session completion releases funds correctly to host and refunds user
-- [ ] Remove `userDepositsNative[msg.sender] += msg.value;` from createSessionJob
-- [ ] Remove `userDepositsToken[msg.sender][token] += deposit;` from createSessionJobWithToken
-- [ ] Remove similar lines from createSessionJobForModel and createSessionJobForModelWithToken
-- [ ] Verify createSessionFromDeposit correctly DEDUCTS from pre-deposit balance (existing logic is correct)
-- [ ] Verify all tests pass
+- [x] Write test file `test/SecurityFixes/JobMarketplace/test_double_spend_prevention.t.sol`
+- [x] Test: Create session with ETH, attempt immediate withdrawal - FAILS
+- [x] Test: Create session with USDC, attempt immediate withdrawal - FAILS
+- [x] Test: Pre-deposit ETH, create session from deposit, cannot withdraw locked funds
+- [x] Test: Pre-deposit ETH, partial session, can withdraw unlocked remainder
+- [x] Test: Session completion releases funds correctly to host and refunds user
+- [x] Remove `userDepositsNative[msg.sender] += msg.value;` from createSessionJob
+- [x] Remove `userDepositsToken[msg.sender][token] += deposit;` from createSessionJobWithToken
+- [x] Remove similar lines from createSessionJobForModel and createSessionJobForModelWithToken
+- [x] Verify createSessionFromDeposit correctly DEDUCTS from pre-deposit balance (existing logic is correct)
+- [x] Verify all tests pass (363 total tests passing)
 
 **Implementation:**
 ```solidity
@@ -521,21 +521,21 @@ function test_SessionCompletionDistributesFundsCorrectly() public { /* ... */ }
 
 ---
 
-### Sub-phase 3.2: Add Explicit Deposit vs Session Balance Separation
+### Sub-phase 3.2: Add Explicit Deposit vs Session Balance Separation ✅ COMPLETED
 
 **Severity**: CRITICAL (defense in depth)
 **Issue**: Add clear separation between "available for withdrawal" and "locked in sessions" to prevent future bugs.
 
 **Tasks:**
-- [ ] Write test file `test/JobMarketplace/test_balance_separation.t.sol`
-- [ ] Test: getDepositBalance returns only withdrawable funds
-- [ ] Test: New getLockedBalance returns funds in active sessions
-- [ ] Test: Total balance = withdrawable + locked
-- [ ] Add `getLockedBalanceNative(address)` view function
-- [ ] Add `getLockedBalanceToken(address, address)` view function
-- [ ] Add `getTotalBalanceNative(address)` view function
-- [ ] Add `getTotalBalanceToken(address, address)` view function
-- [ ] Verify all tests pass
+- [x] Write test file `test/SecurityFixes/JobMarketplace/test_balance_separation.t.sol`
+- [x] Test: getDepositBalance returns only withdrawable funds
+- [x] Test: New getLockedBalance returns funds in active sessions
+- [x] Test: Total balance = withdrawable + locked
+- [x] Add `getLockedBalanceNative(address)` view function
+- [x] Add `getLockedBalanceToken(address, address)` view function
+- [x] Add `getTotalBalanceNative(address)` view function
+- [x] Add `getTotalBalanceToken(address, address)` view function
+- [x] Verify all tests pass (375 total tests passing)
 
 **Implementation:**
 ```solidity
@@ -581,27 +581,40 @@ function test_TotalBalanceEqualsWithdrawablePlusLocked() public { /* ... */ }
 
 ---
 
-### Sub-phase 3.3: Integration Tests for Fund Safety
+### Sub-phase 3.3: Integration Tests for Fund Safety ✅ COMPLETED
 
 **Severity**: CRITICAL
 **Tasks:**
-- [ ] Write test file `test/Integration/test_fund_safety.t.sol`
-- [ ] Test: Full session lifecycle - no funds lost or duplicated
-- [ ] Test: Multiple concurrent sessions - balances correct
-- [ ] Test: Session timeout - correct fund distribution
-- [ ] Test: Session abandonment - correct refunds
-- [ ] Test: Fuzz test with random deposits/sessions/withdrawals
-- [ ] Verify all tests pass
+- [x] Write test file `test/Integration/test_fund_safety.t.sol`
+- [x] Test: Full session lifecycle - no funds lost or duplicated
+- [x] Test: Multiple concurrent sessions - balances correct
+- [x] Test: Session timeout - correct fund distribution
+- [x] Test: Session early completion - correct fund distribution (replaced abandon)
+- [x] Test: Fuzz test with random deposits/sessions/withdrawals
+- [x] Verify all tests pass (387 total tests passing)
 
-**Tests:**
+**Tests (12 passing):**
 ```solidity
 // test/Integration/test_fund_safety.t.sol
-function test_FullSessionLifecycle_NoFundsLostOrDuplicated() public { /* ... */ }
-function test_MultipleConcurrentSessions_BalancesCorrect() public { /* ... */ }
-function test_SessionTimeout_CorrectDistribution() public { /* ... */ }
-function test_SessionAbandonment_CorrectRefunds() public { /* ... */ }
-function testFuzz_RandomOperations_InvariantHolds(uint256 seed) public { /* ... */ }
+function test_FullSessionLifecycle_NoFundsLostOrDuplicated_ETH()
+function test_FullSessionLifecycle_NoFundsLostOrDuplicated_USDC()
+function test_MultipleConcurrentSessions_BalancesCorrect()
+function test_MultipleUsers_ConcurrentSessions_IndependentBalances()
+function test_SessionTimeout_CorrectDistribution()
+function test_SessionEarlyCompletion_NoWork_FullRefund()
+function test_SessionEarlyCompletion_PartialWork_HostPaid()
+function test_PreDepositAndSession_BalanceConsistency()
+function test_ContractBalance_Invariant()
+function testFuzz_DepositWithdraw_NoFundsLost()
+function testFuzz_SessionDeposit_NoDoubleSpend()
+function testFuzz_MultipleRandomSessions()
 ```
+
+---
+
+## Phase 3: Double-Spend Fix ✅ COMPLETED
+
+All three sub-phases completed with 387 total tests passing.
 
 ---
 
