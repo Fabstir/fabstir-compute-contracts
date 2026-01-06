@@ -42,7 +42,7 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (41%)**
+**Overall Status: IN PROGRESS (77%)**
 
 - [x] **Phase 1: ProofSystem Security Fixes** (4/4 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 1.1: Add Access Control to recordVerifiedProof ✅
@@ -53,8 +53,14 @@ fabstir-compute-contracts
   - [x] Sub-phase 2.1: Implement Proper _validateHostRegistration ✅
   - [x] Sub-phase 2.2: Add Host Validation to All Session Creation Functions ✅
   - [x] Sub-phase 2.3: Integration Tests for Host Validation ✅
-- [ ] **Phase 3: Double-Spend Fix** (0/3 sub-phases)
-- [ ] **Phase 4: Legacy Code Cleanup** (0/3 sub-phases)
+- [x] **Phase 3: Double-Spend Fix** (3/3 sub-phases) ✅ COMPLETE
+  - [x] Sub-phase 3.1: Fix Deposit Tracking Logic ✅
+  - [x] Sub-phase 3.2: Add Explicit Deposit vs Session Balance Separation ✅
+  - [x] Sub-phase 3.3: Integration Tests for Fund Safety ✅
+- [x] **Phase 4: Legacy Code Cleanup** (3/3 sub-phases) ✅ COMPLETE
+  - [x] Sub-phase 4.1: Remove Unreachable claimWithProof ✅
+  - [x] Sub-phase 4.2: Remove Unused Variables and Constants ✅
+  - [x] Sub-phase 4.3: Code Quality Improvements ✅
 - [ ] **Phase 5: Final Verification & Deployment** (0/4 sub-phases)
 
 **Last Updated:** 2025-01-06
@@ -701,22 +707,54 @@ function claimWithProof(uint256 jobId, bytes calldata proof, string calldata res
 
 ---
 
-### Sub-phase 4.3: Code Quality Improvements
+### Sub-phase 4.3: Code Quality Improvements ✅ COMPLETED
 
 **Severity**: LOW
 **Tasks:**
-- [ ] Run `forge fmt` on all modified files
-- [ ] Add missing NatSpec documentation
-- [ ] Remove all TODO comments (implement or remove feature)
-- [ ] Ensure consistent error messages
-- [ ] Verify no compiler warnings
-- [ ] Verify all tests pass
+- [x] Run `forge fmt` on all modified files
+- [x] Add missing NatSpec documentation (already complete from prior sub-phases)
+- [x] Remove all TODO comments (none found - cleaned in prior sub-phases)
+- [x] Ensure consistent error messages (verified)
+- [x] Verify no compiler warnings (6 warnings → 0)
+- [x] Verify all tests pass (394 total tests passing)
+
+**Compiler Warnings Fixed:**
+| File | Warning | Fix |
+|------|---------|-----|
+| `test/Upgradeable/Integration/test_full_flow.t.sol:65` | Variable shadowing | Removed type declaration |
+| `test/Integration/test_fund_safety.t.sol:137` | Unused local variable | Removed variable |
+| `test/SecurityFixes/JobMarketplace/test_balance_separation.t.sol:409` | Function mutability | Added `view` modifier |
+| `test/SecurityFixes/ProofSystem/test_signature_verification.t.sol:222` | Function mutability | Added `view` modifier |
+| `test/Upgradeable/JobMarketplace/test_token_min_deposit.t.sol:170` | Function mutability | Added `view` modifier |
+| `test/Upgradeable/ProofSystem/test_upgrade.t.sol:25` | Function mutability | Changed `view` to `pure` |
+
+**Files Modified:**
+- `src/JobMarketplaceWithModelsUpgradeable.sol` (forge fmt formatting)
+- `test/Upgradeable/Integration/test_full_flow.t.sol`
+- `test/Integration/test_fund_safety.t.sol`
+- `test/SecurityFixes/JobMarketplace/test_balance_separation.t.sol`
+- `test/SecurityFixes/ProofSystem/test_signature_verification.t.sol`
+- `test/Upgradeable/JobMarketplace/test_token_min_deposit.t.sol`
+- `test/Upgradeable/ProofSystem/test_upgrade.t.sol`
 
 **Commands:**
 ```bash
 forge fmt
 forge build --force 2>&1 | grep -i warning
 ```
+
+---
+
+## Phase 4: Legacy Code Cleanup ✅ COMPLETED
+
+All three sub-phases completed with 394 total tests passing.
+
+**Summary of Phase 4:**
+- Removed all legacy Job-related code (structs, enums, events, functions)
+- Replaced legacy mappings with UUPS-safe placeholder slots
+- Removed unused constants and state variables
+- Fixed all compiler warnings (6 → 0)
+- Zero TODO/FIXME comments in source files
 
 ---
 
