@@ -63,7 +63,12 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Basic EZKL verification (simplified for now)
+     * @notice Verify proof using ECDSA signature validation
+     * @dev The prover must sign keccak256(proofHash, prover, claimedTokens)
+     * @param proof Proof bytes: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v]
+     * @param prover Address that should have signed the proof (host)
+     * @param claimedTokens Number of tokens being claimed
+     * @return True if signature is valid and proof not replayed
      */
     function verifyEKZL(
         bytes calldata proof,
@@ -74,30 +79,52 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Internal verification logic
+     * @notice Internal verification logic using ECDSA signature verification
+     * @dev Proof format: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v] = 97 bytes minimum
+     *      The prover (host) must sign: keccak256(proofHash, prover, claimedTokens)
      */
     function _verifyEKZL(
         bytes calldata proof,
         address prover,
         uint256 claimedTokens
     ) internal view returns (bool) {
-        // Basic validation
-        if (proof.length < 64) return false;
+        // Proof must contain: proofHash (32) + r (32) + s (32) + v (1) = 97 bytes
+        if (proof.length < 97) return false;
         if (claimedTokens == 0) return false;
         if (prover == address(0)) return false;
 
-        // Extract proof hash (first 32 bytes)
+        // Extract signature components from proof
         bytes32 proofHash;
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+
         assembly {
             proofHash := calldataload(proof.offset)
+            r := calldataload(add(proof.offset, 32))
+            s := calldataload(add(proof.offset, 64))
+            v := byte(0, calldataload(add(proof.offset, 96)))
         }
 
         // Check not already verified (prevent replay)
         if (verifiedProofs[proofHash]) return false;
 
-        // TODO: In production, call actual EZKL verifier
-        // For now, basic validation only
-        return true;
+        // Reconstruct the message that was signed
+        // The prover signs: keccak256(proofHash, prover, claimedTokens)
+        // Using eth_sign which prefixes with "\x19Ethereum Signed Message:\n32"
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        bytes32 messageHash = keccak256(abi.encodePacked(
+            "\x19Ethereum Signed Message:\n32",
+            dataHash
+        ));
+
+        // Recover signer and verify it matches the prover (host)
+        address recoveredSigner = ecrecover(messageHash, v, r, s);
+
+        // ecrecover returns address(0) on failure
+        if (recoveredSigner == address(0)) return false;
+
+        return recoveredSigner == prover;
     }
 
     /**

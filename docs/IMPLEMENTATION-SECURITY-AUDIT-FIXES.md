@@ -42,10 +42,11 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (6%)**
+**Overall Status: IN PROGRESS (12%)**
 
-- [ ] **Phase 1: ProofSystem Security Fixes** (1/4 sub-phases)
+- [ ] **Phase 1: ProofSystem Security Fixes** (2/4 sub-phases)
   - [x] Sub-phase 1.1: Add Access Control to recordVerifiedProof ✅
+  - [x] Sub-phase 1.2: Implement Signature-Based Proof Verification ✅
 - [ ] **Phase 2: Host Validation Fix** (0/3 sub-phases)
 - [ ] **Phase 3: Double-Spend Fix** (0/3 sub-phases)
 - [ ] **Phase 4: Legacy Code Cleanup** (0/3 sub-phases)
@@ -119,17 +120,17 @@ function test_OwnerCanRecordProofDirectly() public { /* ... */ }
 **Design Decision**: Implement signature-based verification as interim solution. The host signs (sessionId, tokensUsed, proofHash) and the contract verifies the signature matches the session's registered host.
 
 **Tasks:**
-- [ ] Write test file `test/ProofSystem/test_signature_verification.t.sol`
-- [ ] Test: Valid signature from host passes verification
-- [ ] Test: Invalid signature fails verification
-- [ ] Test: Signature from wrong address fails
-- [ ] Test: Replay attack (same signature twice) fails
-- [ ] Test: Signature for different session fails
-- [ ] Remove placeholder TODO comments
-- [ ] Implement signature extraction from proof bytes
-- [ ] Implement ECDSA recovery and verification
-- [ ] Update _verifyEKZL to use signature verification
-- [ ] Verify all tests pass
+- [x] Write test file `test/SecurityFixes/ProofSystem/test_signature_verification.t.sol`
+- [x] Test: Valid signature from host passes verification
+- [x] Test: Invalid signature fails verification
+- [x] Test: Signature from wrong address fails
+- [x] Test: Replay attack (same signature twice) fails
+- [x] Test: Signature for different session fails
+- [x] Remove placeholder TODO comments
+- [x] Implement signature extraction from proof bytes
+- [x] Implement ECDSA recovery and verification
+- [x] Update _verifyEKZL to use signature verification
+- [x] Verify all tests pass (63/63 ProofSystem tests passing)
 
 **Implementation:**
 ```solidity

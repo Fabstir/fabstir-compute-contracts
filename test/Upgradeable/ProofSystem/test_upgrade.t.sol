@@ -38,14 +38,19 @@ contract ProofSystemUpgradeTest is Test {
 
     address public owner = address(0x1);
     address public user1 = address(0x2);
-    address public prover = address(0x3);
     address public modelAddress = address(0x100);
+
+    // Use actual private key for signing tests
+    uint256 constant PROVER_PRIVATE_KEY = 0xA11CE;
+    address public prover;
 
     bytes32 constant CIRCUIT_HASH = bytes32(uint256(0x1234));
     bytes32 constant PROOF_HASH_1 = bytes32(uint256(0xABCD));
     bytes32 constant PROOF_HASH_2 = bytes32(uint256(0xEF01));
 
     function setUp() public {
+        // Derive prover from private key
+        prover = vm.addr(PROVER_PRIVATE_KEY);
         // Deploy implementation
         implementation = new ProofSystemUpgradeable();
 
@@ -64,6 +69,23 @@ contract ProofSystemUpgradeTest is Test {
         proofSystem.recordVerifiedProof(PROOF_HASH_1);
         proofSystem.recordVerifiedProof(PROOF_HASH_2);
         vm.stopPrank();
+    }
+
+    // ============================================================
+    // Helper Functions
+    // ============================================================
+
+    function createSignedProof(
+        bytes32 proofHash,
+        uint256 claimedTokens
+    ) internal view returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        bytes32 messageHash = keccak256(abi.encodePacked(
+            "\x19Ethereum Signed Message:\n32",
+            dataHash
+        ));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(PROVER_PRIVATE_KEY, messageHash);
+        return abi.encodePacked(proofHash, r, s, v);
     }
 
     // ============================================================
@@ -216,13 +238,12 @@ contract ProofSystemUpgradeTest is Test {
 
         ProofSystemUpgradeableV2 proofSystemV2 = ProofSystemUpgradeableV2(address(proofSystem));
 
-        // Verify new proofs work
-        bytes memory newProof = abi.encodePacked(
-            bytes32(uint256(0x9999)),
-            bytes32(uint256(0x8888))
-        );
+        // Verify new proofs work (using signed proof)
+        bytes32 proofHash = bytes32(uint256(0x9999));
+        uint256 claimedTokens = 100;
+        bytes memory newProof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystemV2.verifyEKZL(newProof, prover, 100);
+        bool result = proofSystemV2.verifyEKZL(newProof, prover, claimedTokens);
         assertTrue(result);
     }
 
