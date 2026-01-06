@@ -235,8 +235,10 @@ contract ProofSystemInitializationTest is Test {
     }
 
     function test_EstimateBatchGas() public view {
-        assertEq(proofSystem.estimateBatchGas(1), 70000);
-        assertEq(proofSystem.estimateBatchGas(5), 150000);
-        assertEq(proofSystem.estimateBatchGas(10), 250000);
+        // New constants: BASE = 15000, PER_PROOF = 27000
+        // Based on actual gas measurements from verifyBatch()
+        assertEq(proofSystem.estimateBatchGas(1), 42000);   // 15000 + 1*27000
+        assertEq(proofSystem.estimateBatchGas(5), 150000);  // 15000 + 5*27000
+        assertEq(proofSystem.estimateBatchGas(10), 285000); // 15000 + 10*27000
     }
 }
