@@ -595,17 +595,29 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxTokens = (session.deposit * PRICE_PRECISION) / session.pricePerToken;
         require(newTotal <= maxTokens, "Exceeds deposit");
 
+        // VERIFY PROOF via ProofSystem (Phase 6.2)
+        bool verified = false;
+        if (address(proofSystem) != address(0)) {
+            // Construct 97-byte proof: proofHash (32) + signature (65)
+            bytes memory proof = abi.encodePacked(proofHash, signature);
+            require(
+                proofSystem.verifyAndMarkComplete(proof, msg.sender, tokensClaimed),
+                "Invalid proof signature"
+            );
+            verified = true;
+        }
+
         // S5: Store proof hash and CID instead of full proof
         session.lastProofHash = proofHash;
         session.lastProofCID = proofCID;
 
-        // Keep legacy proof tracking for compatibility
+        // Store proof submission with verification status
         session.proofs.push(
             ProofSubmission({
                 proofHash: proofHash,
                 tokensClaimed: tokensClaimed,
                 timestamp: block.timestamp,
-                verified: false // No on-chain verification with S5 storage
+                verified: verified
             })
         );
 
@@ -899,6 +911,26 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 withdrawable = userDepositsToken[account][token];
         uint256 locked = this.getLockedBalanceToken(account, token);
         return withdrawable + locked;
+    }
+
+    /**
+     * @notice Get a specific proof submission for a session
+     * @param sessionId The session ID
+     * @param proofIndex The index of the proof in the session's proofs array
+     * @return proofHash The hash of the proof
+     * @return tokensClaimed Number of tokens claimed in this proof
+     * @return timestamp When the proof was submitted
+     * @return verified Whether the proof was cryptographically verified
+     */
+    function getProofSubmission(uint256 sessionId, uint256 proofIndex)
+        external
+        view
+        returns (bytes32 proofHash, uint256 tokensClaimed, uint256 timestamp, bool verified)
+    {
+        SessionJob storage session = sessionJobs[sessionId];
+        require(proofIndex < session.proofs.length, "Proof index out of bounds");
+        ProofSubmission storage proof = session.proofs[proofIndex];
+        return (proof.proofHash, proof.tokensClaimed, proof.timestamp, proof.verified);
     }
 
     // ============================================================
