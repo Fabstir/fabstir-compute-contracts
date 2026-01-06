@@ -42,16 +42,17 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: IN PROGRESS (35%)**
+**Overall Status: IN PROGRESS (41%)**
 
 - [x] **Phase 1: ProofSystem Security Fixes** (4/4 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 1.1: Add Access Control to recordVerifiedProof ✅
   - [x] Sub-phase 1.2: Implement Signature-Based Proof Verification ✅
   - [x] Sub-phase 1.3: Document and Fix estimateBatchGas ✅
   - [x] Sub-phase 1.4: Remove Unsafe Testing Functions ✅
-- [ ] **Phase 2: Host Validation Fix** (2/3 sub-phases)
+- [x] **Phase 2: Host Validation Fix** (3/3 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 2.1: Implement Proper _validateHostRegistration ✅
   - [x] Sub-phase 2.2: Add Host Validation to All Session Creation Functions ✅
+  - [x] Sub-phase 2.3: Integration Tests for Host Validation ✅
 - [ ] **Phase 3: Double-Spend Fix** (0/3 sub-phases)
 - [ ] **Phase 4: Legacy Code Cleanup** (0/3 sub-phases)
 - [ ] **Phase 5: Final Verification & Deployment** (0/4 sub-phases)
@@ -421,20 +422,27 @@ All 5 session creation functions call `_validateHostRegistration` BEFORE state c
 
 **Severity**: CRITICAL
 **Tasks:**
-- [ ] Write test file `test/Integration/test_host_validation_e2e.t.sol`
-- [ ] Test: Full flow - register host, create session, submit proof
-- [ ] Test: Deactivated host cannot receive new sessions
-- [ ] Test: Previously active host that deactivates - existing sessions complete normally
-- [ ] Test: Attempt to use random address as host fails
-- [ ] Verify all tests pass
+- [x] Write test file `test/Integration/test_host_validation_e2e.t.sol`
+- [x] Test: Full flow - register host, create session, submit proof
+- [x] Test: Deactivated host cannot receive new sessions
+- [x] Test: Previously active host that deactivates - existing sessions complete normally
+- [x] Test: Attempt to use random address as host fails
+- [x] Verify all tests pass (353/353 total tests passing)
 
-**Tests:**
+**Files Created:**
+- `test/Integration/test_host_validation_e2e.t.sol` (9 tests)
+
+**Tests (9 passing):**
 ```solidity
-// test/Integration/test_host_validation_e2e.t.sol
-function test_FullFlowWithRegisteredHost() public { /* ... */ }
-function test_DeactivatedHostCannotReceiveNewSessions() public { /* ... */ }
-function test_ExistingSessionsCompleteAfterHostDeactivation() public { /* ... */ }
-function test_RandomAddressAsHostFails() public { /* ... */ }
+function test_FullFlowWithRegisteredHost()
+function test_RandomAddressAsHostFails()
+function test_MultipleRandomAddressesFail()
+function test_DeactivatedHostCannotReceiveNewSessions()
+function test_DeactivatedHostSimulatedWithMock()
+function test_ExistingSessionsCompleteAfterHostUnregisters()
+function test_ExistingSessionEarningsAccumulateAfterHostUnregisters()
+function test_HostCanReregisterAndReceiveNewSessions()
+function test_MultipleHostsValidation()
 ```
 
 ---
