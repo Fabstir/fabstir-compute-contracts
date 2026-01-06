@@ -620,34 +620,53 @@ All three sub-phases completed with 387 total tests passing.
 
 ## Phase 4: Legacy Code Cleanup
 
-### Sub-phase 4.1: Remove Unreachable claimWithProof
+### Sub-phase 4.1: Remove Unreachable claimWithProof ✅ COMPLETED
 
 **Severity**: MEDIUM
 **Issue**: `claimWithProof()` requires `JobStatus.Claimed` but no code path sets this status. Dead code.
 
 **Tasks:**
-- [ ] Write test ensuring Job functionality is unused
-- [ ] Test: jobs mapping is empty/unused
-- [ ] Test: No function populates jobs mapping
-- [ ] Remove `claimWithProof()` function
-- [ ] Remove `Job` struct definition
-- [ ] Remove `JobStatus` enum (keep SessionStatus)
-- [ ] Remove `JobDetails` struct
-- [ ] Remove `JobRequirements` struct
-- [ ] Remove `jobs` mapping
-- [ ] Remove `userJobs` mapping
-- [ ] Remove `hostJobs` mapping
-- [ ] Remove Job-related events (JobPosted, JobClaimed, JobCompleted)
-- [ ] Verify all tests pass
+- [x] Write test ensuring Session functionality works after removal
+- [x] Test: sessions work correctly (session-based architecture only)
+- [x] Remove `claimWithProof()` function
+- [x] Remove `Job` struct definition
+- [x] Remove `JobStatus` enum (kept SessionStatus)
+- [x] Remove `JobType` enum (only used in Job struct)
+- [x] Remove `JobDetails` struct
+- [x] Remove `JobRequirements` struct
+- [x] Replace `jobs` mapping with placeholder slot (UUPS storage layout safety)
+- [x] Replace `userJobs` mapping with placeholder slot
+- [x] Replace `hostJobs` mapping with placeholder slot
+- [x] Remove Job-related events (JobPosted, JobClaimed, JobCompleted)
+- [x] Verify all tests pass (394 total tests passing)
 
 **Files Modified:**
-- `src/JobMarketplaceWithModelsUpgradeable.sol` (lines 43-85, 128, 130-131, 172-174, 710-748)
+- `src/JobMarketplaceWithModelsUpgradeable.sol`
 
-**Tests:**
+**Files Created:**
+- `test/SecurityFixes/JobMarketplace/test_legacy_removal.t.sol` (7 tests)
+
+**UUPS Storage Safety Note:**
+Legacy mappings were replaced with `uint256 private __deprecated_*_slot;` placeholders to maintain storage layout compatibility for UUPS upgrades. This prevents storage slot collisions when upgrading existing deployments.
+
+**Removed:**
 ```solidity
-// test/JobMarketplace/test_legacy_removal.t.sol
-function test_JobsMappingDoesNotExist() public { /* ... */ }
-function test_ClaimWithProofDoesNotExist() public { /* ... */ }
+// Enums
+enum JobStatus { Posted, Claimed, Completed }
+enum JobType { SinglePrompt, Session }
+
+// Structs
+struct JobDetails { string promptS5CID; uint256 maxTokens; }
+struct JobRequirements { uint256 maxTimeToComplete; }
+struct Job { ... }
+
+// Events
+event JobPosted(uint256 indexed jobId, address indexed requester, string promptS5CID);
+event JobClaimed(uint256 indexed jobId, address indexed host);
+event JobCompleted(uint256 indexed jobId, address indexed host, string responseS5CID);
+
+// Function
+function claimWithProof(uint256 jobId, bytes calldata proof, string calldata responseS5CID) external
 ```
 
 ---

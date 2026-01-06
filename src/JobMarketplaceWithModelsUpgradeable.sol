@@ -40,14 +40,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     PausableUpgradeable,
     UUPSUpgradeable
 {
-    enum JobStatus {
-        Posted,
-        Claimed,
-        Completed
-    }
-
-    // New enums for session support
-    enum JobType { SinglePrompt, Session }
+    // Session status enum
     enum SessionStatus { Active, Completed, TimedOut, Disputed, Abandoned, Cancelled }
 
     // EZKL proof tracking structure
@@ -56,32 +49,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 tokensClaimed;
         uint256 timestamp;
         bool verified;
-    }
-
-    // Job details structure
-    struct JobDetails {
-        string promptS5CID;
-        uint256 maxTokens;
-    }
-
-    // Job requirements structure
-    struct JobRequirements {
-        uint256 maxTimeToComplete;
-    }
-
-    // Job structure
-    struct Job {
-        uint256 id;
-        address requester;
-        address paymentToken;
-        uint256 payment;
-        JobDetails details;
-        JobRequirements requirements;
-        address claimedBy;
-        JobStatus status;
-        string responseS5CID;
-        uint256 claimedAt;
-        JobType jobType;
     }
 
     // Session job structure
@@ -125,10 +92,11 @@ contract JobMarketplaceWithModelsUpgradeable is
     uint256 public FEE_BASIS_POINTS;
 
     // State variables
-    mapping(uint256 => Job) public jobs;
+    // DEPRECATED: Legacy storage slots - do not remove or reorder (maintains UUPS storage layout)
+    uint256 private __deprecated_jobs_slot;      // was: mapping(uint256 => Job) public jobs;
     mapping(uint256 => SessionJob) public sessionJobs;
-    mapping(address => uint256[]) public userJobs;
-    mapping(address => uint256[]) public hostJobs;
+    uint256 private __deprecated_userJobs_slot;  // was: mapping(address => uint256[]) public userJobs;
+    uint256 private __deprecated_hostJobs_slot;  // was: mapping(address => uint256[]) public hostJobs;
     mapping(address => uint256[]) public userSessions;
     mapping(address => uint256[]) public hostSessions;
 
@@ -169,9 +137,6 @@ contract JobMarketplaceWithModelsUpgradeable is
     uint256[35] private __gap;
 
     // Events
-    event JobPosted(uint256 indexed jobId, address indexed requester, string promptS5CID);
-    event JobClaimed(uint256 indexed jobId, address indexed host);
-    event JobCompleted(uint256 indexed jobId, address indexed host, string responseS5CID);
     event SessionJobCreated(uint256 indexed jobId, address indexed requester, address indexed host, uint256 deposit);
     event ProofSubmitted(uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID);
     event SessionCompleted(uint256 indexed jobId, uint256 totalTokensUsed, uint256 hostEarnings, uint256 userRefund);
@@ -724,50 +689,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         _settleSessionPayments(jobId, msg.sender);
 
         emit SessionTimedOut(jobId, session.withdrawnByHost, session.refundedToUser);
-    }
-
-    // ============================================================
-    // Legacy Job Functions
-    // ============================================================
-
-    function claimWithProof(
-        uint256 jobId,
-        bytes calldata proof,
-        string calldata responseS5CID
-    ) external nonReentrant whenNotPaused {
-        Job storage job = jobs[jobId];
-        require(job.status == JobStatus.Claimed, "Job not claimed");
-        require(job.claimedBy == msg.sender, "Not claimed by you");
-
-        uint256 maxTokens = job.details.maxTokens;
-
-        if (address(proofSystem) != address(0)) {
-            bool verified = proofSystem.verifyAndMarkComplete(proof, msg.sender, maxTokens);
-            require(verified, "Invalid proof");
-        }
-
-        job.status = JobStatus.Completed;
-        job.responseS5CID = responseS5CID;
-
-        uint256 payment = job.payment;
-        uint256 treasuryFee = (payment * FEE_BASIS_POINTS) / 10000;
-        uint256 netPayment = payment - treasuryFee;
-
-        address paymentToken = job.paymentToken;
-
-        if (paymentToken == address(0)) {
-            accumulatedTreasuryNative += treasuryFee;
-            (bool sent, ) = payable(address(hostEarnings)).call{value: netPayment}("");
-            require(sent, "ETH transfer to HostEarnings failed");
-            hostEarnings.creditEarnings(msg.sender, netPayment, address(0));
-        } else {
-            accumulatedTreasuryTokens[paymentToken] += treasuryFee;
-            IERC20(paymentToken).transfer(address(hostEarnings), netPayment);
-            hostEarnings.creditEarnings(msg.sender, netPayment, paymentToken);
-        }
-
-        emit JobCompleted(jobId, msg.sender, responseS5CID);
-        emit PaymentSent(msg.sender, netPayment);
     }
 
     // ============================================================
