@@ -15,17 +15,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Proof system interface
 interface IProofSystemUpgradeable {
-    function verifyEKZL(
-        bytes calldata proof,
-        address prover,
-        uint256 claimedTokens
-    ) external view returns (bool);
+    function verifyEKZL(bytes calldata proof, address prover, uint256 claimedTokens) external view returns (bool);
 
-    function verifyAndMarkComplete(
-        bytes calldata proof,
-        address prover,
-        uint256 claimedTokens
-    ) external returns (bool);
+    function verifyAndMarkComplete(bytes calldata proof, address prover, uint256 claimedTokens)
+        external
+        returns (bool);
 }
 
 /**
@@ -41,7 +35,14 @@ contract JobMarketplaceWithModelsUpgradeable is
     UUPSUpgradeable
 {
     // Session status enum
-    enum SessionStatus { Active, Completed, TimedOut, Disputed, Abandoned, Cancelled }
+    enum SessionStatus {
+        Active,
+        Completed,
+        TimedOut,
+        Disputed,
+        Abandoned,
+        Cancelled
+    }
 
     // EZKL proof tracking structure
     struct ProofSubmission {
@@ -54,8 +55,8 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Session job structure
     struct SessionJob {
         uint256 id;
-        address depositor;      // NEW: tracks who deposited (EOA or Smart Account)
-        address requester;      // DEPRECATED but kept for backward compatibility
+        address depositor; // NEW: tracks who deposited (EOA or Smart Account)
+        address requester; // DEPRECATED but kept for backward compatibility
         address host;
         address paymentToken;
         uint256 deposit;
@@ -70,16 +71,16 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 withdrawnByHost;
         uint256 refundedToUser;
         string conversationCID;
-        bytes32 lastProofHash;  // S5: Hash of most recent proof (32 bytes)
-        string lastProofCID;    // S5: CID of most recent proof in S5 storage
+        bytes32 lastProofHash; // S5: Hash of most recent proof (32 bytes)
+        string lastProofCID; // S5: CID of most recent proof in S5 storage
     }
 
     // Chain configuration structure (Phase 4.1)
     struct ChainConfig {
-        address nativeWrapper;     // WETH on Base, WBNB on opBNB
-        address stablecoin;        // USDC address per chain
-        uint256 minDeposit;        // Chain-specific minimum
-        string nativeTokenSymbol;  // "ETH" or "BNB"
+        address nativeWrapper; // WETH on Base, WBNB on opBNB
+        address stablecoin; // USDC address per chain
+        uint256 minDeposit; // Chain-specific minimum
+        string nativeTokenSymbol; // "ETH" or "BNB"
     }
 
     // Constants (non-upgradeable)
@@ -93,10 +94,10 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     // State variables
     // DEPRECATED: Legacy storage slots - do not remove or reorder (maintains UUPS storage layout)
-    uint256 private __deprecated_jobs_slot;      // was: mapping(uint256 => Job) public jobs;
+    uint256 private __deprecated_jobs_slot; // was: mapping(uint256 => Job) public jobs;
     mapping(uint256 => SessionJob) public sessionJobs;
-    uint256 private __deprecated_userJobs_slot;  // was: mapping(address => uint256[]) public userJobs;
-    uint256 private __deprecated_hostJobs_slot;  // was: mapping(address => uint256[]) public hostJobs;
+    uint256 private __deprecated_userJobs_slot; // was: mapping(address => uint256[]) public userJobs;
+    uint256 private __deprecated_hostJobs_slot; // was: mapping(address => uint256[]) public hostJobs;
     mapping(address => uint256[]) public userSessions;
     mapping(address => uint256[]) public hostSessions;
 
@@ -108,7 +109,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     address public usdcAddress;
 
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
-    uint256 private __deprecated_reputationSystem_slot;  // was: IReputationSystem public reputationSystem;
+    uint256 private __deprecated_reputationSystem_slot; // was: IReputationSystem public reputationSystem;
     IProofSystemUpgradeable public proofSystem;
     HostEarningsUpgradeable public hostEarnings;
 
@@ -138,34 +139,33 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     // Events
     event SessionJobCreated(uint256 indexed jobId, address indexed requester, address indexed host, uint256 deposit);
-    event ProofSubmitted(uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID);
+    event ProofSubmitted(
+        uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID
+    );
     event SessionCompleted(uint256 indexed jobId, uint256 totalTokensUsed, uint256 hostEarnings, uint256 userRefund);
     // New event that tracks who completed the session (Phase 3.1 - Anyone-can-complete pattern)
-    event SessionCompletedBy(uint256 indexed jobId, address indexed completedBy, uint256 tokensUsed, uint256 paymentAmount, uint256 refundAmount);
+    event SessionCompletedBy(
+        uint256 indexed jobId,
+        address indexed completedBy,
+        uint256 tokensUsed,
+        uint256 paymentAmount,
+        uint256 refundAmount
+    );
     event SessionTimedOut(uint256 indexed jobId, uint256 hostEarnings, uint256 userRefund);
     event SessionAbandoned(uint256 indexed jobId, uint256 userRefund);
     event PaymentSent(address indexed recipient, uint256 amount);
     event TreasuryWithdrawal(address indexed token, uint256 amount);
 
     // Wallet-agnostic deposit events (Phase 1.1)
-    event DepositReceived(
-        address indexed depositor,
-        uint256 amount,
-        address indexed token  // address(0) for native
-    );
+    event DepositReceived( // address(0) for native
+    address indexed depositor, uint256 amount, address indexed token);
 
-    event WithdrawalProcessed(
-        address indexed depositor,
-        uint256 amount,
-        address indexed token  // address(0) for native
-    );
+    event WithdrawalProcessed( // address(0) for native
+    address indexed depositor, uint256 amount, address indexed token);
 
     // Session events using depositor terminology (Phase 2.1)
     event SessionCreatedByDepositor(
-        uint256 indexed sessionId,
-        address indexed depositor,
-        address indexed host,
-        uint256 deposit
+        uint256 indexed sessionId, address indexed depositor, address indexed host, uint256 deposit
     );
 
     // Token acceptance event (Phase 2.4)
@@ -174,11 +174,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     // Model-aware session event (Phase 3.2)
     event SessionJobCreatedForModel(
-        uint256 indexed jobId,
-        address indexed requester,
-        address indexed host,
-        bytes32 modelId,
-        uint256 deposit
+        uint256 indexed jobId, address indexed requester, address indexed host, bytes32 modelId, uint256 deposit
     );
 
     // Pause events
@@ -302,12 +298,13 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Session Creation Functions
     // ============================================================
 
-    function createSessionJob(
-        address host,
-        uint256 pricePerToken,
-        uint256 maxDuration,
-        uint256 proofInterval
-    ) external payable nonReentrant whenNotPaused returns (uint256 jobId) {
+    function createSessionJob(address host, uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        returns (uint256 jobId)
+    {
         require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
         require(msg.value <= 1000 ether, "Deposit too large");
         require(pricePerToken > 0, "Invalid price");
@@ -326,8 +323,8 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         SessionJob storage session = sessionJobs[jobId];
         session.id = jobId;
-        session.depositor = msg.sender;  // NEW: track depositor (wallet-agnostic)
-        session.requester = msg.sender;  // DEPRECATED: keep for compatibility
+        session.depositor = msg.sender; // NEW: track depositor (wallet-agnostic)
+        session.requester = msg.sender; // DEPRECATED: keep for compatibility
         session.host = host;
         session.paymentToken = address(0);
         session.deposit = msg.value;
@@ -345,7 +342,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         hostSessions[host].push(jobId);
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
-        emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value);  // NEW event
+        emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value); // NEW event
 
         return jobId;
     }
@@ -409,8 +406,12 @@ contract JobMarketplaceWithModelsUpgradeable is
     }
 
     function createSessionJobWithToken(
-        address host, address token, uint256 deposit,
-        uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval
+        address host,
+        address token,
+        uint256 deposit,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval
     ) external nonReentrant whenNotPaused returns (uint256 jobId) {
         require(acceptedTokens[token], "Token not accepted");
         uint256 minRequired = tokenMinDeposits[token];
@@ -437,8 +438,8 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         SessionJob storage session = sessionJobs[jobId];
         session.id = jobId;
-        session.depositor = msg.sender;  // NEW: track depositor (wallet-agnostic)
-        session.requester = msg.sender;  // DEPRECATED: keep for compatibility
+        session.depositor = msg.sender; // NEW: track depositor (wallet-agnostic)
+        session.requester = msg.sender; // DEPRECATED: keep for compatibility
         session.host = host;
         session.paymentToken = token;
         session.deposit = deposit;
@@ -456,7 +457,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         hostSessions[host].push(jobId);
 
         emit SessionJobCreated(jobId, msg.sender, host, deposit);
-        emit SessionCreatedByDepositor(jobId, msg.sender, host, deposit);  // NEW event
+        emit SessionCreatedByDepositor(jobId, msg.sender, host, deposit); // NEW event
 
         return jobId;
     }
@@ -546,13 +547,13 @@ contract JobMarketplaceWithModelsUpgradeable is
         // Query NodeRegistry for host info
         (
             address operator,
-            ,  // stakedAmount
+            , // stakedAmount
             bool active,
-            ,  // metadata
-            ,  // apiUrl
-            ,  // supportedModels
-            ,  // minPricePerTokenNative
-               // minPricePerTokenStable
+            , // metadata
+            , // apiUrl
+            , // supportedModels
+            , // minPricePerTokenNative
+                // minPricePerTokenStable
         ) = nodeRegistry.getNodeFullInfo(host);
 
         require(operator != address(0), "Host not registered");
@@ -571,12 +572,11 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Proof Submission
     // ============================================================
 
-    function submitProofOfWork(
-        uint256 jobId,
-        uint256 tokensClaimed,
-        bytes32 proofHash,
-        string calldata proofCID
-    ) external nonReentrant whenNotPaused {
+    function submitProofOfWork(uint256 jobId, uint256 tokensClaimed, bytes32 proofHash, string calldata proofCID)
+        external
+        nonReentrant
+        whenNotPaused
+    {
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
         require(msg.sender == session.host, "Only host can submit proof");
@@ -597,12 +597,14 @@ contract JobMarketplaceWithModelsUpgradeable is
         session.lastProofCID = proofCID;
 
         // Keep legacy proof tracking for compatibility
-        session.proofs.push(ProofSubmission({
-            proofHash: proofHash,
-            tokensClaimed: tokensClaimed,
-            timestamp: block.timestamp,
-            verified: false  // No on-chain verification with S5 storage
-        }));
+        session.proofs.push(
+            ProofSubmission({
+                proofHash: proofHash,
+                tokensClaimed: tokensClaimed,
+                timestamp: block.timestamp,
+                verified: false // No on-chain verification with S5 storage
+            })
+        );
 
         session.tokensUsed = newTotal;
         session.lastProofTime = block.timestamp;
@@ -645,7 +647,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             if (session.paymentToken == address(0)) {
                 accumulatedTreasuryNative += treasuryFee;
                 // Send ETH to HostEarnings contract
-                (bool sent, ) = payable(address(hostEarnings)).call{value: netHostPayment}("");
+                (bool sent,) = payable(address(hostEarnings)).call{value: netHostPayment}("");
                 require(sent, "ETH transfer to HostEarnings failed");
                 // Credit the host's earnings
                 hostEarnings.creditEarnings(session.host, netHostPayment, address(0));
@@ -662,7 +664,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         if (userRefund > 0) {
             if (session.paymentToken == address(0)) {
-                (bool sent, ) = payable(session.requester).call{value: userRefund}("");
+                (bool sent,) = payable(session.requester).call{value: userRefund}("");
                 require(sent, "ETH refund failed");
             } else {
                 IERC20(session.paymentToken).transfer(session.requester, userRefund);
@@ -680,8 +682,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
 
-        bool hasTimedOut = (block.timestamp > session.startTime + session.maxDuration) ||
-                          (block.timestamp > session.lastProofTime + session.proofInterval * 3);
+        bool hasTimedOut = (block.timestamp > session.startTime + session.maxDuration)
+            || (block.timestamp > session.lastProofTime + session.proofInterval * 3);
 
         require(hasTimedOut, "Session not timed out");
 
@@ -701,7 +703,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(amount > 0, "No native tokens to withdraw");
 
         accumulatedTreasuryNative = 0;
-        (bool sent, ) = payable(treasuryAddress).call{value: amount}("");
+        (bool sent,) = payable(treasuryAddress).call{value: amount}("");
         require(sent, "Native token transfer failed");
 
         emit TreasuryWithdrawal(address(0), amount);
@@ -724,12 +726,12 @@ contract JobMarketplaceWithModelsUpgradeable is
         if (accumulatedTreasuryNative > 0) {
             uint256 ethAmount = accumulatedTreasuryNative;
             accumulatedTreasuryNative = 0;
-            (bool sent, ) = payable(treasuryAddress).call{value: ethAmount}("");
+            (bool sent,) = payable(treasuryAddress).call{value: ethAmount}("");
             require(sent, "Native token transfer failed");
             emit TreasuryWithdrawal(address(0), ethAmount);
         }
 
-        for (uint i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             uint256 amount = accumulatedTreasuryTokens[tokens[i]];
             if (amount > 0) {
                 accumulatedTreasuryTokens[tokens[i]] = 0;
@@ -822,13 +824,10 @@ contract JobMarketplaceWithModelsUpgradeable is
         return userDepositsToken[account][token];
     }
 
-    function getDepositBalances(address account, address[] calldata tokens)
-        external view returns (uint256[] memory) {
+    function getDepositBalances(address account, address[] calldata tokens) external view returns (uint256[] memory) {
         uint256[] memory balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            balances[i] = tokens[i] == address(0)
-                ? userDepositsNative[account]
-                : userDepositsToken[account][tokens[i]];
+            balances[i] = tokens[i] == address(0) ? userDepositsNative[account] : userDepositsToken[account][tokens[i]];
         }
         return balances;
     }

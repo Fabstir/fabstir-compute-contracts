@@ -167,7 +167,7 @@ contract TokenMinDepositTest is Test {
         assertGt(increasedMin, originalMin);
     }
 
-    function test_InitialMinDeposit_IsFiftyCents() public {
+    function test_InitialMinDeposit_IsFiftyCents() public view {
         // Verify the initial USDC_MIN_DEPOSIT is $0.50 (500000 with 6 decimals)
         assertEq(marketplace.USDC_MIN_DEPOSIT(), 500000);
     }

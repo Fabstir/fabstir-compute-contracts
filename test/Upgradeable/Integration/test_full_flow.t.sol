@@ -62,7 +62,7 @@ contract FullFlowIntegrationTest is Test {
         // ============================================================
         // Deploy ModelRegistry Upgradeable
         // ============================================================
-        ModelRegistryUpgradeable modelRegistryImpl = new ModelRegistryUpgradeable();
+        modelRegistryImpl = new ModelRegistryUpgradeable();
         address modelRegistryProxy = address(new ERC1967Proxy(
             address(modelRegistryImpl),
             abi.encodeCall(ModelRegistryUpgradeable.initialize, (address(fabToken)))

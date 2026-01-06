@@ -22,7 +22,7 @@ contract ProofSystemUpgradeableV2 is ProofSystemUpgradeable {
         return "v2";
     }
 
-    function getVerifiedProofCount() external view returns (uint256) {
+    function getVerifiedProofCount() external pure returns (uint256) {
         // This is just for testing - returns 0 since we can't enumerate mapping
         return 0;
     }

@@ -134,7 +134,6 @@ contract FundSafetyTest is Test {
         // Track initial balances
         uint256 userInitialBalance = user.balance;
         uint256 contractInitialBalance = address(marketplace).balance;
-        uint256 hostEarningsInitialBalance = address(hostEarnings).balance;
 
         // Create session
         vm.prank(user);

@@ -219,7 +219,7 @@ contract ProofSystemSignatureVerificationTest is Test {
         assertFalse(replayResult, "Replay attack should fail");
     }
 
-    function test_SameSignatureDifferentSessionFails() public {
+    function test_SameSignatureDifferentSessionFails() public view {
         bytes32 proofHash = bytes32(uint256(0xBABE));
         uint256 claimedTokens = 100;
 

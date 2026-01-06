@@ -406,7 +406,7 @@ contract BalanceSeparationTest is Test {
     // Edge Cases
     // ============================================================
 
-    function test_ZeroBalanceForNewUser() public {
+    function test_ZeroBalanceForNewUser() public view {
         address newUser = address(0x999);
 
         assertEq(marketplace.userDepositsNative(newUser), 0, "New user withdrawable should be 0");

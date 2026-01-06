@@ -70,11 +70,12 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
      * @param claimedTokens Number of tokens being claimed
      * @return True if signature is valid and proof not replayed
      */
-    function verifyEKZL(
-        bytes calldata proof,
-        address prover,
-        uint256 claimedTokens
-    ) external view override returns (bool) {
+    function verifyEKZL(bytes calldata proof, address prover, uint256 claimedTokens)
+        external
+        view
+        override
+        returns (bool)
+    {
         return _verifyEKZL(proof, prover, claimedTokens);
     }
 
@@ -83,11 +84,7 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
      * @dev Proof format: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v] = 97 bytes minimum
      *      The prover (host) must sign: keccak256(proofHash, prover, claimedTokens)
      */
-    function _verifyEKZL(
-        bytes calldata proof,
-        address prover,
-        uint256 claimedTokens
-    ) internal view returns (bool) {
+    function _verifyEKZL(bytes calldata proof, address prover, uint256 claimedTokens) internal view returns (bool) {
         // Proof must contain: proofHash (32) + r (32) + s (32) + v (1) = 97 bytes
         if (proof.length < 97) return false;
         if (claimedTokens == 0) return false;
@@ -113,10 +110,7 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
         // The prover signs: keccak256(proofHash, prover, claimedTokens)
         // Using eth_sign which prefixes with "\x19Ethereum Signed Message:\n32"
         bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
-        bytes32 messageHash = keccak256(abi.encodePacked(
-            "\x19Ethereum Signed Message:\n32",
-            dataHash
-        ));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
 
         // Recover signer and verify it matches the prover (host)
         address recoveredSigner = ecrecover(messageHash, v, r, s);
@@ -141,11 +135,10 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     /**
      * @notice Verify and mark proof as complete (prevents replay)
      */
-    function verifyAndMarkComplete(
-        bytes calldata proof,
-        address prover,
-        uint256 claimedTokens
-    ) external returns (bool) {
+    function verifyAndMarkComplete(bytes calldata proof, address prover, uint256 claimedTokens)
+        external
+        returns (bool)
+    {
         // First verify using internal function
         if (!_verifyEKZL(proof, prover, claimedTokens)) {
             return false;
@@ -166,10 +159,7 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     /**
      * @notice Register a model circuit (owner only)
      */
-    function registerModelCircuit(
-        address model,
-        bytes32 circuitHash
-    ) external onlyOwner {
+    function registerModelCircuit(address model, bytes32 circuitHash) external onlyOwner {
         require(model != address(0), "Invalid model");
         require(circuitHash != bytes32(0), "Invalid circuit");
 
@@ -196,11 +186,10 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     /**
      * @notice Batch verification of multiple proofs
      */
-    function verifyBatch(
-        bytes[] calldata proofs,
-        address prover,
-        uint256[] calldata tokenCounts
-    ) external returns (bool) {
+    function verifyBatch(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts)
+        external
+        returns (bool)
+    {
         require(proofs.length == tokenCounts.length, "Length mismatch");
         require(proofs.length > 0, "Empty batch");
         require(proofs.length <= 10, "Batch too large");
@@ -231,11 +220,11 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     /**
      * @notice View function for batch verification (doesn't modify state)
      */
-    function verifyBatchView(
-        bytes[] calldata proofs,
-        address prover,
-        uint256[] calldata tokenCounts
-    ) external view returns (bool[] memory results) {
+    function verifyBatchView(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts)
+        external
+        view
+        returns (bool[] memory results)
+    {
         require(proofs.length == tokenCounts.length, "Length mismatch");
 
         results = new bool[](proofs.length);
@@ -264,11 +253,11 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     /**
      * @notice Internal helper for batch verification
      */
-    function _verifyEKZLInternal(
-        bytes calldata proof,
-        address prover,
-        uint256 claimedTokens
-    ) internal view returns (bool) {
+    function _verifyEKZLInternal(bytes calldata proof, address prover, uint256 claimedTokens)
+        internal
+        view
+        returns (bool)
+    {
         return _verifyEKZL(proof, prover, claimedTokens);
     }
 }
