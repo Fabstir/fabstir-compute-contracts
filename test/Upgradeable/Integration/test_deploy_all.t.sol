@@ -25,6 +25,9 @@ contract DeployAllUpgradeableTest is Test {
     uint256 constant FEE_BASIS_POINTS = 1000;
     uint256 constant DISPUTE_WINDOW = 30;
 
+    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
+    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+
     function setUp() public {
         // Deploy mock FAB token
         fabToken = new ERC20Mock("FAB Token", "FAB");
@@ -212,7 +215,7 @@ contract DeployAllUpgradeableTest is Test {
         // Step 4: Submit proof
         vm.warp(100);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof");
+        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof");
 
         // Step 5: Complete session
         vm.prank(user);

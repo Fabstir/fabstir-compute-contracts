@@ -41,6 +41,9 @@ contract HostValidationE2ETest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
+    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
+    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+
     function setUp() public {
         // Deploy mock tokens
         fabToken = new ERC20Mock("FAB Token", "FAB");
@@ -166,6 +169,7 @@ contract HostValidationE2ETest is Test {
             sessionId,
             1000, // tokens claimed
             bytes32(uint256(0x1234)), // proof hash
+            DUMMY_SIG,
             "QmProofCID123"
         );
 
@@ -322,6 +326,7 @@ contract HostValidationE2ETest is Test {
             sessionId,
             500,
             bytes32(uint256(0xABCD)),
+            DUMMY_SIG,
             "QmProof1"
         );
 
@@ -338,6 +343,7 @@ contract HostValidationE2ETest is Test {
             sessionId,
             200, // Reduced to ensure within rate limit
             bytes32(uint256(0xEF01)),
+            DUMMY_SIG,
             "QmProof2"
         );
 
@@ -371,6 +377,7 @@ contract HostValidationE2ETest is Test {
             sessionId,
             1000,
             bytes32(uint256(0x1111)),
+            DUMMY_SIG,
             "QmProof"
         );
 

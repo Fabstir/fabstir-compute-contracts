@@ -38,6 +38,9 @@ contract BalanceSeparationTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
+    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
+    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+
     function setUp() public {
         // Deploy mock tokens
         fabToken = new ERC20Mock("FAB Token", "FAB");
@@ -220,6 +223,7 @@ contract BalanceSeparationTest is Test {
             sessionId,
             1000, // tokens used
             bytes32(uint256(0x1234)),
+            DUMMY_SIG,
             "QmProof"
         );
 
@@ -255,6 +259,7 @@ contract BalanceSeparationTest is Test {
             sessionId,
             500,
             bytes32(uint256(0x1234)),
+            DUMMY_SIG,
             "QmProof"
         );
 
@@ -432,7 +437,7 @@ contract BalanceSeparationTest is Test {
         // Complete first session
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId1, 100, bytes32(uint256(0x1234)), "QmProof");
+        marketplace.submitProofOfWork(sessionId1, 100, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof");
         vm.warp(startTime + DISPUTE_WINDOW + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId1, "QmConversation");

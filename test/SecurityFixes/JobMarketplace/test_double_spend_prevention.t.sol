@@ -46,6 +46,9 @@ contract DoubleSpendPreventionTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
+    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
+    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+
     function setUp() public {
         // Deploy mock tokens
         fabToken = new ERC20Mock("FAB Token", "FAB");
@@ -406,6 +409,7 @@ contract DoubleSpendPreventionTest is Test {
             sessionId,
             1000,
             bytes32(uint256(0x1234)),
+            DUMMY_SIG,
             "QmProof"
         );
 

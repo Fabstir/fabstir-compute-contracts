@@ -572,15 +572,18 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Proof Submission
     // ============================================================
 
-    function submitProofOfWork(uint256 jobId, uint256 tokensClaimed, bytes32 proofHash, string calldata proofCID)
-        external
-        nonReentrant
-        whenNotPaused
-    {
+    function submitProofOfWork(
+        uint256 jobId,
+        uint256 tokensClaimed,
+        bytes32 proofHash,
+        bytes calldata signature,
+        string calldata proofCID
+    ) external nonReentrant whenNotPaused {
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
         require(msg.sender == session.host, "Only host can submit proof");
         require(tokensClaimed >= MIN_PROVEN_TOKENS, "Must claim minimum tokens");
+        require(signature.length == 65, "Invalid signature length");
 
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
         // Rate limit: 1000 tokens/sec base * 2x buffer = 2000 tokens/sec max

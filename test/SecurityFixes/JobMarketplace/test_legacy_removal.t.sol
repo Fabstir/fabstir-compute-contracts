@@ -53,6 +53,9 @@ contract LegacyRemovalTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
+    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
+    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+
     function setUp() public {
         fabToken = new ERC20Mock("FAB Token", "FAB");
 
@@ -158,7 +161,7 @@ contract LegacyRemovalTest is Test {
         // Complete the session flow
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(0x1234)), "QmProof");
+        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof");
 
         vm.warp(startTime + DISPUTE_WINDOW + 2);
         vm.prank(user);
@@ -242,7 +245,7 @@ contract LegacyRemovalTest is Test {
         // Submit proof
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(0x1234)), "QmProof");
+        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof");
 
         // Verify locked balance decreased
         uint256 lockedAfterProof = marketplace.getLockedBalanceNative(user);
