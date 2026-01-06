@@ -292,7 +292,7 @@ contract JobMarketplaceInitializationTest is Test {
     function test_ConstantsAreCorrect() public view {
         assertEq(marketplace.MIN_DEPOSIT(), 0.0001 ether); // ~$0.50 @ $5000/ETH
         assertEq(marketplace.MIN_PROVEN_TOKENS(), 100);
-        assertEq(marketplace.ABANDONMENT_TIMEOUT(), 24 hours);
+        // REMOVED: ABANDONMENT_TIMEOUT was unused and has been removed
         assertEq(marketplace.USDC_MIN_DEPOSIT(), 500000); // $0.50 USDC
         assertEq(marketplace.PRICE_PRECISION(), 1000);
     }

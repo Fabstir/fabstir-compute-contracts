@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 
 import "./NodeRegistryWithModelsUpgradeable.sol";
 import "./interfaces/IJobMarketplace.sol";
-import "./interfaces/IReputationSystem.sol";
+// REMOVED: import "./interfaces/IReputationSystem.sol"; (never used)
 import "./HostEarningsUpgradeable.sol";
 import "./utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -85,7 +85,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Constants (non-upgradeable)
     uint256 public constant MIN_DEPOSIT = 0.0001 ether; // ~$0.50 @ $5000/ETH
     uint256 public constant MIN_PROVEN_TOKENS = 100;
-    uint256 public constant ABANDONMENT_TIMEOUT = 24 hours;
+    // REMOVED: ABANDONMENT_TIMEOUT was defined but never used
 
     // Converted from immutable to storage (set in initialize)
     uint256 public DISPUTE_WINDOW;
@@ -108,7 +108,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     address public usdcAddress;
 
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
-    IReputationSystem public reputationSystem;
+    uint256 private __deprecated_reputationSystem_slot;  // was: IReputationSystem public reputationSystem;
     IProofSystemUpgradeable public proofSystem;
     HostEarningsUpgradeable public hostEarnings;
 
