@@ -2,8 +2,9 @@
 
 **Report Date:** January 7, 2026
 **Audited Commit:** `b207b15a231117a90200cb6144f7123cb6d84a1b`
-**Remediation Branch:** `fix/security-audit-remediation`
-**Final Commit:** `5d57c63` (fix(security): integrate ProofSystem verification)
+**Remediation Commit:** `02a19746092ab9409ebd13ae6a0537f4b9c1a83e`
+**Tag:** `v1.0.0-security-audit`
+**Branch:** `main`
 **Network:** Base Sepolia (Chain ID: 84532)
 
 ---
