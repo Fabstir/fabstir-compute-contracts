@@ -35,13 +35,12 @@ contract JobMarketplaceWithModelsUpgradeable is
     UUPSUpgradeable
 {
     // Session status enum
+    // Note: Only Active, Completed, TimedOut are used. Disputed/Abandoned/Cancelled
+    // were removed in Phase 7 cleanup as they were never implemented.
     enum SessionStatus {
         Active,
         Completed,
-        TimedOut,
-        Disputed,
-        Abandoned,
-        Cancelled
+        TimedOut
     }
 
     // EZKL proof tracking structure
@@ -55,8 +54,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Session job structure
     struct SessionJob {
         uint256 id;
-        address depositor; // NEW: tracks who deposited (EOA or Smart Account)
-        address requester; // DEPRECATED but kept for backward compatibility
+        address depositor; // Tracks who deposited and who receives refunds
         address host;
         address paymentToken;
         uint256 deposit;
@@ -93,11 +91,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     uint256 public FEE_BASIS_POINTS;
 
     // State variables
-    // DEPRECATED: Legacy storage slots - do not remove or reorder (maintains UUPS storage layout)
-    uint256 private __deprecated_jobs_slot; // was: mapping(uint256 => Job) public jobs;
     mapping(uint256 => SessionJob) public sessionJobs;
-    uint256 private __deprecated_userJobs_slot; // was: mapping(address => uint256[]) public userJobs;
-    uint256 private __deprecated_hostJobs_slot; // was: mapping(address => uint256[]) public hostJobs;
     mapping(address => uint256[]) public userSessions;
     mapping(address => uint256[]) public hostSessions;
 
@@ -109,7 +103,6 @@ contract JobMarketplaceWithModelsUpgradeable is
     address public usdcAddress;
 
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
-    uint256 private __deprecated_reputationSystem_slot; // was: IReputationSystem public reputationSystem;
     IProofSystemUpgradeable public proofSystem;
     HostEarningsUpgradeable public hostEarnings;
 
@@ -138,7 +131,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     uint256[35] private __gap;
 
     // Events
-    event SessionJobCreated(uint256 indexed jobId, address indexed requester, address indexed host, uint256 deposit);
+    event SessionJobCreated(uint256 indexed jobId, address indexed depositor, address indexed host, uint256 deposit);
     event ProofSubmitted(
         uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID
     );
@@ -152,7 +145,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 refundAmount
     );
     event SessionTimedOut(uint256 indexed jobId, uint256 hostEarnings, uint256 userRefund);
-    event SessionAbandoned(uint256 indexed jobId, uint256 userRefund);
+    // REMOVED in Phase 7: event SessionAbandoned - was never emitted
     event PaymentSent(address indexed recipient, uint256 amount);
     event TreasuryWithdrawal(address indexed token, uint256 amount);
 
@@ -174,7 +167,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     // Model-aware session event (Phase 3.2)
     event SessionJobCreatedForModel(
-        uint256 indexed jobId, address indexed requester, address indexed host, bytes32 modelId, uint256 deposit
+        uint256 indexed jobId, address indexed depositor, address indexed host, bytes32 modelId, uint256 deposit
     );
 
     // Pause events
@@ -324,8 +317,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         SessionJob storage session = sessionJobs[jobId];
         session.id = jobId;
         session.depositor = msg.sender; // NEW: track depositor (wallet-agnostic)
-        session.requester = msg.sender; // DEPRECATED: keep for compatibility
-        session.host = host;
+                session.host = host;
         session.paymentToken = address(0);
         session.deposit = msg.value;
         session.pricePerToken = pricePerToken;
@@ -384,7 +376,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         SessionJob storage session = sessionJobs[jobId];
         session.id = jobId;
         session.depositor = msg.sender;
-        session.requester = msg.sender;
         session.host = host;
         session.paymentToken = address(0);
         session.deposit = msg.value;
@@ -439,8 +430,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         SessionJob storage session = sessionJobs[jobId];
         session.id = jobId;
         session.depositor = msg.sender; // NEW: track depositor (wallet-agnostic)
-        session.requester = msg.sender; // DEPRECATED: keep for compatibility
-        session.host = host;
+                session.host = host;
         session.paymentToken = token;
         session.deposit = deposit;
         session.pricePerToken = pricePerToken;
@@ -509,7 +499,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         SessionJob storage session = sessionJobs[jobId];
         session.id = jobId;
         session.depositor = msg.sender;
-        session.requester = msg.sender;
         session.host = host;
         session.paymentToken = token;
         session.deposit = deposit;
@@ -631,13 +620,30 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Session Completion
     // ============================================================
 
+    /**
+     * @notice Complete an active session and settle payments
+     * @dev Implements a "gasless ending" pattern for better UX:
+     *      - The original depositor can complete immediately
+     *      - Anyone else (host, relayer) must wait for DISPUTE_WINDOW (default 30s)
+     *      - This allows hosts/relayers to complete on behalf of users without gas
+     *
+     *      PROOF-THEN-SETTLE ARCHITECTURE:
+     *      - Proof of work happens in submitProofOfWork() which requires host signature
+     *      - This function ONLY settles based on already-proven work (tokensUsed)
+     *      - If no proofs were submitted, tokensUsed=0 and host receives $0
+     *      - User receives refund of (deposit - payment to host)
+     *
+     *      Compare with triggerSessionTimeout() which handles forced endings.
+     *
+     * @param jobId The session ID to complete
+     * @param conversationCID IPFS CID of the conversation record (for audit trail)
+     */
     function completeSessionJob(uint256 jobId, string calldata conversationCID) external nonReentrant {
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
-        // REMOVED: Authorization check - anyone can complete (enables gasless ending pattern)
 
-        // Dispute window only waived for the original requester
-        if (msg.sender != session.requester) {
+        // Dispute window only waived for the original depositor
+        if (msg.sender != session.depositor) {
             require(block.timestamp >= session.startTime + DISPUTE_WINDOW, "Must wait dispute window");
         }
 
@@ -679,10 +685,10 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         if (userRefund > 0) {
             if (session.paymentToken == address(0)) {
-                (bool sent,) = payable(session.requester).call{value: userRefund}("");
+                (bool sent,) = payable(session.depositor).call{value: userRefund}("");
                 require(sent, "ETH refund failed");
             } else {
-                IERC20(session.paymentToken).transfer(session.requester, userRefund);
+                IERC20(session.paymentToken).transfer(session.depositor, userRefund);
             }
             session.refundedToUser = userRefund;
         }
@@ -693,6 +699,24 @@ contract JobMarketplaceWithModelsUpgradeable is
         emit SessionCompletedBy(jobId, completedBy, session.tokensUsed, hostPayment, userRefund);
     }
 
+    /**
+     * @notice Force timeout of a session that has exceeded its limits
+     * @dev Can be called by anyone when either condition is met:
+     *      1. Session exceeded maxDuration since startTime
+     *      2. No proof submitted for 3x proofInterval (host abandoned)
+     *
+     *      Uses same settlement logic as completeSessionJob():
+     *      - Host receives payment for proven work (tokensUsed)
+     *      - User receives refund of unused deposit
+     *      - If no proofs submitted, host gets $0
+     *
+     *      KEY DIFFERENCE from completeSessionJob():
+     *      - completeSessionJob: Voluntary ending (Completed status)
+     *      - triggerSessionTimeout: Forced ending (TimedOut status)
+     *      Both settle payments identically based on proven work.
+     *
+     * @param jobId The session ID to timeout
+     */
     function triggerSessionTimeout(uint256 jobId) external nonReentrant {
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
@@ -978,7 +1002,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         SessionJob storage session = sessionJobs[sessionId];
         session.id = sessionId;
         session.depositor = msg.sender;
-        session.requester = msg.sender;
         session.host = host;
         session.paymentToken = paymentToken;
         session.deposit = deposit;

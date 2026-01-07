@@ -196,7 +196,7 @@ contract ProofVerificationE2ETest is Test {
         assertTrue(verified, "Proof should be verified");
 
         // Step 6: Verify tokens were credited to session
-        (,,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokensClaimed, "Tokens should be credited");
 
         // Step 7: Complete the session
@@ -288,7 +288,7 @@ contract ProofVerificationE2ETest is Test {
         }
 
         // Verify total tokens credited
-        (,,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokensPerProof * 5, "All tokens should be credited");
     }
 

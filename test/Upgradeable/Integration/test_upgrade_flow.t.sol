@@ -239,7 +239,6 @@ contract UpgradeFlowIntegrationTest is Test {
         (
             uint256 id,
             address depositor,
-            ,
             address sessionHost,
             ,
             uint256 deposit,
