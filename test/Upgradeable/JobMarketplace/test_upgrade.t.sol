@@ -52,6 +52,9 @@ contract JobMarketplaceUpgradeTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
+    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
+    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+
     function setUp() public {
         // Deploy mock token
         fabToken = new ERC20Mock("FAB Token", "FAB");
@@ -414,7 +417,7 @@ contract JobMarketplaceUpgradeTest is Test {
         vm.warp(block.timestamp + 1);
 
         vm.prank(host1);
-        marketplaceV2.submitProofOfWork(1, 100, bytes32(uint256(123)), "QmProofCID");
+        marketplaceV2.submitProofOfWork(1, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID");
 
         // Verify tokens used updated (skip 7 fields: id, depositor, requester, host, paymentToken, deposit, pricePerToken)
         // Total 18 return values (all except ProofSubmission[] array)

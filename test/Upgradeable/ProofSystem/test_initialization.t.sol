@@ -15,9 +15,14 @@ contract ProofSystemInitializationTest is Test {
 
     address public owner = address(0x1);
     address public user1 = address(0x2);
-    address public prover = address(0x3);
+
+    // Use actual private key for signing tests (prover derived from this)
+    uint256 constant PROVER_PRIVATE_KEY = 0xA11CE;
+    address public prover;
 
     function setUp() public {
+        // Derive prover address from private key
+        prover = vm.addr(PROVER_PRIVATE_KEY);
         // Deploy implementation
         implementation = new ProofSystemUpgradeable();
 
@@ -28,6 +33,29 @@ contract ProofSystemInitializationTest is Test {
             abi.encodeCall(ProofSystemUpgradeable.initialize, ())
         ));
         proofSystem = ProofSystemUpgradeable(proxyAddr);
+    }
+
+    // ============================================================
+    // Helper Functions
+    // ============================================================
+
+    /**
+     * @dev Create a signed proof for testing
+     * @param proofHash The proof hash (first 32 bytes)
+     * @param claimedTokens Number of tokens being claimed
+     * @return proof The complete signed proof bytes
+     */
+    function createSignedProof(
+        bytes32 proofHash,
+        uint256 claimedTokens
+    ) internal view returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        bytes32 messageHash = keccak256(abi.encodePacked(
+            "\x19Ethereum Signed Message:\n32",
+            dataHash
+        ));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(PROVER_PRIVATE_KEY, messageHash);
+        return abi.encodePacked(proofHash, r, s, v);
     }
 
     // ============================================================
@@ -55,12 +83,12 @@ contract ProofSystemInitializationTest is Test {
     // ============================================================
 
     function test_VerifyEKZLWithValidProof() public view {
-        bytes memory proof = abi.encodePacked(
-            bytes32(uint256(1)), // proofHash
-            bytes32(uint256(2))  // additional data to meet 64 byte minimum
-        );
+        bytes32 proofHash = bytes32(uint256(1));
+        uint256 claimedTokens = 100;
 
-        bool result = proofSystem.verifyEKZL(proof, prover, 100);
+        bytes memory proof = createSignedProof(proofHash, claimedTokens);
+
+        bool result = proofSystem.verifyEKZL(proof, prover, claimedTokens);
         assertTrue(result);
     }
 
@@ -92,22 +120,23 @@ contract ProofSystemInitializationTest is Test {
     }
 
     function test_VerifyAndMarkCompleteWorks() public {
-        bytes memory proof = abi.encodePacked(
-            bytes32(uint256(0x1234)),
-            bytes32(uint256(0x5678))
-        );
+        bytes32 proofHash = bytes32(uint256(0x1234));
+        uint256 claimedTokens = 100;
 
-        bool result = proofSystem.verifyAndMarkComplete(proof, prover, 100);
+        bytes memory proof = createSignedProof(proofHash, claimedTokens);
+
+        bool result = proofSystem.verifyAndMarkComplete(proof, prover, claimedTokens);
         assertTrue(result);
 
         // Verify proof is now marked as verified (replay should fail)
-        bool replayResult = proofSystem.verifyEKZL(proof, prover, 100);
+        bool replayResult = proofSystem.verifyEKZL(proof, prover, claimedTokens);
         assertFalse(replayResult);
     }
 
     function test_RecordVerifiedProofWorks() public {
         bytes32 proofHash = bytes32(uint256(0xABCD));
 
+        vm.prank(owner);  // Owner authorization required after security fix
         proofSystem.recordVerifiedProof(proofHash);
 
         assertTrue(proofSystem.verifiedProofs(proofHash));
@@ -145,13 +174,13 @@ contract ProofSystemInitializationTest is Test {
     }
 
     function test_BatchVerificationWorks() public {
-        bytes[] memory proofs = new bytes[](2);
-        proofs[0] = abi.encodePacked(bytes32(uint256(1)), bytes32(uint256(2)));
-        proofs[1] = abi.encodePacked(bytes32(uint256(3)), bytes32(uint256(4)));
-
         uint256[] memory tokenCounts = new uint256[](2);
         tokenCounts[0] = 100;
         tokenCounts[1] = 200;
+
+        bytes[] memory proofs = new bytes[](2);
+        proofs[0] = createSignedProof(bytes32(uint256(1)), tokenCounts[0]);
+        proofs[1] = createSignedProof(bytes32(uint256(3)), tokenCounts[1]);
 
         bool result = proofSystem.verifyBatch(proofs, prover, tokenCounts);
         assertTrue(result);
@@ -191,13 +220,13 @@ contract ProofSystemInitializationTest is Test {
     }
 
     function test_VerifyBatchViewWorks() public view {
-        bytes[] memory proofs = new bytes[](2);
-        proofs[0] = abi.encodePacked(bytes32(uint256(1)), bytes32(uint256(2)));
-        proofs[1] = abi.encodePacked(bytes32(uint256(3)), bytes32(uint256(4)));
-
         uint256[] memory tokenCounts = new uint256[](2);
         tokenCounts[0] = 100;
         tokenCounts[1] = 200;
+
+        bytes[] memory proofs = new bytes[](2);
+        proofs[0] = createSignedProof(bytes32(uint256(0x100)), tokenCounts[0]);
+        proofs[1] = createSignedProof(bytes32(uint256(0x200)), tokenCounts[1]);
 
         bool[] memory results = proofSystem.verifyBatchView(proofs, prover, tokenCounts);
         assertEq(results.length, 2);
@@ -206,8 +235,10 @@ contract ProofSystemInitializationTest is Test {
     }
 
     function test_EstimateBatchGas() public view {
-        assertEq(proofSystem.estimateBatchGas(1), 70000);
-        assertEq(proofSystem.estimateBatchGas(5), 150000);
-        assertEq(proofSystem.estimateBatchGas(10), 250000);
+        // New constants: BASE = 15000, PER_PROOF = 27000
+        // Based on actual gas measurements from verifyBatch()
+        assertEq(proofSystem.estimateBatchGas(1), 42000);   // 15000 + 1*27000
+        assertEq(proofSystem.estimateBatchGas(5), 150000);  // 15000 + 5*27000
+        assertEq(proofSystem.estimateBatchGas(10), 285000); // 15000 + 10*27000
     }
 }

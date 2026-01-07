@@ -33,6 +33,9 @@ contract JobMarketplacePauseTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
+    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
+    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+
     function setUp() public {
         // Deploy mock token
         fabToken = new ERC20Mock("FAB Token", "FAB");
@@ -261,7 +264,7 @@ contract JobMarketplacePauseTest is Test {
         // Try to submit proof
         vm.prank(host1);
         vm.expectRevert();
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID");
     }
 
     function test_SubmitProofWorksWhenUnpaused() public {
@@ -286,7 +289,7 @@ contract JobMarketplacePauseTest is Test {
 
         // Submit proof should work
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID");
 
         // Verify tokens used (skip 7 fields: id, depositor, requester, host, paymentToken, deposit, pricePerToken)
         // Total 18 return values (all except ProofSubmission[] array)
@@ -380,7 +383,7 @@ contract JobMarketplacePauseTest is Test {
         // Submit proof
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID");
 
         // Complete session
         vm.prank(user1);

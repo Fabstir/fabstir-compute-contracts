@@ -52,6 +52,9 @@ contract FullFlowIntegrationTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
+    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
+    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+
     function setUp() public {
         vm.startPrank(deployer);
 
@@ -62,7 +65,7 @@ contract FullFlowIntegrationTest is Test {
         // ============================================================
         // Deploy ModelRegistry Upgradeable
         // ============================================================
-        ModelRegistryUpgradeable modelRegistryImpl = new ModelRegistryUpgradeable();
+        modelRegistryImpl = new ModelRegistryUpgradeable();
         address modelRegistryProxy = address(new ERC1967Proxy(
             address(modelRegistryImpl),
             abi.encodeCall(ModelRegistryUpgradeable.initialize, (address(fabToken)))
@@ -242,12 +245,12 @@ contract FullFlowIntegrationTest is Test {
         vm.warp(block.timestamp + 1); // Advance time
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), "QmProof1");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), DUMMY_SIG, "QmProof1");
 
         vm.warp(block.timestamp + 2);
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(456)), "QmProof2");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(456)), DUMMY_SIG, "QmProof2");
 
         // Step 4: Complete session
         vm.prank(user1);
@@ -300,10 +303,10 @@ contract FullFlowIntegrationTest is Test {
         vm.warp(block.timestamp + 1);
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(session1, 500, bytes32(uint256(1)), "QmProof1");
+        jobMarketplace.submitProofOfWork(session1, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof1");
 
         vm.prank(host2);
-        jobMarketplace.submitProofOfWork(session2, 500, bytes32(uint256(2)), "QmProof2");
+        jobMarketplace.submitProofOfWork(session2, 500, bytes32(uint256(2)), DUMMY_SIG, "QmProof2");
 
         // Complete both sessions
         vm.prank(user1);
@@ -345,7 +348,7 @@ contract FullFlowIntegrationTest is Test {
         // Complete flow
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");
@@ -371,7 +374,7 @@ contract FullFlowIntegrationTest is Test {
 
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), "QmProof");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), DUMMY_SIG, "QmProof");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");

@@ -12,9 +12,27 @@ import {DeployProofSystemUpgradeable} from "../../../script/DeployProofSystemUpg
 contract ProofSystemDeploymentScriptTest is Test {
     DeployProofSystemUpgradeable public deployScript;
 
+    // Use actual private key for signing tests
+    uint256 constant PROVER_PRIVATE_KEY = 0xA11CE;
+    address public prover;
+
     function setUp() public {
+        prover = vm.addr(PROVER_PRIVATE_KEY);
         // Create deployment script
         deployScript = new DeployProofSystemUpgradeable();
+    }
+
+    function createSignedProof(
+        bytes32 proofHash,
+        uint256 claimedTokens
+    ) internal view returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        bytes32 messageHash = keccak256(abi.encodePacked(
+            "\x19Ethereum Signed Message:\n32",
+            dataHash
+        ));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(PROVER_PRIVATE_KEY, messageHash);
+        return abi.encodePacked(proofHash, r, s, v);
     }
 
     function test_DeploymentScriptWorks() public {
@@ -73,13 +91,12 @@ contract ProofSystemDeploymentScriptTest is Test {
 
         ProofSystemUpgradeable proofSystem = ProofSystemUpgradeable(proxy);
 
-        // Verify a proof
-        bytes memory proof = abi.encodePacked(
-            bytes32(uint256(0x1234)),
-            bytes32(uint256(0x5678))
-        );
+        // Verify a signed proof
+        bytes32 proofHash = bytes32(uint256(0x1234));
+        uint256 claimedTokens = 100;
+        bytes memory proof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystem.verifyEKZL(proof, address(0x100), 100);
+        bool result = proofSystem.verifyEKZL(proof, prover, claimedTokens);
         assertTrue(result);
     }
 

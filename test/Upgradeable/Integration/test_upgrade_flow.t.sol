@@ -72,6 +72,9 @@ contract UpgradeFlowIntegrationTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
+    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
+    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+
     function setUp() public {
         vm.startPrank(deployer);
 
@@ -152,7 +155,7 @@ contract UpgradeFlowIntegrationTest is Test {
         // Step 3: Submit a proof (use explicit large timestamp to avoid rate limit issues)
         vm.warp(100);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof1");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof1");
 
         // Step 4: UPGRADE NodeRegistry
         NodeRegistryWithModelsUpgradeableV2 newNodeRegistryImpl = new NodeRegistryWithModelsUpgradeableV2();
@@ -176,7 +179,7 @@ contract UpgradeFlowIntegrationTest is Test {
         // Step 7: Session operations still work (advance time for rate limit)
         vm.warp(200);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(2)), "QmProof2");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(2)), DUMMY_SIG, "QmProof2");
 
         // Step 8: Complete session after upgrade
         vm.prank(user1);
@@ -205,7 +208,7 @@ contract UpgradeFlowIntegrationTest is Test {
         // Step 3: Submit a proof (use explicit large timestamp)
         vm.warp(100);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof1");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof1");
 
         // Capture state before upgrade
         uint256 nextJobIdBefore = jobMarketplace.nextJobId();
@@ -263,7 +266,7 @@ contract UpgradeFlowIntegrationTest is Test {
         // Step 8: Continue session after upgrade (advance time for rate limit)
         vm.warp(200);
         vm.prank(host1);
-        jobMarketplaceV2.submitProofOfWork(sessionId, 500, bytes32(uint256(2)), "QmProof2");
+        jobMarketplaceV2.submitProofOfWork(sessionId, 500, bytes32(uint256(2)), DUMMY_SIG, "QmProof2");
 
         // Step 9: Complete session
         vm.prank(user1);
@@ -291,7 +294,7 @@ contract UpgradeFlowIntegrationTest is Test {
         // Submit first proof with explicit large timestamp
         vm.warp(100);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 300, bytes32(uint256(1)), "QmProof1");
+        jobMarketplace.submitProofOfWork(sessionId, 300, bytes32(uint256(1)), DUMMY_SIG, "QmProof1");
 
         // Upgrade NodeRegistry
         NodeRegistryWithModelsUpgradeableV2 newNodeRegistryImpl = new NodeRegistryWithModelsUpgradeableV2();
@@ -320,7 +323,7 @@ contract UpgradeFlowIntegrationTest is Test {
         // Continue session - submit more proofs (advance time for rate limit)
         vm.warp(200);
         vm.prank(host1);
-        jobMarketplaceV2.submitProofOfWork(sessionId, 300, bytes32(uint256(2)), "QmProof2");
+        jobMarketplaceV2.submitProofOfWork(sessionId, 300, bytes32(uint256(2)), DUMMY_SIG, "QmProof2");
 
         // Complete session
         vm.prank(user1);
@@ -367,7 +370,7 @@ contract UpgradeFlowIntegrationTest is Test {
         // Complete the session
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        jobMarketplaceV2.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof");
+        jobMarketplaceV2.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof");
 
         vm.prank(user1);
         jobMarketplaceV2.completeSessionJob(sessionId, "QmConv");
