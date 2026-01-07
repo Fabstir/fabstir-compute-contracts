@@ -622,10 +622,12 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     /**
      * @notice Complete an active session and settle payments
-     * @dev Implements a "gasless ending" pattern for better UX:
-     *      - The original depositor can complete immediately
-     *      - Anyone else (host, relayer) must wait for DISPUTE_WINDOW (default 30s)
-     *      - This allows hosts/relayers to complete on behalf of users without gas
+     * @dev Only the depositor or host can complete a session:
+     *      - Depositor can complete immediately (no dispute window)
+     *      - Host must wait for DISPUTE_WINDOW (default 30s) to complete
+     *
+     *      This restriction ensures only authorized parties can set the
+     *      conversationCID (IPFS reference to conversation record).
      *
      *      PROOF-THEN-SETTLE ARCHITECTURE:
      *      - Proof of work happens in submitProofOfWork() which requires host signature
@@ -633,7 +635,8 @@ contract JobMarketplaceWithModelsUpgradeable is
      *      - If no proofs were submitted, tokensUsed=0 and host receives $0
      *      - User receives refund of (deposit - payment to host)
      *
-     *      Compare with triggerSessionTimeout() which handles forced endings.
+     *      Compare with triggerSessionTimeout() which handles forced endings
+     *      and can be called by anyone when timeout conditions are met.
      *
      * @param jobId The session ID to complete
      * @param conversationCID IPFS CID of the conversation record (for audit trail)
@@ -641,6 +644,12 @@ contract JobMarketplaceWithModelsUpgradeable is
     function completeSessionJob(uint256 jobId, string calldata conversationCID) external nonReentrant {
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
+
+        // Only depositor or host can complete and set conversationCID
+        require(
+            msg.sender == session.depositor || msg.sender == session.host,
+            "Only depositor or host can complete"
+        );
 
         // Dispute window only waived for the original depositor
         if (msg.sender != session.depositor) {
