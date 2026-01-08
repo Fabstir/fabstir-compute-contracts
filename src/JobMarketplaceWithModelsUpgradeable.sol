@@ -84,6 +84,17 @@ contract JobMarketplaceWithModelsUpgradeable is
         string nativeTokenSymbol; // "ETH" or "BNB"
     }
 
+    // Session creation parameters (Phase 5 - Code Deduplication)
+    struct SessionParams {
+        address host;
+        address paymentToken;
+        uint256 deposit;
+        uint256 pricePerToken;
+        uint256 maxDuration;
+        uint256 proofInterval;
+        bytes32 modelId;  // bytes32(0) if no model
+    }
+
     // Constants (non-upgradeable)
     uint256 public constant MIN_DEPOSIT = 0.0001 ether; // ~$0.50 @ $5000/ETH
     uint256 public constant MIN_PROVEN_TOKENS = 100;
@@ -304,42 +315,28 @@ contract JobMarketplaceWithModelsUpgradeable is
         returns (uint256 jobId)
     {
         require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
-        require(msg.value <= 1000 ether, "Deposit too large");
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(host != address(0), "Invalid host");
 
-        _validateProofRequirements(proofInterval, msg.value, pricePerToken);
-        _validateHostRegistration(host);
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: address(0),
+            deposit: msg.value,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            modelId: bytes32(0)
+        });
+
+        _validateSessionParams(params);
 
         // Validate price meets host's minimum for native token (ETH/BNB)
-        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, address(0)); // address(0) = native token
+        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, address(0));
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
         jobId = nextJobId++;
-
-        SessionJob storage session = sessionJobs[jobId];
-        session.id = jobId;
-        session.depositor = msg.sender; // NEW: track depositor (wallet-agnostic)
-                session.host = host;
-        session.paymentToken = address(0);
-        session.deposit = msg.value;
-        session.pricePerToken = pricePerToken;
-        session.maxDuration = maxDuration;
-        session.startTime = block.timestamp;
-        session.lastProofTime = block.timestamp;
-        session.proofInterval = proofInterval;
-        session.status = SessionStatus.Active;
-
-        // NOTE: Do NOT credit userDepositsNative here - inline session deposits
-        // are locked in the session, not available for withdrawal (security fix)
-
-        userSessions[msg.sender].push(jobId);
-        hostSessions[host].push(jobId);
+        _initializeSession(jobId, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
-        emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value); // NEW event
+        emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value);
 
         return jobId;
     }
@@ -352,48 +349,31 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxDuration,
         uint256 proofInterval
     ) external payable nonReentrant whenNotPaused returns (uint256 jobId) {
-        // Standard validations
         require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
-        require(msg.value <= 1000 ether, "Deposit too large");
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(host != address(0), "Invalid host");
 
-        // Host validation MUST come before model validation
-        _validateHostRegistration(host);
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: address(0),
+            deposit: msg.value,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            modelId: modelId
+        });
+
+        // Validates host registration before model check (security requirement)
+        _validateSessionParams(params);
 
         // Model-specific validations
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
-
-        _validateProofRequirements(proofInterval, msg.value, pricePerToken);
 
         // Get model-specific pricing (falls back to default if not set)
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, address(0));
         require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
 
         jobId = nextJobId++;
-
-        // Store model for this session (Phase 3.1)
         sessionModel[jobId] = modelId;
-
-        // Create session (same pattern as createSessionJob)
-        SessionJob storage session = sessionJobs[jobId];
-        session.id = jobId;
-        session.depositor = msg.sender;
-        session.host = host;
-        session.paymentToken = address(0);
-        session.deposit = msg.value;
-        session.pricePerToken = pricePerToken;
-        session.maxDuration = maxDuration;
-        session.startTime = block.timestamp;
-        session.lastProofTime = block.timestamp;
-        session.proofInterval = proofInterval;
-        session.status = SessionStatus.Active;
-
-        // NOTE: Do NOT credit userDepositsNative - inline deposits are locked (security fix)
-        userSessions[msg.sender].push(jobId);
-        hostSessions[host].push(jobId);
+        _initializeSession(jobId, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
         emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, msg.value);
@@ -409,50 +389,37 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxDuration,
         uint256 proofInterval
     ) external nonReentrant whenNotPaused returns (uint256 jobId) {
+        // Token-specific validations
         require(acceptedTokens[token], "Token not accepted");
         uint256 minRequired = tokenMinDeposits[token];
         require(minRequired > 0, "Token not configured");
         require(deposit >= minRequired, "Insufficient deposit");
         require(deposit > 0, "Zero deposit");
 
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(host != address(0), "Invalid host");
-        require(deposit <= 1000 ether, "Deposit too large");
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: token,
+            deposit: deposit,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            modelId: bytes32(0)
+        });
 
-        _validateHostRegistration(host);
-        _validateProofRequirements(proofInterval, deposit, pricePerToken);
+        _validateSessionParams(params);
 
         // Validate price meets host's minimum for the specified token (USDC or other stablecoin)
         uint256 hostMinPrice = nodeRegistry.getNodePricing(host, token);
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
+        // Transfer tokens after all validations pass
         IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
 
         jobId = nextJobId++;
-
-        SessionJob storage session = sessionJobs[jobId];
-        session.id = jobId;
-        session.depositor = msg.sender; // NEW: track depositor (wallet-agnostic)
-                session.host = host;
-        session.paymentToken = token;
-        session.deposit = deposit;
-        session.pricePerToken = pricePerToken;
-        session.maxDuration = maxDuration;
-        session.startTime = block.timestamp;
-        session.lastProofTime = block.timestamp;
-        session.proofInterval = proofInterval;
-        session.status = SessionStatus.Active;
-
-        // NOTE: Do NOT credit userDepositsToken - inline deposits are locked in the session,
-        // not available for withdrawal (security fix for double-spend vulnerability)
-
-        userSessions[msg.sender].push(jobId);
-        hostSessions[host].push(jobId);
+        _initializeSession(jobId, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, deposit);
-        emit SessionCreatedByDepositor(jobId, msg.sender, host, deposit); // NEW event
+        emit SessionCreatedByDepositor(jobId, msg.sender, host, deposit);
 
         return jobId;
     }
@@ -467,58 +434,39 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxDuration,
         uint256 proofInterval
     ) external nonReentrant whenNotPaused returns (uint256 jobId) {
-        // Token validations
+        // Token-specific validations
         require(acceptedTokens[token], "Token not accepted");
         uint256 minRequired = tokenMinDeposits[token];
         require(minRequired > 0, "Token not configured");
         require(deposit >= minRequired, "Insufficient deposit");
         require(deposit > 0, "Zero deposit");
-        require(deposit <= 1000 ether, "Deposit too large");
 
-        // Standard validations
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(host != address(0), "Invalid host");
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: token,
+            deposit: deposit,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            modelId: modelId
+        });
 
-        // Host validation MUST come before model validation
-        _validateHostRegistration(host);
+        // Validates host registration before model check (security requirement)
+        _validateSessionParams(params);
 
         // Model-specific validations
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
-
-        _validateProofRequirements(proofInterval, deposit, pricePerToken);
 
         // Get model-specific pricing for this token (falls back to default stable if not set)
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, token);
         require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
 
+        // Transfer tokens after all validations pass
         IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
 
         jobId = nextJobId++;
-
-        // Store model for this session (Phase 3.1)
         sessionModel[jobId] = modelId;
-
-        // Create session (same pattern as createSessionJobWithToken)
-        SessionJob storage session = sessionJobs[jobId];
-        session.id = jobId;
-        session.depositor = msg.sender;
-        session.host = host;
-        session.paymentToken = token;
-        session.deposit = deposit;
-        session.pricePerToken = pricePerToken;
-        session.maxDuration = maxDuration;
-        session.startTime = block.timestamp;
-        session.lastProofTime = block.timestamp;
-        session.proofInterval = proofInterval;
-        session.status = SessionStatus.Active;
-
-        // NOTE: Do NOT credit userDepositsToken - inline deposits are locked in the session,
-        // not available for withdrawal (security fix for double-spend vulnerability)
-
-        userSessions[msg.sender].push(jobId);
-        hostSessions[host].push(jobId);
+        _initializeSession(jobId, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, deposit);
         emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, deposit);
@@ -560,6 +508,57 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 tokensPerProof = proofInterval;
         require(tokensPerProof >= MIN_PROVEN_TOKENS, "Proof interval too small");
         require(maxTokens >= tokensPerProof, "Deposit too small for proof interval");
+    }
+
+    // ============================================================
+    // Session Creation Helpers (Phase 5 - Code Deduplication)
+    // ============================================================
+
+    /**
+     * @notice Validate common session parameters
+     * @dev Checks price, duration, proof interval, and host address
+     * @param params Session parameters to validate
+     */
+    function _validateSessionParams(SessionParams memory params) internal view {
+        require(params.pricePerToken > 0, "Invalid price");
+        require(params.maxDuration > 0 && params.maxDuration <= 365 days, "Invalid duration");
+        require(params.proofInterval > 0, "Invalid proof interval");
+        require(params.host != address(0), "Invalid host");
+        require(params.deposit <= 1000 ether, "Deposit too large");
+
+        _validateHostRegistration(params.host);
+        _validateProofRequirements(params.proofInterval, params.deposit, params.pricePerToken);
+    }
+
+    /**
+     * @notice Initialize session storage with common fields
+     * @dev Sets all session fields and updates tracking mappings
+     * @param jobId The job ID for the session
+     * @param params Session parameters
+     * @return session Storage pointer to the initialized session
+     */
+    function _initializeSession(
+        uint256 jobId,
+        SessionParams memory params
+    ) internal returns (SessionJob storage session) {
+        session = sessionJobs[jobId];
+        session.id = jobId;
+        session.depositor = msg.sender;
+        session.host = params.host;
+        session.paymentToken = params.paymentToken;
+        session.deposit = params.deposit;
+        session.pricePerToken = params.pricePerToken;
+        session.maxDuration = params.maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = params.proofInterval;
+        session.status = SessionStatus.Active;
+
+        // Track session for user and host
+        userSessions[msg.sender].push(jobId);
+        hostSessions[params.host].push(jobId);
+
+        return session;
     }
 
     // ============================================================
