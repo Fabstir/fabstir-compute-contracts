@@ -46,8 +46,8 @@ contract FullFlowIntegrationTest is Test {
     bytes32 public modelId1;
     bytes32 public modelId2;
 
-    uint256 constant FEE_BASIS_POINTS = 1000; // 10%
-    uint256 constant DISPUTE_WINDOW = 30; // 30 seconds
+    uint256 constant feeBasisPoints = 1000; // 10%
+    uint256 constant disputeWindow = 30; // 30 seconds
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
@@ -120,8 +120,8 @@ contract FullFlowIntegrationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         jobMarketplace = JobMarketplaceWithModelsUpgradeable(payable(jobMarketplaceProxy));

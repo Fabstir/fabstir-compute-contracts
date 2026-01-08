@@ -89,9 +89,11 @@ contract JobMarketplaceWithModelsUpgradeable is
     uint256 public constant MIN_PROVEN_TOKENS = 100;
     // REMOVED: ABANDONMENT_TIMEOUT was defined but never used
 
-    // Converted from immutable to storage (set in initialize)
-    uint256 public DISPUTE_WINDOW;
-    uint256 public FEE_BASIS_POINTS;
+    /// @notice Time window before non-depositor can complete session (default 30s)
+    uint256 public disputeWindow;
+
+    /// @notice Treasury fee in basis points (1000 = 10%)
+    uint256 public feeBasisPoints;
 
     // State variables
     mapping(uint256 => SessionJob) public sessionJobs;
@@ -211,8 +213,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(_feeBasisPoints <= 10000, "Fee cannot exceed 100%");
         require(_disputeWindow > 0 && _disputeWindow <= 7 days, "Invalid dispute window");
 
-        FEE_BASIS_POINTS = _feeBasisPoints;
-        DISPUTE_WINDOW = _disputeWindow;
+        feeBasisPoints = _feeBasisPoints;
+        disputeWindow = _disputeWindow;
         nodeRegistry = NodeRegistryWithModelsUpgradeable(_nodeRegistry);
         hostEarnings = HostEarningsUpgradeable(_hostEarnings);
 
@@ -627,7 +629,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @notice Complete an active session and settle payments
      * @dev Only the depositor or host can complete a session:
      *      - Depositor can complete immediately (no dispute window)
-     *      - Host must wait for DISPUTE_WINDOW (default 30s) to complete
+     *      - Host must wait for disputeWindow (default 30s) to complete
      *
      *      This restriction ensures only authorized parties can set the
      *      conversationCID (IPFS reference to conversation record).
@@ -656,7 +658,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         // Dispute window only waived for the original depositor
         if (msg.sender != session.depositor) {
-            require(block.timestamp >= session.startTime + DISPUTE_WINDOW, "Must wait dispute window");
+            require(block.timestamp >= session.startTime + disputeWindow, "Must wait dispute window");
         }
 
         session.status = SessionStatus.Completed;
@@ -673,8 +675,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 userRefund = session.deposit > hostPayment ? session.deposit - hostPayment : 0;
 
         if (hostPayment > 0) {
-            // Calculate fees based on FEE_BASIS_POINTS
-            uint256 treasuryFee = (hostPayment * FEE_BASIS_POINTS) / 10000;
+            // Calculate fees based on feeBasisPoints
+            uint256 treasuryFee = (hostPayment * feeBasisPoints) / 10000;
             uint256 netHostPayment = hostPayment - treasuryFee;
 
             if (session.paymentToken == address(0)) {

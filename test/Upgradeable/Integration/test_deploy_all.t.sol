@@ -22,8 +22,8 @@ contract DeployAllUpgradeableTest is Test {
     DeployAllUpgradeable public deployScript;
     ERC20Mock public fabToken;
 
-    uint256 constant FEE_BASIS_POINTS = 1000;
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000;
+    uint256 constant disputeWindow = 30;
 
     // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
     bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
@@ -34,8 +34,8 @@ contract DeployAllUpgradeableTest is Test {
 
         // Set environment variables
         vm.setEnv("FAB_TOKEN", vm.toString(address(fabToken)));
-        vm.setEnv("FEE_BASIS_POINTS", vm.toString(FEE_BASIS_POINTS));
-        vm.setEnv("DISPUTE_WINDOW", vm.toString(DISPUTE_WINDOW));
+        vm.setEnv("feeBasisPoints", vm.toString(feeBasisPoints));
+        vm.setEnv("disputeWindow", vm.toString(disputeWindow));
 
         // Create deployment script
         deployScript = new DeployAllUpgradeable();
@@ -129,8 +129,8 @@ contract DeployAllUpgradeableTest is Test {
         JobMarketplaceWithModelsUpgradeable marketplace = JobMarketplaceWithModelsUpgradeable(payable(result.jobMarketplaceProxy));
         assertEq(address(marketplace.nodeRegistry()), result.nodeRegistryProxy, "NodeRegistry set");
         assertEq(address(marketplace.hostEarnings()), result.hostEarningsProxy, "HostEarnings set");
-        assertEq(marketplace.FEE_BASIS_POINTS(), FEE_BASIS_POINTS, "Fee set");
-        assertEq(marketplace.DISPUTE_WINDOW(), DISPUTE_WINDOW, "Dispute window set");
+        assertEq(marketplace.feeBasisPoints(), feeBasisPoints, "Fee set");
+        assertEq(marketplace.disputeWindow(), disputeWindow, "Dispute window set");
         assertTrue(marketplace.owner() != address(0), "Owner set");
     }
 

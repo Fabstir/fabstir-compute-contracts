@@ -47,8 +47,8 @@ contract JobMarketplaceUpgradeTest is Test {
 
     bytes32 public modelId1;
 
-    uint256 constant FEE_BASIS_POINTS = 1000;
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000;
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
@@ -99,8 +99,8 @@ contract JobMarketplaceUpgradeTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(proxyAddr));
@@ -181,8 +181,8 @@ contract JobMarketplaceUpgradeTest is Test {
         assertEq(deposit1, 0.01 ether);
 
         // Verify configuration
-        assertEq(marketplace.FEE_BASIS_POINTS(), FEE_BASIS_POINTS);
-        assertEq(marketplace.DISPUTE_WINDOW(), DISPUTE_WINDOW);
+        assertEq(marketplace.feeBasisPoints(), feeBasisPoints);
+        assertEq(marketplace.disputeWindow(), disputeWindow);
         assertEq(marketplace.owner(), owner);
     }
 
@@ -245,7 +245,7 @@ contract JobMarketplaceUpgradeTest is Test {
         vm.prank(owner);
         UUPSUpgradeable(address(marketplace)).upgradeToAndCall(address(implementationV2), "");
 
-        assertEq(marketplace.FEE_BASIS_POINTS(), FEE_BASIS_POINTS);
+        assertEq(marketplace.feeBasisPoints(), feeBasisPoints);
     }
 
     function test_UpgradePreservesDisputeWindow() public {
@@ -254,7 +254,7 @@ contract JobMarketplaceUpgradeTest is Test {
         vm.prank(owner);
         UUPSUpgradeable(address(marketplace)).upgradeToAndCall(address(implementationV2), "");
 
-        assertEq(marketplace.DISPUTE_WINDOW(), DISPUTE_WINDOW);
+        assertEq(marketplace.disputeWindow(), disputeWindow);
     }
 
     function test_UpgradePreservesSessionJobs() public {

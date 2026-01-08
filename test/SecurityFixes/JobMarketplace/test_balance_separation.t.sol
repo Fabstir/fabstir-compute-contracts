@@ -32,8 +32,8 @@ contract BalanceSeparationTest is Test {
 
     bytes32 public modelId;
 
-    uint256 constant FEE_BASIS_POINTS = 1000; // 10%
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000; // 10%
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
@@ -83,8 +83,8 @@ contract BalanceSeparationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
@@ -264,7 +264,7 @@ contract BalanceSeparationTest is Test {
         );
 
         // Complete session
-        vm.warp(startTime + DISPUTE_WINDOW + 2);
+        vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConversation");
 
@@ -438,7 +438,7 @@ contract BalanceSeparationTest is Test {
         vm.warp(startTime + 1);
         vm.prank(host);
         marketplace.submitProofOfWork(sessionId1, 100, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof");
-        vm.warp(startTime + DISPUTE_WINDOW + 2);
+        vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId1, "QmConversation");
 
