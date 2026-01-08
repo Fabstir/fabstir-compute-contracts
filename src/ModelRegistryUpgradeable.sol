@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title ModelRegistryUpgradeable
@@ -13,6 +14,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev Implements a two-tier system: owner-curated trusted models and community-proposed models
  */
 contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+    using SafeERC20 for IERC20;
+
     // Model metadata structure
     struct Model {
         string huggingfaceRepo;     // e.g., "TheBloke/Llama-2-7B-GGUF"
@@ -128,7 +131,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         require(proposals[modelId].proposalTime == 0, "Proposal already exists");
 
         // Charge proposal fee to prevent spam
-        require(governanceToken.transferFrom(msg.sender, address(this), PROPOSAL_FEE), "Fee transfer failed");
+        governanceToken.safeTransferFrom(msg.sender, address(this), PROPOSAL_FEE);
 
         proposals[modelId] = ModelProposal({
             modelId: modelId,
@@ -161,7 +164,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         require(block.timestamp <= proposal.proposalTime + PROPOSAL_DURATION, "Voting period ended");
 
         // Transfer tokens from voter (tokens are locked until proposal ends)
-        require(governanceToken.transferFrom(msg.sender, address(this), amount), "Token transfer failed");
+        governanceToken.safeTransferFrom(msg.sender, address(this), amount);
 
         if (support) {
             proposal.votesFor += amount;
@@ -201,7 +204,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
 
         // Return proposal fee to proposer if approved
         if (approved) {
-            governanceToken.transfer(proposal.proposer, PROPOSAL_FEE);
+            governanceToken.safeTransfer(proposal.proposer, PROPOSAL_FEE);
         }
 
         // Remove from active proposals
@@ -223,7 +226,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         require(amount > 0, "No votes to withdraw");
 
         votes[modelId][msg.sender] = 0;
-        governanceToken.transfer(msg.sender, amount);
+        governanceToken.safeTransfer(msg.sender, amount);
     }
 
     /**

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./utils/ReentrancyGuardUpgradeable.sol";
 import "./ModelRegistryUpgradeable.sol";
 
@@ -20,6 +21,8 @@ contract NodeRegistryWithModelsUpgradeable is
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable
 {
+    using SafeERC20 for IERC20;
+
     // Storage (was immutable, now regular storage)
     IERC20 public fabToken;
     ModelRegistryUpgradeable public modelRegistry;
@@ -127,7 +130,7 @@ contract NodeRegistryWithModelsUpgradeable is
         }
 
         // Transfer stake
-        require(fabToken.transferFrom(msg.sender, address(this), MIN_STAKE), "Stake transfer failed");
+        fabToken.safeTransferFrom(msg.sender, address(this), MIN_STAKE);
 
         // Create node
         nodes[msg.sender] = Node({
@@ -352,7 +355,7 @@ contract NodeRegistryWithModelsUpgradeable is
         delete nodes[msg.sender];
 
         // Return stake
-        require(fabToken.transfer(msg.sender, stakeToReturn), "Stake return failed");
+        fabToken.safeTransfer(msg.sender, stakeToReturn);
 
         emit NodeUnregistered(msg.sender, stakeToReturn);
     }
@@ -364,7 +367,7 @@ contract NodeRegistryWithModelsUpgradeable is
         require(nodes[msg.sender].operator != address(0), "Not registered");
         require(amount > 0, "Zero amount");
 
-        require(fabToken.transferFrom(msg.sender, address(this), amount), "Stake transfer failed");
+        fabToken.safeTransferFrom(msg.sender, address(this), amount);
         nodes[msg.sender].stakedAmount += amount;
     }
 

@@ -12,6 +12,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Proof system interface
 interface IProofSystemUpgradeable {
@@ -34,6 +35,8 @@ contract JobMarketplaceWithModelsUpgradeable is
     PausableUpgradeable,
     UUPSUpgradeable
 {
+    using SafeERC20 for IERC20;
+
     // Session status enum
     // Note: Only Active, Completed, TimedOut are used. Disputed/Abandoned/Cancelled
     // were removed in Phase 7 cleanup as they were never implemented.
@@ -423,7 +426,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 hostMinPrice = nodeRegistry.getNodePricing(host, token);
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
-        IERC20(token).transferFrom(msg.sender, address(this), deposit);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
 
         jobId = nextJobId++;
 
@@ -488,7 +491,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, token);
         require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
 
-        IERC20(token).transferFrom(msg.sender, address(this), deposit);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
 
         jobId = nextJobId++;
 
@@ -684,7 +687,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             } else {
                 accumulatedTreasuryTokens[session.paymentToken] += treasuryFee;
                 // Transfer tokens to HostEarnings
-                IERC20(session.paymentToken).transfer(address(hostEarnings), netHostPayment);
+                IERC20(session.paymentToken).safeTransfer(address(hostEarnings), netHostPayment);
                 // Credit the host's earnings
                 hostEarnings.creditEarnings(session.host, netHostPayment, session.paymentToken);
             }
@@ -697,7 +700,7 @@ contract JobMarketplaceWithModelsUpgradeable is
                 (bool sent,) = payable(session.depositor).call{value: userRefund}("");
                 require(sent, "ETH refund failed");
             } else {
-                IERC20(session.paymentToken).transfer(session.depositor, userRefund);
+                IERC20(session.paymentToken).safeTransfer(session.depositor, userRefund);
             }
             session.refundedToUser = userRefund;
         }
@@ -763,7 +766,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(amount > 0, "No tokens to withdraw");
 
         accumulatedTreasuryTokens[token] = 0;
-        IERC20(token).transfer(treasuryAddress, amount);
+        IERC20(token).safeTransfer(treasuryAddress, amount);
 
         emit TreasuryWithdrawal(token, amount);
     }
@@ -783,7 +786,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             uint256 amount = accumulatedTreasuryTokens[tokens[i]];
             if (amount > 0) {
                 accumulatedTreasuryTokens[tokens[i]] = 0;
-                IERC20(tokens[i]).transfer(treasuryAddress, amount);
+                IERC20(tokens[i]).safeTransfer(treasuryAddress, amount);
                 emit TreasuryWithdrawal(tokens[i], amount);
             }
         }
@@ -834,7 +837,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(amount > 0, "Zero deposit");
         require(token != address(0), "Invalid token");
 
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         userDepositsToken[msg.sender][token] += amount;
         emit DepositReceived(msg.sender, amount, token);
     }
@@ -847,7 +850,9 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(userDepositsNative[msg.sender] >= amount, "Insufficient balance");
 
         userDepositsNative[msg.sender] -= amount;
-        payable(msg.sender).transfer(amount);
+
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "ETH transfer failed");
 
         emit WithdrawalProcessed(msg.sender, amount, address(0));
     }
@@ -856,7 +861,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(userDepositsToken[msg.sender][token] >= amount, "Insufficient balance");
 
         userDepositsToken[msg.sender][token] -= amount;
-        IERC20(token).transfer(msg.sender, amount);
+        IERC20(token).safeTransfer(msg.sender, amount);
 
         emit WithdrawalProcessed(msg.sender, amount, token);
     }

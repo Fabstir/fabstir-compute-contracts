@@ -13,7 +13,7 @@ This report addresses remaining code quality issues from the January 2026 securi
 
 | Severity     | Issues Identified | Issues Fixed | Status      |
 | ------------ | ----------------- | ------------ | ----------- |
-| Code Quality | 8 planned + 3 deferred | 2       | In Progress |
+| Code Quality | 8 planned + 3 deferred | 3       | In Progress |
 
 **Phases Overview:**
 
@@ -21,7 +21,7 @@ This report addresses remaining code quality issues from the January 2026 securi
 |-------|-------------|--------|
 | 1 | HostEarningsUpgradeable Code Deduplication | ✅ Complete |
 | 2 | Unrestricted `receive` Function Fixes | ✅ Complete |
-| 3 | Deprecated Funds Transfer Method Usage | Planned |
+| 3 | Deprecated Funds Transfer Method Usage | ✅ Complete |
 | 4 | Variables Named as Constants | Planned |
 | 5 | Session Creation Code Deduplication | Deferred |
 | 6 | Model Tiers Design Duplication | Deferred |
@@ -352,10 +352,10 @@ function withdrawNative(uint256 amount) external nonReentrant {
 
 **Tasks:**
 
-- [ ] Replace `.transfer()` with `.call{value:}()` in `withdrawNative()`
-- [ ] Add success check with require
-- [ ] Write test to verify withdrawal still works
-- [ ] Verify reentrancy protection (`nonReentrant` modifier already present)
+- [x] Replace `.transfer()` with `.call{value:}()` in `withdrawNative()`
+- [x] Add success check with require
+- [x] Write test to verify withdrawal still works
+- [x] Verify reentrancy protection (`nonReentrant` modifier already present)
 
 ---
 
@@ -427,15 +427,15 @@ IERC20(token).safeTransferFrom(sender, recipient, amount);
 
 **Tasks:**
 
-- [ ] Add SafeERC20 import to JobMarketplaceWithModelsUpgradeable
-- [ ] Add SafeERC20 import to HostEarningsUpgradeable
-- [ ] Add SafeERC20 import to NodeRegistryWithModelsUpgradeable
-- [ ] Add SafeERC20 import to ModelRegistryUpgradeable
-- [ ] Replace 8 instances in JobMarketplaceWithModelsUpgradeable
-- [ ] Replace 4 instances in HostEarningsUpgradeable
-- [ ] Replace 3 instances in NodeRegistryWithModelsUpgradeable
-- [ ] Replace 4 instances in ModelRegistryUpgradeable
-- [ ] Run full test suite to verify no regressions
+- [x] Add SafeERC20 import to JobMarketplaceWithModelsUpgradeable
+- [x] Add SafeERC20 import to HostEarningsUpgradeable
+- [x] Add SafeERC20 import to NodeRegistryWithModelsUpgradeable
+- [x] Add SafeERC20 import to ModelRegistryUpgradeable
+- [x] Replace 8 instances in JobMarketplaceWithModelsUpgradeable
+- [x] Replace 2 instances in HostEarningsUpgradeable (after Phase 1 refactor)
+- [x] Replace 3 instances in NodeRegistryWithModelsUpgradeable
+- [x] Replace 4 instances in ModelRegistryUpgradeable
+- [x] Run full test suite (457 tests passing)
 
 ---
 
@@ -455,7 +455,18 @@ function test_SessionPayment_StillWorks() public { /* ... */ }
 function test_StakeTransfer_StillWorks() public { /* ... */ }
 ```
 
-**Status:** Planned
+**Status:** ✅ Complete (January 8, 2026)
+
+**Implementation:**
+- `src/JobMarketplaceWithModelsUpgradeable.sol`:
+  - Added SafeERC20 import and `using SafeERC20 for IERC20;`
+  - Replaced 8 ERC20 transfer/transferFrom with safe versions
+  - Replaced `.transfer()` with `.call{value:}` in `withdrawNative()`
+- `src/HostEarningsUpgradeable.sol`: Added SafeERC20, replaced 2 instances
+- `src/NodeRegistryWithModelsUpgradeable.sol`: Added SafeERC20, replaced 3 instances
+- `src/ModelRegistryUpgradeable.sol`: Added SafeERC20, replaced 4 instances
+- 13 new tests in `test/SecurityFixes/TransferMethods/test_safe_transfers.t.sol`
+- Full test suite: 457 tests passing
 
 ---
 

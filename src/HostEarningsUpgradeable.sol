@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./utils/ReentrancyGuardUpgradeable.sol";
 
 /**
@@ -19,6 +20,8 @@ contract HostEarningsUpgradeable is
     OwnableUpgradeable,
     UUPSUpgradeable
 {
+    using SafeERC20 for IERC20;
+
     // Earnings tracking: host => token => amount
     // token address(0) represents ETH
     mapping(address => mapping(address => uint256)) private earnings;
@@ -173,7 +176,7 @@ contract HostEarningsUpgradeable is
             require(success, "ETH transfer failed");
         } else {
             // ERC20 withdrawal
-            IERC20(token).transfer(msg.sender, amount);
+            IERC20(token).safeTransfer(msg.sender, amount);
         }
 
         emit EarningsWithdrawn(msg.sender, token, amount, remainingBalance);
@@ -223,7 +226,7 @@ contract HostEarningsUpgradeable is
             uint256 rescueable = contractBalance - totalOwed;
             require(amount <= rescueable, "Amount exceeds rescueable balance");
 
-            IERC20(token).transfer(owner(), amount);
+            IERC20(token).safeTransfer(owner(), amount);
         }
     }
 
