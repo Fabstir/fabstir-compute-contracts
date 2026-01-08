@@ -127,21 +127,7 @@ contract HostEarningsUpgradeable is
         earnings[msg.sender][token] -= amount;
         totalWithdrawn[token] += amount;
 
-        if (token == address(0)) {
-            // ETH withdrawal
-            (bool success, ) = payable(msg.sender).call{value: amount}("");
-            require(success, "ETH transfer failed");
-        } else {
-            // ERC20 withdrawal
-            IERC20(token).transfer(msg.sender, amount);
-        }
-
-        emit EarningsWithdrawn(
-            msg.sender,
-            token,
-            amount,
-            earnings[msg.sender][token]
-        );
+        _executeTransfer(token, amount, earnings[msg.sender][token]);
     }
 
     /**
@@ -155,16 +141,7 @@ contract HostEarningsUpgradeable is
         earnings[msg.sender][token] = 0;
         totalWithdrawn[token] += amount;
 
-        if (token == address(0)) {
-            // ETH withdrawal
-            (bool success, ) = payable(msg.sender).call{value: amount}("");
-            require(success, "ETH transfer failed");
-        } else {
-            // ERC20 withdrawal
-            IERC20(token).transfer(msg.sender, amount);
-        }
-
-        emit EarningsWithdrawn(msg.sender, token, amount, 0);
+        _executeTransfer(token, amount, 0);
     }
 
     /**
@@ -178,18 +155,28 @@ contract HostEarningsUpgradeable is
                 earnings[msg.sender][tokens[i]] = 0;
                 totalWithdrawn[tokens[i]] += amount;
 
-                if (tokens[i] == address(0)) {
-                    // ETH withdrawal
-                    (bool success, ) = payable(msg.sender).call{value: amount}("");
-                    require(success, "ETH transfer failed");
-                } else {
-                    // ERC20 withdrawal
-                    IERC20(tokens[i]).transfer(msg.sender, amount);
-                }
-
-                emit EarningsWithdrawn(msg.sender, tokens[i], amount, 0);
+                _executeTransfer(tokens[i], amount, 0);
             }
         }
+    }
+
+    /**
+     * @dev Internal function to execute token transfer and emit withdrawal event
+     * @param token The token address (address(0) for ETH)
+     * @param amount The amount to transfer
+     * @param remainingBalance The balance remaining after withdrawal (for event)
+     */
+    function _executeTransfer(address token, uint256 amount, uint256 remainingBalance) internal {
+        if (token == address(0)) {
+            // ETH withdrawal
+            (bool success, ) = payable(msg.sender).call{value: amount}("");
+            require(success, "ETH transfer failed");
+        } else {
+            // ERC20 withdrawal
+            IERC20(token).transfer(msg.sender, amount);
+        }
+
+        emit EarningsWithdrawn(msg.sender, token, amount, remainingBalance);
     }
 
     /**
