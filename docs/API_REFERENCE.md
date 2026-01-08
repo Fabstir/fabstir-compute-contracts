@@ -1,6 +1,6 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** January 6, 2026
+**Last Updated:** January 8, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 **PRICE_PRECISION:** 1000 (all prices multiplied by 1000 for sub-$1/million support)
 
@@ -632,7 +632,10 @@ function completeSessionJob(
 ) external
 ```
 
-**Can be called by anyone** (enables gasless completion for users).
+**Access Control:**
+- Only `depositor` or `host` can call this function
+- `depositor` can complete immediately (no waiting period)
+- `host` must wait `DISPUTE_WINDOW` (30 seconds) after session start
 
 **Payment Distribution:**
 - 90% of earned amount → Host (via HostEarnings)
@@ -665,8 +668,7 @@ Get session details.
 ```solidity
 function sessionJobs(uint256 jobId) external view returns (
     uint256 id,
-    address depositor,
-    address requester,
+    address depositor,      // Who deposited funds (receives refunds)
     address host,
     address paymentToken,
     uint256 deposit,
@@ -690,10 +692,7 @@ function sessionJobs(uint256 jobId) external view returns (
 enum SessionStatus {
     Active,      // 0 - In progress
     Completed,   // 1 - Successfully completed
-    TimedOut,    // 2 - Timed out
-    Disputed,    // 3 - Under dispute
-    Abandoned,   // 4 - Abandoned by host
-    Cancelled    // 5 - Cancelled
+    TimedOut     // 2 - Timed out
 }
 ```
 
@@ -944,7 +943,6 @@ await hostEarningsContract.withdrawNative();
 | `ProofSubmitted(uint256 jobId, address host, uint256 tokensClaimed, bytes32 proofHash, string proofCID)` | Proof of work submitted |
 | `SessionCompleted(uint256 jobId, address completedBy, uint256 tokensUsed, uint256 paymentAmount, uint256 refundAmount)` | Session completed |
 | `SessionTimedOut(uint256 jobId, uint256 hostEarnings, uint256 userRefund)` | Session timed out |
-| `SessionAbandoned(uint256 jobId, uint256 userRefund)` | Session abandoned |
 | `DepositReceived(address account, address token, uint256 amount)` | Deposit received |
 | `WithdrawalProcessed(address account, address token, uint256 amount)` | Withdrawal processed |
 | `TokenAccepted(address token, uint256 minDeposit)` | New token accepted |
@@ -983,6 +981,7 @@ await hostEarningsContract.withdrawNative();
 | `"Token not accepted"` | Payment token not in accepted list |
 | `"Token not configured"` | Token has no minimum deposit set |
 | `"Only host can submit proof"` | Non-host trying to submit proof |
+| `"Only depositor or host can complete"` | Third party trying to complete session |
 | `"Session not active"` | Session is not in Active status |
 
 ---

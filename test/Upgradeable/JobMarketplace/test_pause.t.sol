@@ -293,7 +293,7 @@ contract JobMarketplacePauseTest is Test {
 
         // Verify tokens used (skip 7 fields: id, depositor, requester, host, paymentToken, deposit, pricePerToken)
         // Total 18 return values (all except ProofSubmission[] array)
-        (,,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, 100);
     }
 

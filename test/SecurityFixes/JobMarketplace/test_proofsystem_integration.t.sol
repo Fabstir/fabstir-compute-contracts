@@ -177,7 +177,7 @@ contract ProofSystemIntegrationTest is Test {
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID");
 
         // Verify tokens were credited (proof was accepted)
-        (,,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokensClaimed, "Tokens should be credited");
 
         // Verify proof was marked as verified in ProofSystem
@@ -287,7 +287,7 @@ contract ProofSystemIntegrationTest is Test {
         marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, dummySignature, "QmTestCID");
 
         // Verify tokens were credited
-        (,,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplaceNoProof.sessionJobs(newSessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplaceNoProof.sessionJobs(newSessionId);
         assertEq(tokensUsed, tokensClaimed, "Tokens should be credited even without ProofSystem");
     }
 

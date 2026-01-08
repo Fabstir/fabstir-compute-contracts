@@ -160,7 +160,6 @@ contract JobMarketplaceUpgradeTest is Test {
         (
             uint256 id1,
             address depositor1,
-            ,
             address host1Session,
             ,
             uint256 deposit1,
@@ -270,7 +269,6 @@ contract JobMarketplaceUpgradeTest is Test {
         (
             uint256 id1,
             address depositor1,
-            ,
             address host1Session,
             ,
             uint256 deposit1,
@@ -295,7 +293,6 @@ contract JobMarketplaceUpgradeTest is Test {
         (
             uint256 id2,
             address depositor2,
-            ,
             ,
             ,
             uint256 deposit2,
@@ -421,7 +418,7 @@ contract JobMarketplaceUpgradeTest is Test {
 
         // Verify tokens used updated (skip 7 fields: id, depositor, requester, host, paymentToken, deposit, pricePerToken)
         // Total 18 return values (all except ProofSubmission[] array)
-        (,,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplaceV2.sessionJobs(1);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplaceV2.sessionJobs(1);
         assertEq(tokensUsed, 100);
     }
 
