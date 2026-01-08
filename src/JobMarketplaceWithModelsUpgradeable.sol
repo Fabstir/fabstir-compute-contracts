@@ -1029,11 +1029,4 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         return sessionId;
     }
-
-    // ============================================================
-    // Receive Functions
-    // ============================================================
-
-    receive() external payable {}
-    fallback() external payable {}
 }

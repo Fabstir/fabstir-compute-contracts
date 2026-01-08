@@ -228,10 +228,11 @@ contract HostEarningsUpgradeable is
     }
 
     /**
-     * @notice Receive ETH when JobMarketplace or PaymentEscrow sends it
+     * @notice Receive ETH only from authorized callers (JobMarketplace)
+     * @dev Restricts direct ETH transfers to prevent accidental fund locks
      */
     receive() external payable {
-        // Accept ETH transfers
+        require(authorizedCallers[msg.sender], "Unauthorized ETH sender");
     }
 
     /**

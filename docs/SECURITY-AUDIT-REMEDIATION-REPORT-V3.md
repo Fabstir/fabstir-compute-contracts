@@ -13,14 +13,14 @@ This report addresses remaining code quality issues from the January 2026 securi
 
 | Severity     | Issues Identified | Issues Fixed | Status      |
 | ------------ | ----------------- | ------------ | ----------- |
-| Code Quality | 8 planned + 3 deferred | 1       | In Progress |
+| Code Quality | 8 planned + 3 deferred | 2       | In Progress |
 
 **Phases Overview:**
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | HostEarningsUpgradeable Code Deduplication | ✅ Complete |
-| 2 | Unrestricted `receive` Function Fixes | Planned |
+| 2 | Unrestricted `receive` Function Fixes | ✅ Complete |
 | 3 | Deprecated Funds Transfer Method Usage | Planned |
 | 4 | Variables Named as Constants | Planned |
 | 5 | Session Creation Code Deduplication | Deferred |
@@ -222,10 +222,10 @@ receive() external payable {
 
 **Tasks:**
 
-- [ ] Modify `receive()` to check `authorizedCallers[msg.sender]`
-- [ ] Write test: unauthorized sender reverts
-- [ ] Write test: authorized sender (JobMarketplace) succeeds
-- [ ] Verify existing fund flow still works
+- [x] Modify `receive()` to check `authorizedCallers[msg.sender]`
+- [x] Write test: unauthorized sender reverts
+- [x] Write test: authorized sender (JobMarketplace) succeeds
+- [x] Verify existing fund flow still works
 
 ---
 
@@ -271,11 +271,11 @@ Remove both functions entirely:
 
 **Tasks:**
 
-- [ ] Remove `receive() external payable {}`
-- [ ] Remove `fallback() external payable {}`
-- [ ] Write test: direct ETH send reverts (expected behavior)
-- [ ] Verify session creation with ETH still works
-- [ ] Run full test suite
+- [x] Remove `receive() external payable {}`
+- [x] Remove `fallback() external payable {}`
+- [x] Write test: direct ETH send reverts (expected behavior)
+- [x] Verify session creation with ETH still works
+- [x] Run full test suite (444 tests passing)
 
 ---
 
@@ -295,7 +295,14 @@ function test_SessionCreationWithETH_StillWorks() public { /* ... */ }
 function test_DepositNative_StillWorks() public { /* ... */ }
 ```
 
-**Status:** Planned
+**Status:** ✅ Complete (January 8, 2026)
+
+**Implementation:**
+- `src/HostEarningsUpgradeable.sol` line 234: Added `require(authorizedCallers[msg.sender], "Unauthorized ETH sender")`
+- `src/JobMarketplaceWithModelsUpgradeable.sol`: Removed `receive()` and `fallback()` functions (lines 1037-1038)
+- 11 new tests in `test/SecurityFixes/ReceiveFunction/test_receive_restriction.t.sol`
+- Updated 1 existing test in `test/Upgradeable/HostEarnings/test_initialization.t.sol`
+- Full test suite: 444 tests passing
 
 ---
 
