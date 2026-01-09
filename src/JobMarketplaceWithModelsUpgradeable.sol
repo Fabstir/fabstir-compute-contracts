@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 
 import "./NodeRegistryWithModelsUpgradeable.sol";
 import "./interfaces/IJobMarketplace.sol";
-// REMOVED: import "./interfaces/IReputationSystem.sol"; (never used)
 import "./HostEarningsUpgradeable.sol";
 import "./utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -37,9 +36,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 {
     using SafeERC20 for IERC20;
 
-    // Session status enum
-    // Note: Only Active, Completed, TimedOut are used. Disputed/Abandoned/Cancelled
-    // were removed in Phase 7 cleanup as they were never implemented.
+    // Session status enum (Active, Completed, TimedOut)
     enum SessionStatus {
         Active,
         Completed,
@@ -76,7 +73,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         string lastProofCID; // S5: CID of most recent proof in S5 storage
     }
 
-    // Chain configuration structure (Phase 4.1)
+    // Chain configuration structure
     struct ChainConfig {
         address nativeWrapper; // WETH on Base, WBNB on opBNB
         address stablecoin; // USDC address per chain
@@ -84,7 +81,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         string nativeTokenSymbol; // "ETH" or "BNB"
     }
 
-    // Session creation parameters (Phase 5 - Code Deduplication)
+    // Session creation parameters
     struct SessionParams {
         address host;
         address paymentToken;
@@ -98,7 +95,6 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Constants (non-upgradeable)
     uint256 public constant MIN_DEPOSIT = 0.0001 ether; // ~$0.50 @ $5000/ETH
     uint256 public constant MIN_PROVEN_TOKENS = 100;
-    // REMOVED: ABANDONMENT_TIMEOUT was defined but never used
 
     /// @notice Time window before non-depositor can complete session (default 30s)
     uint256 public disputeWindow;
@@ -111,7 +107,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     mapping(address => uint256[]) public userSessions;
     mapping(address => uint256[]) public hostSessions;
 
-    // Session model tracking (sessionId => modelId) - Phase 3.1
+    // Session model tracking (sessionId => modelId)
     mapping(uint256 => bytes32) public sessionModel;
 
     uint256 public nextJobId;
@@ -136,11 +132,11 @@ contract JobMarketplaceWithModelsUpgradeable is
     uint256 public accumulatedTreasuryNative;
     mapping(address => uint256) public accumulatedTreasuryTokens;
 
-    // Wallet-agnostic deposit tracking (Phase 1.1)
+    // Wallet-agnostic deposit tracking
     mapping(address => uint256) public userDepositsNative;
     mapping(address => mapping(address => uint256)) public userDepositsToken;
 
-    // Chain configuration storage (Phase 4.1)
+    // Chain configuration storage
     ChainConfig public chainConfig;
 
     // Storage gap for future upgrades
@@ -152,7 +148,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID
     );
     event SessionCompleted(uint256 indexed jobId, uint256 totalTokensUsed, uint256 hostEarnings, uint256 userRefund);
-    // New event that tracks who completed the session (Phase 3.1 - Anyone-can-complete pattern)
+    // Event that tracks who completed the session (anyone-can-complete pattern)
     event SessionCompletedBy(
         uint256 indexed jobId,
         address indexed completedBy,
@@ -161,27 +157,26 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 refundAmount
     );
     event SessionTimedOut(uint256 indexed jobId, uint256 hostEarnings, uint256 userRefund);
-    // REMOVED in Phase 7: event SessionAbandoned - was never emitted
     event PaymentSent(address indexed recipient, uint256 amount);
     event TreasuryWithdrawal(address indexed token, uint256 amount);
 
-    // Wallet-agnostic deposit events (Phase 1.1)
+    // Wallet-agnostic deposit events
     event DepositReceived( // address(0) for native
     address indexed depositor, uint256 amount, address indexed token);
 
     event WithdrawalProcessed( // address(0) for native
     address indexed depositor, uint256 amount, address indexed token);
 
-    // Session events using depositor terminology (Phase 2.1)
+    // Session events using depositor terminology
     event SessionCreatedByDepositor(
         uint256 indexed sessionId, address indexed depositor, address indexed host, uint256 deposit
     );
 
-    // Token acceptance event (Phase 2.4)
+    // Token acceptance event
     event TokenAccepted(address indexed token, uint256 minDeposit);
     event TokenMinDepositUpdated(address indexed token, uint256 oldMinDeposit, uint256 newMinDeposit);
 
-    // Model-aware session event (Phase 3.2)
+    // Model-aware session event
     event SessionJobCreatedForModel(
         uint256 indexed jobId, address indexed depositor, address indexed host, bytes32 modelId, uint256 deposit
     );
@@ -296,7 +291,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         tokenMinDeposits[_usdc] = USDC_MIN_DEPOSIT;
     }
 
-    // Initialize chain configuration (Phase 4.1)
+    // Initialize chain configuration
     function initializeChainConfig(ChainConfig memory _config) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
         require(chainConfig.nativeWrapper == address(0), "Already initialized");
@@ -511,7 +506,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     }
 
     // ============================================================
-    // Session Creation Helpers (Phase 5 - Code Deduplication)
+    // Session Creation Helpers
     // ============================================================
 
     /**
@@ -588,7 +583,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxTokens = (session.deposit * PRICE_PRECISION) / session.pricePerToken;
         require(newTotal <= maxTokens, "Exceeds deposit");
 
-        // VERIFY PROOF via ProofSystem (Phase 6.2)
+        // Verify proof via ProofSystem
         bool verified = false;
         if (address(proofSystem) != address(0)) {
             // Construct 97-byte proof: proofHash (32) + signature (65)
@@ -708,7 +703,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         // Emit both events for backward compatibility
         emit SessionCompleted(jobId, session.tokensUsed, session.withdrawnByHost, userRefund);
-        // Emit new event showing who completed it (Phase 3.1)
+        // Emit event showing who completed the session
         emit SessionCompletedBy(jobId, completedBy, session.tokensUsed, hostPayment, userRefund);
     }
 

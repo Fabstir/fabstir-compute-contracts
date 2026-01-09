@@ -45,14 +45,13 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
 
     // Mappings
     mapping(bytes32 => Model) public models;           // modelId => Model data
-    // REMOVED: trustedModels mapping (Phase 6) - use isTrustedModel() instead
     mapping(bytes32 => ModelProposal) public proposals; // modelId => Proposal
     mapping(bytes32 => mapping(address => uint256)) public votes; // modelId => voter => vote amount
 
     bytes32[] public modelList;                        // List of all model IDs
     bytes32[] public activeProposals;                  // List of active proposal IDs
 
-    // Index mapping for O(1) proposal removal (Phase 7)
+    // Index mapping for O(1) proposal removal
     mapping(bytes32 => uint256) private activeProposalIndex;
 
     // Events
@@ -63,7 +62,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event ModelDeactivated(bytes32 indexed modelId);
     event ModelReactivated(bytes32 indexed modelId);
 
-    // Storage gap for future upgrades (50 - 1 governanceToken + 1 removed trustedModels - 1 activeProposalIndex)
+    // Storage gap for future upgrades
     uint256[49] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -115,7 +114,6 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
             timestamp: block.timestamp
         });
 
-        // REMOVED: trustedModels[modelId] = true; (Phase 6 - use isTrustedModel() instead)
         modelList.push(modelId);
 
         emit ModelAdded(modelId, huggingfaceRepo, fileName, 1);
@@ -153,7 +151,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
             })
         });
 
-        // Track index for O(1) removal (Phase 7)
+        // Track index for O(1) removal
         activeProposalIndex[modelId] = activeProposals.length;
         activeProposals.push(modelId);
         emit ModelProposed(modelId, msg.sender, huggingfaceRepo);
@@ -297,7 +295,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     }
 
     /**
-     * @notice Remove from active proposals list using O(1) indexed removal (Phase 7)
+     * @notice Remove from active proposals list using O(1) indexed removal
      * @dev Uses swap-and-pop with index tracking for gas efficiency
      */
     function _removeFromActiveProposals(bytes32 modelId) private {
@@ -338,7 +336,6 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
                     timestamp: block.timestamp
                 });
 
-                // REMOVED: trustedModels[modelId] = true; (Phase 6 - use isTrustedModel() instead)
                 modelList.push(modelId);
 
                 emit ModelAdded(modelId, repos[i], fileNames[i], 1);

@@ -56,7 +56,7 @@ contract NodeRegistryWithModelsUpgradeable is
     mapping(address => uint256) public activeNodesIndex;
     mapping(bytes32 => address[]) public modelToNodes;
 
-    // Index mapping for O(1) node removal from model arrays (Phase 7)
+    // Index mapping for O(1) node removal from model arrays
     mapping(bytes32 => mapping(address => uint256)) private modelNodeIndex;
 
     // Per-model pricing overrides
@@ -151,7 +151,7 @@ contract NodeRegistryWithModelsUpgradeable is
         activeNodesIndex[msg.sender] = activeNodesList.length;
         activeNodesList.push(msg.sender);
 
-        // Update model-to-nodes mapping with O(1) index tracking (Phase 7)
+        // Update model-to-nodes mapping with O(1) index tracking
         for (uint i = 0; i < modelIds.length; i++) {
             modelNodeIndex[modelIds[i]][msg.sender] = modelToNodes[modelIds[i]].length;
             modelToNodes[modelIds[i]].push(msg.sender);
@@ -181,7 +181,7 @@ contract NodeRegistryWithModelsUpgradeable is
         // Update supported models
         nodes[msg.sender].supportedModels = newModelIds;
 
-        // Add node to new model mappings with O(1) index tracking (Phase 7)
+        // Add node to new model mappings with O(1) index tracking
         for (uint i = 0; i < newModelIds.length; i++) {
             modelNodeIndex[newModelIds[i]][msg.sender] = modelToNodes[newModelIds[i]].length;
             modelToNodes[newModelIds[i]].push(msg.sender);
@@ -496,7 +496,7 @@ contract NodeRegistryWithModelsUpgradeable is
     }
 
     /**
-     * @notice Remove node from model mapping using O(1) indexed removal (Phase 7)
+     * @notice Remove node from model mapping using O(1) indexed removal
      * @dev Uses swap-and-pop with index tracking for gas efficiency
      */
     function _removeNodeFromModel(bytes32 modelId, address nodeAddress) private {
@@ -514,12 +514,5 @@ contract NodeRegistryWithModelsUpgradeable is
         // Remove last element
         nodesForModel.pop();
         delete modelNodeIndex[modelId][nodeAddress];
-    }
-
-    /**
-     * @notice Legacy function for compatibility
-     */
-    function getNodeController(address) external pure returns (address) {
-        return address(0);
     }
 }
