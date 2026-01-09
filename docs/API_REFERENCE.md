@@ -1,6 +1,6 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** January 8, 2026
+**Last Updated:** January 9, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 **PRICE_PRECISION:** 1000 (all prices multiplied by 1000 for sub-$1/million support)
 
@@ -16,7 +16,7 @@
 // UPGRADEABLE CONTRACTS (UUPS Proxies) - Use these addresses
 const contracts = {
   // Proxy addresses (interact with these)
-  jobMarketplace: "0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D",
+  jobMarketplace: "0x3CaCbf3f448B420918A93a88706B26Ab27a3523E",  // ⚠️ NEW - Jan 9, 2026
   nodeRegistry: "0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22",
   modelRegistry: "0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2",
   proofSystem: "0x5afB91977e69Cc5003288849059bc62d47E7deeb",
@@ -27,13 +27,13 @@ const contracts = {
   usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 };
 
-// Implementation addresses (for verification only)
+// Implementation addresses (for verification only) - Updated Jan 9, 2026
 const implementations = {
-  jobMarketplace: "0x05c7d3a1b748dEbdbc12dd75D1aC195fb93228a3",
-  nodeRegistry: "0x68298e2b74a106763aC99E3D973E98012dB5c75F",
-  modelRegistry: "0xd7Df5c6D4ffe6961d47753D1dd32f844e0F73f50",
-  proofSystem: "0x83eB050Aa3443a76a4De64aBeD90cA8d525E7A3A",
-  hostEarnings: "0x588c42249F85C6ac4B4E27f97416C0289980aabB"
+  jobMarketplace: "0x26f27C19F80596d228D853dC39A204f0f6C45C7E",  // ⚠️ NEW
+  nodeRegistry: "0xb85424dd91D4ae0C6945e512bfDdF8a494299115",    // ⚠️ NEW
+  modelRegistry: "0x1D31d9688a4ffD2aFE738BC6C9a4cb27C272AA5A",   // ⚠️ NEW
+  proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // ⚠️ NEW
+  hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // ⚠️ NEW
 };
 ```
 
@@ -360,8 +360,8 @@ function isActiveNode(address operator) external view returns (bool)
 
 Session management and payments.
 
-**Proxy Address:** `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D`
-**Implementation:** `0x05c7d3a1b748dEbdbc12dd75D1aC195fb93228a3`
+**Proxy Address:** `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` ⚠️ NEW (Jan 9, 2026)
+**Implementation:** `0x26f27C19F80596d228D853dC39A204f0f6C45C7E`
 
 ### Constants
 
@@ -1006,9 +1006,9 @@ const config = {
   rpcUrl: "https://sepolia.base.org",
   explorer: "https://sepolia.basescan.org",
 
-  // UPGRADEABLE CONTRACTS (UUPS Proxies) - December 14, 2025
+  // UPGRADEABLE CONTRACTS (UUPS Proxies) - January 9, 2026
   contracts: {
-    jobMarketplace: "0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D",
+    jobMarketplace: "0x3CaCbf3f448B420918A93a88706B26Ab27a3523E",  // ⚠️ NEW
     nodeRegistry: "0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22",
     modelRegistry: "0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2",
     proofSystem: "0x5afB91977e69Cc5003288849059bc62d47E7deeb",
@@ -1017,13 +1017,13 @@ const config = {
     usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
   },
 
-  // Implementation addresses (for contract verification)
+  // Implementation addresses (for contract verification) - January 9, 2026
   implementations: {
-    jobMarketplace: "0x05c7d3a1b748dEbdbc12dd75D1aC195fb93228a3",
-    nodeRegistry: "0x68298e2b74a106763aC99E3D973E98012dB5c75F",
-    modelRegistry: "0xd7Df5c6D4ffe6961d47753D1dd32f844e0F73f50",
-    proofSystem: "0x83eB050Aa3443a76a4De64aBeD90cA8d525E7A3A",
-    hostEarnings: "0x588c42249F85C6ac4B4E27f97416C0289980aabB"
+    jobMarketplace: "0x26f27C19F80596d228D853dC39A204f0f6C45C7E",  // ⚠️ NEW
+    nodeRegistry: "0xb85424dd91D4ae0C6945e512bfDdF8a494299115",    // ⚠️ NEW
+    modelRegistry: "0x1D31d9688a4ffD2aFE738BC6C9a4cb27C272AA5A",   // ⚠️ NEW
+    proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // ⚠️ NEW
+    hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // ⚠️ NEW
   }
 };
 ```
