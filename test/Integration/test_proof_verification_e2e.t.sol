@@ -501,7 +501,7 @@ contract ProofVerificationE2ETest is Test {
         uint256 tokensClaimed
     ) internal view returns (bytes memory) {
         // Create the message hash that will be signed
-        // Must match ProofSystem._verifyEKZL: keccak256(proofHash, prover, claimedTokens)
+        // Must match ProofSystem._verifyHostSignature: keccak256(proofHash, prover, claimedTokens)
         bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed));
 
         // Create Ethereum signed message hash (EIP-191)

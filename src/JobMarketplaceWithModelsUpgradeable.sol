@@ -16,7 +16,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 // Proof system interface
 interface IProofSystemUpgradeable {
-    function verifyEKZL(bytes calldata proof, address prover, uint256 claimedTokens) external view returns (bool);
+    function verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens) external view returns (bool);
 
     function verifyAndMarkComplete(bytes calldata proof, address prover, uint256 claimedTokens)
         external

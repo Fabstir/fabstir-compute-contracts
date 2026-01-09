@@ -88,14 +88,14 @@ contract ProofSystemInitializationTest is Test {
 
         bytes memory proof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystem.verifyEKZL(proof, prover, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, prover, claimedTokens);
         assertTrue(result);
     }
 
     function test_VerifyEKZLRejectsShortProof() public view {
         bytes memory shortProof = abi.encodePacked(bytes32(uint256(1))); // Only 32 bytes
 
-        bool result = proofSystem.verifyEKZL(shortProof, prover, 100);
+        bool result = proofSystem.verifyHostSignature(shortProof, prover, 100);
         assertFalse(result);
     }
 
@@ -105,7 +105,7 @@ contract ProofSystemInitializationTest is Test {
             bytes32(uint256(2))
         );
 
-        bool result = proofSystem.verifyEKZL(proof, prover, 0);
+        bool result = proofSystem.verifyHostSignature(proof, prover, 0);
         assertFalse(result);
     }
 
@@ -115,7 +115,7 @@ contract ProofSystemInitializationTest is Test {
             bytes32(uint256(2))
         );
 
-        bool result = proofSystem.verifyEKZL(proof, address(0), 100);
+        bool result = proofSystem.verifyHostSignature(proof, address(0), 100);
         assertFalse(result);
     }
 
@@ -129,7 +129,7 @@ contract ProofSystemInitializationTest is Test {
         assertTrue(result);
 
         // Verify proof is now marked as verified (replay should fail)
-        bool replayResult = proofSystem.verifyEKZL(proof, prover, claimedTokens);
+        bool replayResult = proofSystem.verifyHostSignature(proof, prover, claimedTokens);
         assertFalse(replayResult);
     }
 

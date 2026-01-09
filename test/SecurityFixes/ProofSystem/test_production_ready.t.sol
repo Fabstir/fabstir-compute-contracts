@@ -119,9 +119,9 @@ contract ProofSystemProductionReadyTest is Test {
     function test_ViewFunctionsArePermissionless() public view {
         // These functions are intentionally permissionless
 
-        // 1. verifyEKZL - read-only verification
+        // 1. verifyHostSignature - read-only verification
         bytes memory proof = new bytes(97);
-        proofSystem.verifyEKZL(proof, prover, 100);
+        proofSystem.verifyHostSignature(proof, prover, 100);
 
         // 2. verifiedProofs - public mapping
         proofSystem.verifiedProofs(bytes32(uint256(1)));
