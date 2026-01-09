@@ -56,6 +56,9 @@ contract NodeRegistryWithModelsUpgradeable is
     mapping(address => uint256) public activeNodesIndex;
     mapping(bytes32 => address[]) public modelToNodes;
 
+    // Index mapping for O(1) node removal from model arrays (Phase 7)
+    mapping(bytes32 => mapping(address => uint256)) private modelNodeIndex;
+
     // Per-model pricing overrides
     mapping(address => mapping(bytes32 => uint256)) public modelPricingNative;
     mapping(address => mapping(bytes32 => uint256)) public modelPricingStable;
@@ -76,8 +79,8 @@ contract NodeRegistryWithModelsUpgradeable is
     event ModelPricingUpdated(address indexed operator, bytes32 indexed modelId, uint256 nativePrice, uint256 stablePrice);
     event TokenPricingUpdated(address indexed operator, address indexed token, uint256 price);
 
-    // Storage gap for future upgrades
-    uint256[40] private __gap;
+    // Storage gap for future upgrades (40 - 1 for modelNodeIndex)
+    uint256[39] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -148,8 +151,9 @@ contract NodeRegistryWithModelsUpgradeable is
         activeNodesIndex[msg.sender] = activeNodesList.length;
         activeNodesList.push(msg.sender);
 
-        // Update model-to-nodes mapping
+        // Update model-to-nodes mapping with O(1) index tracking (Phase 7)
         for (uint i = 0; i < modelIds.length; i++) {
+            modelNodeIndex[modelIds[i]][msg.sender] = modelToNodes[modelIds[i]].length;
             modelToNodes[modelIds[i]].push(msg.sender);
         }
 
@@ -177,8 +181,9 @@ contract NodeRegistryWithModelsUpgradeable is
         // Update supported models
         nodes[msg.sender].supportedModels = newModelIds;
 
-        // Add node to new model mappings
+        // Add node to new model mappings with O(1) index tracking (Phase 7)
         for (uint i = 0; i < newModelIds.length; i++) {
+            modelNodeIndex[newModelIds[i]][msg.sender] = modelToNodes[newModelIds[i]].length;
             modelToNodes[newModelIds[i]].push(msg.sender);
         }
 
@@ -491,17 +496,24 @@ contract NodeRegistryWithModelsUpgradeable is
     }
 
     /**
-     * @notice Remove node from model mapping
+     * @notice Remove node from model mapping using O(1) indexed removal (Phase 7)
+     * @dev Uses swap-and-pop with index tracking for gas efficiency
      */
     function _removeNodeFromModel(bytes32 modelId, address nodeAddress) private {
         address[] storage nodesForModel = modelToNodes[modelId];
-        for (uint i = 0; i < nodesForModel.length; i++) {
-            if (nodesForModel[i] == nodeAddress) {
-                nodesForModel[i] = nodesForModel[nodesForModel.length - 1];
-                nodesForModel.pop();
-                break;
-            }
+        uint256 index = modelNodeIndex[modelId][nodeAddress];
+        uint256 lastIndex = nodesForModel.length - 1;
+
+        if (index != lastIndex) {
+            // Swap with last element
+            address lastNode = nodesForModel[lastIndex];
+            nodesForModel[index] = lastNode;
+            modelNodeIndex[modelId][lastNode] = index;
         }
+
+        // Remove last element
+        nodesForModel.pop();
+        delete modelNodeIndex[modelId][nodeAddress];
     }
 
     /**

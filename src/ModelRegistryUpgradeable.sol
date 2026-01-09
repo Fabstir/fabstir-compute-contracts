@@ -52,6 +52,9 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     bytes32[] public modelList;                        // List of all model IDs
     bytes32[] public activeProposals;                  // List of active proposal IDs
 
+    // Index mapping for O(1) proposal removal (Phase 7)
+    mapping(bytes32 => uint256) private activeProposalIndex;
+
     // Events
     event ModelAdded(bytes32 indexed modelId, string huggingfaceRepo, string fileName, uint256 tier);
     event ModelProposed(bytes32 indexed modelId, address indexed proposer, string huggingfaceRepo);
@@ -60,8 +63,8 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event ModelDeactivated(bytes32 indexed modelId);
     event ModelReactivated(bytes32 indexed modelId);
 
-    // Storage gap for future upgrades (50 slots minus 1 for governanceToken, plus 1 for removed trustedModels)
-    uint256[50] private __gap;
+    // Storage gap for future upgrades (50 - 1 governanceToken + 1 removed trustedModels - 1 activeProposalIndex)
+    uint256[49] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -150,6 +153,8 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
             })
         });
 
+        // Track index for O(1) removal (Phase 7)
+        activeProposalIndex[modelId] = activeProposals.length;
         activeProposals.push(modelId);
         emit ModelProposed(modelId, msg.sender, huggingfaceRepo);
     }
@@ -292,16 +297,23 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     }
 
     /**
-     * @notice Remove from active proposals list
+     * @notice Remove from active proposals list using O(1) indexed removal (Phase 7)
+     * @dev Uses swap-and-pop with index tracking for gas efficiency
      */
     function _removeFromActiveProposals(bytes32 modelId) private {
-        for (uint i = 0; i < activeProposals.length; i++) {
-            if (activeProposals[i] == modelId) {
-                activeProposals[i] = activeProposals[activeProposals.length - 1];
-                activeProposals.pop();
-                break;
-            }
+        uint256 index = activeProposalIndex[modelId];
+        uint256 lastIndex = activeProposals.length - 1;
+
+        if (index != lastIndex) {
+            // Swap with last element
+            bytes32 lastProposal = activeProposals[lastIndex];
+            activeProposals[index] = lastProposal;
+            activeProposalIndex[lastProposal] = index;
         }
+
+        // Remove last element
+        activeProposals.pop();
+        delete activeProposalIndex[modelId];
     }
 
     /**

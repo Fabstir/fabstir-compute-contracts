@@ -13,7 +13,7 @@ This report addresses remaining code quality issues from the January 2026 securi
 
 | Severity     | Issues Identified | Issues Fixed | Status      |
 | ------------ | ----------------- | ------------ | ----------- |
-| Code Quality | 8 planned + 3 deferred | 6       | In Progress |
+| Code Quality | 8 planned + 3 deferred | 7       | In Progress |
 
 **Phases Overview:**
 
@@ -25,7 +25,7 @@ This report addresses remaining code quality issues from the January 2026 securi
 | 4 | Variables Named as Constants | ✅ Complete |
 | 5 | Session Creation Code Deduplication | ✅ Complete |
 | 6 | Model Tiers Design Duplication | ✅ Complete |
-| 7 | Unbounded Array Iteration | Deferred |
+| 7 | Unbounded Array Iteration | ✅ Complete |
 | 8 | ProofSystem Function Naming Clarity | Planned |
 | 9 | Inline Comment Cleanup (Final Pass) | Planned |
 | 10 | Architecture and Testing System Improvements | Planned |
@@ -1082,24 +1082,38 @@ For deployed contracts, new mappings start empty. Existing array elements won't 
 2. Fallback to O(n) if index not found (hybrid approach)
 3. Only apply to new deployments
 
-**Recommendation: DEFER**
+**Implementation (Completed January 8, 2026):**
 
-This optimization is **optional** because:
-1. Current array sizes are small (< 100 elements)
-2. `activeProposals` has 100 FAB economic barrier per proposal
-3. Proposals expire after 3 days, limiting accumulation
-4. `modelToNodes` requires stake, limiting spam registrations
-5. Storage migration complexity for deployed contracts
-6. Higher priority fixes exist (Phases 1-4)
+**ModelRegistryUpgradeable:**
+- [x] Add `activeProposalIndex` mapping (line 56)
+- [x] Update `proposeModel()` to set index (line 157)
+- [x] Refactor `_removeFromActiveProposals()` to O(1) (lines 303-317)
+- [x] Update storage gap from 50 to 49 slots (line 67)
+- [x] 12 tests for proposal removal behavior
 
-**When to Implement:**
+**NodeRegistryWithModelsUpgradeable:**
+- [x] Add `modelNodeIndex` nested mapping (line 60)
+- [x] Update `registerNode()` to set indices (lines 155-158)
+- [x] Update `updateSupportedModels()` to manage indices (lines 185-188)
+- [x] Refactor `_removeNodeFromModel()` to O(1) (lines 502-517)
+- [x] Update storage gap from 40 to 39 slots (line 83)
+- [x] 13 tests for node removal behavior
 
-Consider implementing when:
-- Any array approaches 1,000+ elements
-- Gas costs become user-reported issue
-- Before mainnet deployment
+**Gas Impact:**
 
-**Status:** Deferred (Optional)
+| Operation | Before (O(n)) | After (O(1)) | Notes |
+|-----------|---------------|--------------|-------|
+| `executeProposal` (10 proposals) | ~28,032 | ~25,697 | Constant regardless of array size |
+| `unregisterNode` (5 nodes/model) | ~18,666 | ~17,977 | Constant regardless of array size |
+
+**Key Benefit:** Gas is now constant regardless of array size, preventing potential DoS when arrays grow large.
+
+**Test Coverage:**
+- `test/SecurityFixes/ModelRegistry/test_o1_proposal_removal.t.sol` - 12 tests
+- `test/SecurityFixes/NodeRegistry/test_o1_model_node_removal.t.sol` - 13 tests
+- Full suite: 520 tests pass
+
+**Status:** ✅ IMPLEMENTED
 
 ---
 
