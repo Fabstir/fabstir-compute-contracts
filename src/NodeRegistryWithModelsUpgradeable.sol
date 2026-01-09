@@ -1,13 +1,13 @@
 // Copyright (c) 2025 Fabstir
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import "./ModelRegistryUpgradeable.sol";
 
 /**
@@ -18,7 +18,7 @@ import "./ModelRegistryUpgradeable.sol";
 contract NodeRegistryWithModelsUpgradeable is
     Initializable,
     OwnableUpgradeable,
-    ReentrancyGuardUpgradeable,
+    ReentrancyGuardTransient,
     UUPSUpgradeable
 {
     using SafeERC20 for IERC20;
@@ -94,7 +94,7 @@ contract NodeRegistryWithModelsUpgradeable is
      */
     function initialize(address _fabToken, address _modelRegistry) public initializer {
         __Ownable_init(msg.sender);
-        __ReentrancyGuard_init();
+        // Note: ReentrancyGuardTransient uses transient storage, no init needed
         // Note: UUPSUpgradeable in OZ 5.x doesn't require initialization
 
         require(_fabToken != address(0), "Invalid FAB token address");

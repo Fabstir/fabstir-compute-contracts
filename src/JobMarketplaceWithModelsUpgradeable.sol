@@ -1,11 +1,11 @@
 // Copyright (c) 2025 Fabstir
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import "./NodeRegistryWithModelsUpgradeable.sol";
 import "./interfaces/IJobMarketplace.sol";
 import "./HostEarningsUpgradeable.sol";
-import "./utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -29,7 +29,7 @@ interface IProofSystemUpgradeable {
  */
 contract JobMarketplaceWithModelsUpgradeable is
     Initializable,
-    ReentrancyGuardUpgradeable,
+    ReentrancyGuardTransient,
     OwnableUpgradeable,
     PausableUpgradeable,
     UUPSUpgradeable
@@ -210,8 +210,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 _disputeWindow
     ) public initializer {
         __Ownable_init(msg.sender);
-        __ReentrancyGuard_init();
         __Pausable_init();
+        // Note: ReentrancyGuardTransient uses transient storage, no init needed
         // Note: OZ 5.x UUPSUpgradeable doesn't require __UUPSUpgradeable_init()
 
         require(_nodeRegistry != address(0), "Invalid node registry");

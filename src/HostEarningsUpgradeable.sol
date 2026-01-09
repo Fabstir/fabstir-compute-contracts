@@ -1,13 +1,13 @@
 // Copyright (c) 2025 Fabstir
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 /**
  * @title HostEarningsUpgradeable
@@ -16,7 +16,7 @@ import "./utils/ReentrancyGuardUpgradeable.sol";
  */
 contract HostEarningsUpgradeable is
     Initializable,
-    ReentrancyGuardUpgradeable,
+    ReentrancyGuardTransient,
     OwnableUpgradeable,
     UUPSUpgradeable
 {
@@ -69,8 +69,8 @@ contract HostEarningsUpgradeable is
      * @notice Initialize the contract (replaces constructor)
      */
     function initialize() public initializer {
-        __ReentrancyGuard_init();
         __Ownable_init(msg.sender);
+        // Note: ReentrancyGuardTransient uses transient storage, no init needed
         // Note: UUPSUpgradeable in OZ 5.x doesn't require initialization
     }
 
