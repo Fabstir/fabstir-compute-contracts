@@ -83,8 +83,8 @@ contract ModelRegistryUpgradeTest is Test {
 
         assertTrue(registry.isModelApproved(modelId1));
         assertTrue(registry.isModelApproved(modelId2));
-        assertTrue(registry.trustedModels(modelId1));
-        assertTrue(registry.trustedModels(modelId2));
+        assertTrue(registry.isTrustedModel(modelId1));
+        assertTrue(registry.isTrustedModel(modelId2));
         assertEq(registry.getModelHash(modelId1), HASH_1);
         assertEq(registry.getModelHash(modelId2), HASH_2);
 
@@ -197,8 +197,8 @@ contract ModelRegistryUpgradeTest is Test {
         bytes32 modelId1 = registryV2.getModelId(REPO_1, FILE_1);
         bytes32 modelId2 = registryV2.getModelId(REPO_2, FILE_2);
 
-        assertTrue(registryV2.trustedModels(modelId1));
-        assertTrue(registryV2.trustedModels(modelId2));
+        assertTrue(registryV2.isTrustedModel(modelId1));
+        assertTrue(registryV2.isTrustedModel(modelId2));
     }
 
     // ============================================================

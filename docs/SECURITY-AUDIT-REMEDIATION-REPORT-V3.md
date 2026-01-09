@@ -13,7 +13,7 @@ This report addresses remaining code quality issues from the January 2026 securi
 
 | Severity     | Issues Identified | Issues Fixed | Status      |
 | ------------ | ----------------- | ------------ | ----------- |
-| Code Quality | 8 planned + 3 deferred | 5       | In Progress |
+| Code Quality | 8 planned + 3 deferred | 6       | In Progress |
 
 **Phases Overview:**
 
@@ -24,7 +24,7 @@ This report addresses remaining code quality issues from the January 2026 securi
 | 3 | Deprecated Funds Transfer Method Usage | ✅ Complete |
 | 4 | Variables Named as Constants | ✅ Complete |
 | 5 | Session Creation Code Deduplication | ✅ Complete |
-| 6 | Model Tiers Design Duplication | Deferred |
+| 6 | Model Tiers Design Duplication | ✅ Complete |
 | 7 | Unbounded Array Iteration | Deferred |
 | 8 | ProofSystem Function Naming Clarity | Planned |
 | 9 | Inline Comment Cleanup (Final Pass) | Planned |
@@ -890,16 +890,35 @@ Since the system is on testnet, this change is acceptable.
 | `batchAddTrustedModels()` (per model) | ~65,000 | ~45,000 | ~20,000 (30%) |
 | `isTrustedModel()` query | N/A | ~2,600 | N/A (new) |
 
-**Recommendation: DEFER**
+**Implementation (Completed January 8, 2026):**
 
-This refactoring is **optional** because:
-1. No security risk - both values set atomically
-2. Breaking change requires client updates
-3. Model additions are infrequent operations
-4. Higher priority fixes exist (Phases 1-4)
-5. Gas savings only benefit model additions (rare)
+Tasks completed:
+- [x] Remove `trustedModels` mapping declaration (line 48)
+- [x] Add `isTrustedModel(bytes32 modelId)` view function (lines 239-246)
+- [x] Remove `trustedModels[modelId] = true` from `addTrustedModel()` (line 115)
+- [x] Remove `trustedModels[modelId] = true` from `batchAddTrustedModels()` (line 329)
+- [x] Update storage gap from 49 to 50 slots (line 64)
+- [x] Update 5 test assertions to use `isTrustedModel()`
+- [x] Create new test file with 12 comprehensive tests
+- [x] Run full test suite (495 tests pass)
 
-**Status:** Deferred (Optional)
+**Gas Impact Analysis:**
+
+| Operation | Before (with trustedModels) | After (isTrustedModel) | Change |
+|-----------|----------------------------|------------------------|--------|
+| `addTrustedModel()` | ~220,000 | ~196,630 | -23,370 (-10.6%) |
+| `isTrustedModel()` query | N/A (used trustedModels) | ~1,321 | New view function |
+
+**Breaking Change Notes:**
+- `trustedModels(bytes32)` public getter removed
+- Replaced with `isTrustedModel(bytes32)` view function
+- Client ABIs updated
+
+**Test Coverage:**
+- New test file: `test/SecurityFixes/ModelRegistry/test_trusted_models_refactor.t.sol`
+- 12 tests covering tier 1/tier 2 distinction, deactivation, reactivation, batch add
+
+**Status:** ✅ IMPLEMENTED
 
 ---
 

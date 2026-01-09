@@ -45,7 +45,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
 
     // Mappings
     mapping(bytes32 => Model) public models;           // modelId => Model data
-    mapping(bytes32 => bool) public trustedModels;     // modelId => is trusted (tier 1)
+    // REMOVED: trustedModels mapping (Phase 6) - use isTrustedModel() instead
     mapping(bytes32 => ModelProposal) public proposals; // modelId => Proposal
     mapping(bytes32 => mapping(address => uint256)) public votes; // modelId => voter => vote amount
 
@@ -60,8 +60,8 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event ModelDeactivated(bytes32 indexed modelId);
     event ModelReactivated(bytes32 indexed modelId);
 
-    // Storage gap for future upgrades (50 slots minus 1 for governanceToken)
-    uint256[49] private __gap;
+    // Storage gap for future upgrades (50 slots minus 1 for governanceToken, plus 1 for removed trustedModels)
+    uint256[50] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -112,7 +112,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
             timestamp: block.timestamp
         });
 
-        trustedModels[modelId] = true;
+        // REMOVED: trustedModels[modelId] = true; (Phase 6 - use isTrustedModel() instead)
         modelList.push(modelId);
 
         emit ModelAdded(modelId, huggingfaceRepo, fileName, 1);
@@ -237,6 +237,15 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     }
 
     /**
+     * @notice Check if a model is owner-trusted (tier 1)
+     * @param modelId The model identifier
+     * @return True if model is trusted (approvalTier == 1 and active)
+     */
+    function isTrustedModel(bytes32 modelId) external view returns (bool) {
+        return models[modelId].approvalTier == 1 && models[modelId].active;
+    }
+
+    /**
      * @notice Get model verification hash
      */
     function getModelHash(bytes32 modelId) external view returns (bytes32) {
@@ -317,7 +326,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
                     timestamp: block.timestamp
                 });
 
-                trustedModels[modelId] = true;
+                // REMOVED: trustedModels[modelId] = true; (Phase 6 - use isTrustedModel() instead)
                 modelList.push(modelId);
 
                 emit ModelAdded(modelId, repos[i], fileNames[i], 1);
