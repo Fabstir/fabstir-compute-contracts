@@ -78,6 +78,7 @@ contract NodeRegistryWithModelsUpgradeable is
     event PricingUpdated(address indexed operator, uint256 newMinPrice);
     event ModelPricingUpdated(address indexed operator, bytes32 indexed modelId, uint256 nativePrice, uint256 stablePrice);
     event TokenPricingUpdated(address indexed operator, address indexed token, uint256 price);
+    event CorruptNodeRepaired(address indexed operator, uint256 stakeReturned);
 
     // Storage gap for future upgrades (40 - 1 for modelNodeIndex)
     uint256[39] private __gap;
@@ -345,15 +346,22 @@ contract NodeRegistryWithModelsUpgradeable is
             _removeNodeFromModel(models[i], msg.sender);
         }
 
-        // Remove from active nodes list
+        // Remove from active nodes list (with safety check for corrupt state)
         uint256 index = activeNodesIndex[msg.sender];
-        uint256 lastIndex = activeNodesList.length - 1;
-        if (index != lastIndex) {
-            address lastNode = activeNodesList[lastIndex];
-            activeNodesList[index] = lastNode;
-            activeNodesIndex[lastNode] = index;
+        bool isInActiveList = activeNodesList.length > 0 &&
+            index < activeNodesList.length &&
+            activeNodesList[index] == msg.sender;
+
+        if (isInActiveList) {
+            uint256 lastIndex = activeNodesList.length - 1;
+            if (index != lastIndex) {
+                address lastNode = activeNodesList[lastIndex];
+                activeNodesList[index] = lastNode;
+                activeNodesIndex[lastNode] = index;
+            }
+            activeNodesList.pop();
         }
-        activeNodesList.pop();
+        // If not in list (corrupt state), skip array manipulation
 
         // Delete node data
         delete activeNodesIndex[msg.sender];
@@ -493,6 +501,42 @@ contract NodeRegistryWithModelsUpgradeable is
         require(newRegistry != address(0), "Invalid registry address");
         modelRegistry = ModelRegistryUpgradeable(newRegistry);
         emit ModelRegistryUpdated(newRegistry);
+    }
+
+    /**
+     * @notice Repair a corrupt node that has node data but is not in activeNodesList (owner only)
+     * @dev This handles edge cases from contract upgrades where node data wasn't fully migrated
+     * @param nodeAddress The address of the corrupt node to repair
+     */
+    function repairCorruptNode(address nodeAddress) external onlyOwner nonReentrant {
+        require(nodes[nodeAddress].operator != address(0), "Node not registered");
+
+        // Check if node is actually corrupt (has data but not in activeNodesList)
+        uint256 index = activeNodesIndex[nodeAddress];
+        bool isInActiveList = activeNodesList.length > 0 &&
+            index < activeNodesList.length &&
+            activeNodesList[index] == nodeAddress;
+
+        require(!isInActiveList, "Node is not corrupt - use unregisterNode instead");
+
+        uint256 stakeToReturn = nodes[nodeAddress].stakedAmount;
+        bytes32[] memory models = nodes[nodeAddress].supportedModels;
+
+        // Remove from model mappings
+        for (uint i = 0; i < models.length; i++) {
+            _removeNodeFromModel(models[i], nodeAddress);
+        }
+
+        // Clear node data (no activeNodesList manipulation needed)
+        delete activeNodesIndex[nodeAddress];
+        delete nodes[nodeAddress];
+
+        // Return stake to the node operator
+        if (stakeToReturn > 0) {
+            fabToken.safeTransfer(nodeAddress, stakeToReturn);
+        }
+
+        emit CorruptNodeRepaired(nodeAddress, stakeToReturn);
     }
 
     /**

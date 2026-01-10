@@ -30,7 +30,7 @@ const contracts = {
 // Implementation addresses (for verification only) - Updated Jan 9, 2026
 const implementations = {
   jobMarketplace: "0x26f27C19F80596d228D853dC39A204f0f6C45C7E",  // ⚠️ NEW
-  nodeRegistry: "0xb85424dd91D4ae0C6945e512bfDdF8a494299115",    // ⚠️ NEW
+  nodeRegistry: "0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7",    // ⚠️ Corrupt node fix (Jan 10)
   modelRegistry: "0x1D31d9688a4ffD2aFE738BC6C9a4cb27C272AA5A",   // ⚠️ NEW
   proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // ⚠️ NEW
   hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // ⚠️ NEW
@@ -1020,7 +1020,7 @@ const config = {
   // Implementation addresses (for contract verification) - January 9, 2026
   implementations: {
     jobMarketplace: "0x26f27C19F80596d228D853dC39A204f0f6C45C7E",  // ⚠️ NEW
-    nodeRegistry: "0xb85424dd91D4ae0C6945e512bfDdF8a494299115",    // ⚠️ NEW
+    nodeRegistry: "0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7",    // ⚠️ Corrupt node fix (Jan 10)
     modelRegistry: "0x1D31d9688a4ffD2aFE738BC6C9a4cb27C272AA5A",   // ⚠️ NEW
     proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // ⚠️ NEW
     hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // ⚠️ NEW
