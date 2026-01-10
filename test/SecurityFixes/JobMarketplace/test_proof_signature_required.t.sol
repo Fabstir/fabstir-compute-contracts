@@ -169,8 +169,8 @@ contract ProofSignatureRequiredTest is Test {
         // NEW 5-parameter call
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID");
 
-        // Verify proof was stored - use tuple unpacking for all 18 fields
-        // SessionJob: id, depositor, requester, host, paymentToken, deposit, pricePerToken, tokensUsed,
+        // Verify proof was stored - use tuple unpacking for all 17 fields
+        // SessionJob: id, depositor, host, paymentToken, deposit, pricePerToken, tokensUsed,
         //             maxDuration, startTime, lastProofTime, proofInterval, status, withdrawnByHost,
         //             refundedToUser, conversationCID, lastProofHash, lastProofCID
         (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);

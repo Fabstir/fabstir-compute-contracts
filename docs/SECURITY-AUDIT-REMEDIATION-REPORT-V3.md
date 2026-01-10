@@ -31,6 +31,7 @@ This report addresses remaining code quality issues from the January 2026 securi
 | 10 | Architecture and Testing System Improvements | ✅ Complete |
 | 11 | Solidity Upgrade + ReentrancyGuard Replacement | ✅ Complete |
 | 12 | UUPS Implementation Deployment | ✅ Complete |
+| 13 | Token-Specific Max Deposit Limits | ⏳ In Progress |
 
 **Focus:** Code quality improvements across all upgradeable contracts.
 
@@ -2441,6 +2442,246 @@ Due to pre-MVP status (no users), deployed a fresh proxy without deprecated stor
 
 ---
 
+## Phase 13: Token-Specific Max Deposit Limits
+
+**Severity:** Code Quality / Security Improvement (LOW)
+**Date:** January 10, 2026
+
+### Original Finding
+
+The audit identified that using the same max deposit limit (`1000 ether` = `1000 * 10^18`) for both native ETH and ERC20 tokens is problematic due to different decimal precision:
+
+| Token | Decimals | `1000 ether` limit means | Practical USD limit |
+|-------|----------|-------------------------|---------------------|
+| ETH | 18 | 1000 ETH | ~$3.5M (reasonable) |
+| USDC | 6 | 10^12 USDC | $1 trillion (effectively none) |
+
+The same numeric limit has vastly different USD values depending on token decimals.
+
+**Current Code:**
+
+```solidity
+// In _validateSessionParams() - same limit for all tokens
+require(params.deposit <= MAX_DEPOSIT, "Deposit too large");
+
+// In createSessionFromDeposit() - same limit for all tokens
+require(deposit <= MAX_DEPOSIT, "Deposit too large");
+```
+
+**Risk Assessment:**
+
+| Risk | Impact | Severity |
+|------|--------|----------|
+| No practical limit for USDC deposits | Whale manipulation possible | LOW |
+| Inconsistent validation across tokens | Confusing UX | LOW |
+
+---
+
+### 13.1 Add State Variables and Events
+
+**Goal:** Add `tokenMaxDeposits` mapping and related infrastructure.
+
+**Fix Plan:**
+
+```solidity
+// New constant (after USDC_MIN_DEPOSIT)
+uint256 public constant USDC_MAX_DEPOSIT = 1_000_000 * 10**6; // 1M USDC cap
+
+// New mapping (after tokenMinDeposits)
+mapping(address => uint256) public tokenMaxDeposits;
+
+// New event
+event TokenMaxDepositUpdated(address indexed token, uint256 oldMaxDeposit, uint256 newMaxDeposit);
+
+// Updated event (add maxDeposit parameter)
+event TokenAccepted(address indexed token, uint256 minDeposit, uint256 maxDeposit);
+```
+
+**Tasks:**
+
+- [ ] Write test: `USDC_MAX_DEPOSIT` constant equals `1_000_000 * 10**6`
+- [ ] Write test: `tokenMaxDeposits` mapping is accessible
+- [ ] Write test: `TokenMaxDepositUpdated` event is emitted correctly
+- [ ] Write test: `TokenAccepted` event includes `maxDeposit` parameter
+- [ ] Add `USDC_MAX_DEPOSIT` constant
+- [ ] Add `tokenMaxDeposits` mapping
+- [ ] Add `TokenMaxDepositUpdated` event
+- [ ] Update `TokenAccepted` event signature to include `maxDeposit`
+
+---
+
+### 13.2 Update Initialization Functions
+
+**Goal:** Set token max deposits during contract initialization.
+
+**Fix Plan:**
+
+```solidity
+// In initialize()
+tokenMaxDeposits[usdcAddress] = USDC_MAX_DEPOSIT;
+
+// In setUsdcAddress()
+tokenMaxDeposits[_usdc] = USDC_MAX_DEPOSIT;
+```
+
+**Tasks:**
+
+- [ ] Write test: `initialize()` sets `tokenMaxDeposits[usdcAddress]` to `USDC_MAX_DEPOSIT`
+- [ ] Write test: `setUsdcAddress()` sets `tokenMaxDeposits[_usdc]` to `USDC_MAX_DEPOSIT`
+- [ ] Update `initialize()` to set `tokenMaxDeposits[usdcAddress]`
+- [ ] Update `setUsdcAddress()` to set `tokenMaxDeposits[_usdc]`
+
+---
+
+### 13.3 Update Session Validation Functions
+
+**Goal:** Enforce token-specific max deposits in session creation.
+
+**Current Code (`_validateSessionParams`):**
+
+```solidity
+require(params.deposit <= MAX_DEPOSIT, "Deposit too large");
+```
+
+**Fixed Code:**
+
+```solidity
+// Token-specific max deposit validation
+if (params.paymentToken == address(0)) {
+    require(params.deposit <= MAX_DEPOSIT, "Deposit too large");
+} else {
+    uint256 maxAllowed = tokenMaxDeposits[params.paymentToken];
+    require(maxAllowed > 0, "Token max deposit not configured");
+    require(params.deposit <= maxAllowed, "Deposit too large");
+}
+```
+
+**Tasks:**
+
+- [ ] Write test: Native ETH deposit exceeding `MAX_DEPOSIT` reverts
+- [ ] Write test: Token deposit exceeding `tokenMaxDeposits` reverts
+- [ ] Write test: Token deposit with unconfigured max reverts with "Token max deposit not configured"
+- [ ] Write test: Token deposit within max succeeds
+- [ ] Update `_validateSessionParams()` for token-specific max validation
+- [ ] Update `createSessionFromDeposit()` for token-specific max validation
+
+---
+
+### 13.4 Update Token Management Functions
+
+**Goal:** Allow setting max deposits when adding/updating tokens.
+
+**Current `addAcceptedToken()` (2 params):**
+
+```solidity
+function addAcceptedToken(address token, uint256 minDeposit) external {
+    // ...
+    emit TokenAccepted(token, minDeposit);
+}
+```
+
+**Fixed `addAcceptedToken()` (3 params):**
+
+```solidity
+function addAcceptedToken(address token, uint256 minDeposit, uint256 maxDeposit) external {
+    require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
+    require(!acceptedTokens[token], "Token already accepted");
+    require(minDeposit > 0, "Invalid minimum deposit");
+    require(maxDeposit > minDeposit, "Max must exceed min");
+    require(token != address(0), "Invalid token address");
+
+    acceptedTokens[token] = true;
+    tokenMinDeposits[token] = minDeposit;
+    tokenMaxDeposits[token] = maxDeposit;
+
+    emit TokenAccepted(token, minDeposit, maxDeposit);
+}
+```
+
+**New `updateTokenMaxDeposit()` function:**
+
+```solidity
+function updateTokenMaxDeposit(address token, uint256 maxDeposit) external {
+    require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
+    require(acceptedTokens[token], "Token not accepted");
+    require(maxDeposit > tokenMinDeposits[token], "Max must exceed min");
+
+    uint256 oldMaxDeposit = tokenMaxDeposits[token];
+    tokenMaxDeposits[token] = maxDeposit;
+
+    emit TokenMaxDepositUpdated(token, oldMaxDeposit, maxDeposit);
+}
+```
+
+**Tasks:**
+
+- [ ] Write test: `addAcceptedToken` with `maxDeposit <= minDeposit` reverts
+- [ ] Write test: `addAcceptedToken` sets `tokenMaxDeposits` correctly
+- [ ] Write test: `updateTokenMaxDeposit` updates value and emits event
+- [ ] Write test: `updateTokenMaxDeposit` reverts if token not accepted
+- [ ] Write test: `updateTokenMaxDeposit` reverts if max <= min
+- [ ] Update `addAcceptedToken()` to accept `maxDeposit` parameter
+- [ ] Add `updateTokenMaxDeposit()` function
+
+---
+
+### 13.5 Update Test Files
+
+**Goal:** Update all tests using the old `addAcceptedToken` signature.
+
+**Files requiring updates:**
+
+| File | Change |
+|------|--------|
+| `test/Integration/test_fund_safety.t.sol` | Add 3rd param |
+| `test/SecurityFixes/JobMarketplace/test_host_validation_all_paths.t.sol` | Add 3rd param |
+| `test/SecurityFixes/JobMarketplace/test_double_spend_prevention.t.sol` | Add 3rd param |
+| `test/SecurityFixes/JobMarketplace/test_session_creation_refactor.t.sol` | Add 3rd param |
+| `test/SecurityFixes/JobMarketplace/test_balance_separation.t.sol` | Add 3rd param |
+| `test/SecurityFixes/TransferMethods/test_safe_transfers.t.sol` | Add 3rd param |
+| `test/SecurityFixes/JobMarketplace/test_host_validation.t.sol` | Add 3rd param |
+
+**Tasks:**
+
+- [ ] Update `test/Integration/test_fund_safety.t.sol`
+- [ ] Update `test/SecurityFixes/JobMarketplace/test_host_validation_all_paths.t.sol`
+- [ ] Update `test/SecurityFixes/JobMarketplace/test_double_spend_prevention.t.sol`
+- [ ] Update `test/SecurityFixes/JobMarketplace/test_session_creation_refactor.t.sol`
+- [ ] Update `test/SecurityFixes/JobMarketplace/test_balance_separation.t.sol`
+- [ ] Update `test/SecurityFixes/TransferMethods/test_safe_transfers.t.sol`
+- [ ] Update `test/SecurityFixes/JobMarketplace/test_host_validation.t.sol`
+- [ ] Run full test suite
+
+---
+
+### Phase 13 Summary
+
+| Sub-phase | Description | Status |
+|-----------|-------------|--------|
+| 13.1 | Add state variables and events | ⏳ Pending |
+| 13.2 | Update initialization functions | ⏳ Pending |
+| 13.3 | Update session validation functions | ⏳ Pending |
+| 13.4 | Update token management functions | ⏳ Pending |
+| 13.5 | Update test files | ⏳ Pending |
+
+**Expected After Fix:**
+
+| Token | Min Deposit | Max Deposit | USD Equivalent |
+|-------|-------------|-------------|----------------|
+| ETH | 0.0001 ETH | 1000 ETH | ~$0.50 - $3.5M |
+| USDC | 0.50 USDC | 1,000,000 USDC | $0.50 - $1M |
+
+**Breaking Changes (Planned):**
+
+| Change Type | Old | New |
+|-------------|-----|-----|
+| Function | `addAcceptedToken(address,uint256)` | `addAcceptedToken(address,uint256,uint256)` |
+| Event | `TokenAccepted(address,uint256)` | `TokenAccepted(address,uint256,uint256)` |
+
+**Status:** ⏳ **IN PROGRESS**
+
+---
+
 ## Testing Summary
 
 ### Test Coverage Required
@@ -2462,7 +2703,7 @@ Due to pre-MVP status (no users), deployed a fresh proxy without deprecated stor
 | Existing HostEarnings | ~15 | ✅ Pass |
 | Existing JobMarketplace | ~200 | ✅ Pass |
 | Existing ProofSystem | ~30 | ✅ Pass |
-| Full Test Suite | 574 | ✅ Pass |
+| Full Test Suite | 580 | ✅ Pass |
 
 ---
 
