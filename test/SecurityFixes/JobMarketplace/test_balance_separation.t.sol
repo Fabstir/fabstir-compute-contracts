@@ -93,7 +93,7 @@ contract BalanceSeparationTest is Test {
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
         // Add mock USDC to accepted tokens
-        marketplace.addAcceptedToken(address(usdcToken), 500000);
+        marketplace.addAcceptedToken(address(usdcToken), 500000, 1_000_000 * 10**6);
 
         vm.stopPrank();
 

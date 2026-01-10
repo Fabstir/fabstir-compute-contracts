@@ -88,7 +88,7 @@ contract FundSafetyTest is Test {
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
 
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
-        marketplace.addAcceptedToken(address(usdcToken), 500000);
+        marketplace.addAcceptedToken(address(usdcToken), 500000, 1_000_000 * 10**6);
 
         vm.stopPrank();
 

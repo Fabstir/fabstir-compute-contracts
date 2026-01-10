@@ -94,7 +94,7 @@ contract SessionCreationRefactorTest is Test {
 
         // Configure
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
-        marketplace.addAcceptedToken(address(usdcToken), 500000); // 0.5 USDC minimum
+        marketplace.addAcceptedToken(address(usdcToken), 500000, 1_000_000 * 10**6); // 0.5 USDC min, 1M max
         vm.stopPrank();
 
         // Register host

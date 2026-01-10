@@ -120,6 +120,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     // USDC-specific configuration
     uint256 public constant USDC_MIN_DEPOSIT = 500000; // 0.50 USDC
+    uint256 public constant USDC_MAX_DEPOSIT = 1_000_000 * 10**6; // 1M USDC cap
 
     // Price precision: prices are stored with 1000x precision for sub-cent granularity
     // Payment calculation: (tokensUsed * pricePerToken) / PRICE_PRECISION
@@ -127,6 +128,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     mapping(address => bool) public acceptedTokens;
     mapping(address => uint256) public tokenMinDeposits;
+    mapping(address => uint256) public tokenMaxDeposits;
 
     // Treasury accumulation mappings
     uint256 public accumulatedTreasuryNative;
@@ -173,8 +175,9 @@ contract JobMarketplaceWithModelsUpgradeable is
     );
 
     // Token acceptance event
-    event TokenAccepted(address indexed token, uint256 minDeposit);
+    event TokenAccepted(address indexed token, uint256 minDeposit, uint256 maxDeposit);
     event TokenMinDepositUpdated(address indexed token, uint256 oldMinDeposit, uint256 newMinDeposit);
+    event TokenMaxDepositUpdated(address indexed token, uint256 oldMaxDeposit, uint256 newMaxDeposit);
 
     // Model-aware session event
     event SessionJobCreatedForModel(
@@ -232,6 +235,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         // Initialize accepted tokens
         acceptedTokens[usdcAddress] = true;
         tokenMinDeposits[usdcAddress] = USDC_MIN_DEPOSIT;
+        tokenMaxDeposits[usdcAddress] = USDC_MAX_DEPOSIT;
     }
 
     /**
@@ -289,6 +293,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         usdcAddress = _usdc;
         acceptedTokens[_usdc] = true;
         tokenMinDeposits[_usdc] = USDC_MIN_DEPOSIT;
+        tokenMaxDeposits[_usdc] = USDC_MAX_DEPOSIT;
     }
 
     // Initialize chain configuration
@@ -519,7 +524,15 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(params.maxDuration > 0 && params.maxDuration <= 365 days, "Invalid duration");
         require(params.proofInterval > 0, "Invalid proof interval");
         require(params.host != address(0), "Invalid host");
-        require(params.deposit <= 1000 ether, "Deposit too large");
+
+        // Token-specific max deposit validation
+        if (params.paymentToken == address(0)) {
+            require(params.deposit <= 1000 ether, "Deposit too large");
+        } else {
+            uint256 maxAllowed = tokenMaxDeposits[params.paymentToken];
+            require(maxAllowed > 0, "Token max deposit not configured");
+            require(params.deposit <= maxAllowed, "Deposit too large");
+        }
 
         _validateHostRegistration(params.host);
         _validateProofRequirements(params.proofInterval, params.deposit, params.pricePerToken);
@@ -790,17 +803,22 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     /**
      * @notice Add a new accepted stablecoin token (treasury only)
+     * @param token The token address to accept
+     * @param minDeposit Minimum deposit amount required
+     * @param maxDeposit Maximum deposit amount allowed
      */
-    function addAcceptedToken(address token, uint256 minDeposit) external {
+    function addAcceptedToken(address token, uint256 minDeposit, uint256 maxDeposit) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
         require(!acceptedTokens[token], "Token already accepted");
         require(minDeposit > 0, "Invalid minimum deposit");
+        require(maxDeposit > minDeposit, "Max must exceed min");
         require(token != address(0), "Invalid token address");
 
         acceptedTokens[token] = true;
         tokenMinDeposits[token] = minDeposit;
+        tokenMaxDeposits[token] = maxDeposit;
 
-        emit TokenAccepted(token, minDeposit);
+        emit TokenAccepted(token, minDeposit, maxDeposit);
     }
 
     /**
@@ -817,6 +835,22 @@ contract JobMarketplaceWithModelsUpgradeable is
         tokenMinDeposits[token] = minDeposit;
 
         emit TokenMinDepositUpdated(token, oldMinDeposit, minDeposit);
+    }
+
+    /**
+     * @notice Update maximum deposit for an accepted token (treasury or owner only)
+     * @param token The token address to update
+     * @param maxDeposit The new maximum deposit amount
+     */
+    function updateTokenMaxDeposit(address token, uint256 maxDeposit) external {
+        require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
+        require(acceptedTokens[token], "Token not accepted");
+        require(maxDeposit > tokenMinDeposits[token], "Max must exceed min");
+
+        uint256 oldMaxDeposit = tokenMaxDeposits[token];
+        tokenMaxDeposits[token] = maxDeposit;
+
+        emit TokenMaxDepositUpdated(token, oldMaxDeposit, maxDeposit);
     }
 
     // ============================================================
@@ -984,7 +1018,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(proofInterval > 0, "Invalid proof interval");
         require(host != address(0), "Invalid host");
         require(deposit > 0, "Zero deposit");
-        require(deposit <= 1000 ether, "Deposit too large");
 
         _validateHostRegistration(host);
         _validateProofRequirements(proofInterval, deposit, pricePerToken);
@@ -993,16 +1026,20 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 hostMinPrice = nodeRegistry.getNodePricing(host, paymentToken);
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
-        // Verify user has sufficient pre-deposited balance
+        // Verify user has sufficient pre-deposited balance with token-specific limits
         if (paymentToken == address(0)) {
             require(deposit >= MIN_DEPOSIT, "Insufficient deposit");
+            require(deposit <= 1000 ether, "Deposit too large");
             require(userDepositsNative[msg.sender] >= deposit, "Insufficient native balance");
             userDepositsNative[msg.sender] -= deposit;
         } else {
             require(acceptedTokens[paymentToken], "Token not accepted");
             uint256 minRequired = tokenMinDeposits[paymentToken];
+            uint256 maxAllowed = tokenMaxDeposits[paymentToken];
             require(minRequired > 0, "Token not configured");
+            require(maxAllowed > 0, "Token max deposit not configured");
             require(deposit >= minRequired, "Insufficient deposit");
+            require(deposit <= maxAllowed, "Deposit too large");
             require(userDepositsToken[msg.sender][paymentToken] >= deposit, "Insufficient token balance");
             userDepositsToken[msg.sender][paymentToken] -= deposit;
         }

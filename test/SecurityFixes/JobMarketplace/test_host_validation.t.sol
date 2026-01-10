@@ -118,7 +118,7 @@ contract HostValidationTest is Test {
 
         // Add mock USDC to accepted tokens
         vm.prank(owner);
-        marketplace.addAcceptedToken(address(usdcToken), 500000); // $0.50 minimum
+        marketplace.addAcceptedToken(address(usdcToken), 500000, 1_000_000 * 10**6); // $0.50 min, $1M max
     }
 
     // ============================================================

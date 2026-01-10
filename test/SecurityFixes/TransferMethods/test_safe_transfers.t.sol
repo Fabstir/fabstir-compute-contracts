@@ -110,7 +110,7 @@ contract SafeTransferMethodsTest is Test {
         vm.startPrank(owner);
         marketplace.setProofSystem(address(proofSystem));
         marketplace.setTreasury(treasury);
-        marketplace.addAcceptedToken(address(usdc), 1e6); // 1 USDC min deposit
+        marketplace.addAcceptedToken(address(usdc), 1e6, 1_000_000 * 10**6); // 1 USDC min, 1M max
         vm.stopPrank();
 
         // Authorize JobMarketplace
