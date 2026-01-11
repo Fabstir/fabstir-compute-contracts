@@ -159,4 +159,26 @@ contract VoteExtensionTest is Test {
 
         assertEq(extensionCount, 0, "extensionCount should be 0 on proposal creation");
     }
+
+    // ============================================
+    // Phase 14.3 Tests: Late Vote Tracking
+    // ============================================
+
+    function test_LateVotesMappingAccessible() public view {
+        // lateVotes should be 0 for any modelId initially
+        assertEq(
+            modelRegistry.lateVotes(testModelId),
+            0,
+            "lateVotes should be 0 initially"
+        );
+    }
+
+    function test_LateVotesMappingReturnsZeroForNonExistentProposal() public view {
+        bytes32 randomModelId = keccak256("random/model");
+        assertEq(
+            modelRegistry.lateVotes(randomModelId),
+            0,
+            "lateVotes should be 0 for non-existent proposal"
+        );
+    }
 }

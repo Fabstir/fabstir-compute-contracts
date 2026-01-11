@@ -153,10 +153,10 @@ event VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensio
 
 **Tasks:**
 
-- [ ] Write test: `lateVotes` mapping is accessible and returns 0 initially
-- [ ] Write test: `VotingExtended` event is emitted with correct parameters
-- [ ] Add `lateVotes` mapping
-- [ ] Add `VotingExtended` event
+- [x] Write test: `lateVotes` mapping is accessible and returns 0 initially
+- [x] Write test: `VotingExtended` event is emitted with correct parameters
+- [x] Add `lateVotes` mapping
+- [x] Add `VotingExtended` event
 
 ---
 
@@ -267,7 +267,7 @@ require(proposal.executed ||
 |-----------|-------------|--------|
 | 14.1 | Add extension constants and state variables | ✅ Complete |
 | 14.2 | Update proposal creation | ✅ Complete |
-| 14.3 | Add cumulative late vote tracking | ⏳ Pending |
+| 14.3 | Add cumulative late vote tracking | ✅ Complete |
 | 14.4 | Update vote function with extension logic | ⏳ Pending |
 | 14.5 | Update execute proposal | ⏳ Pending |
 | 14.6 | Update withdraw votes | ⏳ Pending |
