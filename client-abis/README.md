@@ -57,13 +57,20 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ### ModelRegistryUpgradeable
 - **Proxy Address**: `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2`
-- **Implementation**: `0x1D31d9688a4ffD2aFE738BC6C9a4cb27C272AA5A`
+- **Implementation**: `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` ✅ Voting improvements (Jan 11, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `ModelRegistryUpgradeable-CLIENT-ABI.json`
 - **Approved Models** (2 models):
   - TinyVicuna-1B-32k (CohereForAI/TinyVicuna-1B-32k-GGUF)
   - TinyLlama-1.1B Chat (TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF)
+- **New Features (Jan 11, 2026) - Security Audit Remediation**:
+  - **Anti-Sniping Vote Extension**: Large votes (≥10k FAB) in last 4 hours extend voting by 1 day (max 3 extensions)
+  - **Re-proposal Cooldown**: Rejected models can be re-proposed after 30 days
+  - New constants: `EXTENSION_THRESHOLD`, `EXTENSION_WINDOW`, `EXTENSION_DURATION`, `MAX_EXTENSIONS`, `REPROPOSAL_COOLDOWN`
+  - New mappings: `lateVotes(bytes32)`, `lastProposalExecutionTime(bytes32)`
+  - New event: `VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensionCount)`
+  - `ModelProposal` struct now has `endTime` and `extensionCount` fields
 
 ### HostEarningsUpgradeable
 - **Proxy Address**: `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0`

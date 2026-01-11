@@ -1,5 +1,71 @@
 # Client ABIs Changelog
 
+## January 11, 2026 - ModelRegistry Voting Improvements (Phase 14-15)
+
+### Security Audit Remediation
+Implements voting mechanism improvements from the January 2026 security audit.
+
+### Phase 14: Anti-Sniping Vote Extension
+Prevents whale attacks where large votes arrive at the last minute:
+- If a large vote (≥10,000 FAB) arrives in the last 4 hours, voting extends by 1 day
+- Maximum 3 extensions per proposal
+- Cumulative late votes trigger extension
+
+**New Constants:**
+```solidity
+uint256 public constant EXTENSION_THRESHOLD = 10000 * 10**18;  // 10k FAB
+uint256 public constant EXTENSION_WINDOW = 4 hours;
+uint256 public constant EXTENSION_DURATION = 1 days;
+uint256 public constant MAX_EXTENSIONS = 3;
+```
+
+**New Event:**
+```solidity
+event VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensionCount);
+```
+
+**Struct Changes (ModelProposal):**
+- Added `endTime` (uint256) - Dynamic end time for voting
+- Added `extensionCount` (uint8) - Number of extensions applied
+
+### Phase 15: Re-proposal Cooldown System
+Allows rejected models to be re-proposed after a cooldown:
+- 30-day cooldown after a proposal is executed (approved or rejected)
+- Old proposal data is cleared when re-proposing
+
+**New Constant:**
+```solidity
+uint256 public constant REPROPOSAL_COOLDOWN = 30 days;
+```
+
+**New State Variable:**
+```solidity
+mapping(bytes32 => uint256) public lastProposalExecutionTime;
+```
+
+### Implementation Upgrade
+| Contract | Proxy (unchanged) | New Implementation |
+|----------|-------------------|-------------------|
+| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` |
+
+### ABI Changes
+**Added to ModelRegistry:**
+- `EXTENSION_THRESHOLD()` - Constant (10k FAB)
+- `EXTENSION_WINDOW()` - Constant (4 hours)
+- `EXTENSION_DURATION()` - Constant (1 day)
+- `MAX_EXTENSIONS()` - Constant (3)
+- `REPROPOSAL_COOLDOWN()` - Constant (30 days)
+- `lateVotes(bytes32)` - Mapping for cumulative late votes
+- `lastProposalExecutionTime(bytes32)` - Mapping for cooldown tracking
+- `VotingExtended` event
+
+### No SDK Breaking Changes
+- All existing functions work as before
+- `proposals(bytes32)` now returns 9 fields instead of 7 (added `endTime`, `extensionCount`)
+- Voting and proposal creation work identically
+
+---
+
 ## January 10, 2026 - NodeRegistry Corrupt Node Fix
 
 ### Bug Fix
