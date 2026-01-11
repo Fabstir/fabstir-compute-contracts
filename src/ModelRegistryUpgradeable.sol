@@ -147,7 +147,10 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     ) external {
         bytes32 modelId = getModelId(huggingfaceRepo, fileName);
         require(models[modelId].timestamp == 0, "Model already exists");
-        require(proposals[modelId].proposalTime == 0, "Proposal already exists");
+
+        // Check cooldown and clear old proposal for re-proposals
+        _checkReproposalCooldown(modelId);
+        _clearOldProposal(modelId);
 
         // Charge proposal fee to prevent spam
         governanceToken.safeTransferFrom(msg.sender, address(this), PROPOSAL_FEE);
@@ -226,6 +229,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         require(block.timestamp > proposal.endTime, "Voting still active");
 
         proposal.executed = true;
+        lastProposalExecutionTime[modelId] = block.timestamp;
 
         // Check if proposal passed
         bool approved = proposal.votesFor >= APPROVAL_THRESHOLD &&

@@ -14,7 +14,7 @@ This report addresses voting mechanism improvements identified in the January 20
 | Finding | Severity | Status |
 |---------|----------|--------|
 | Unfair Voting Model (whale sniping) | INFO | ✅ Fixed (Phase 14) |
-| No Re-proposal After Rejection | INFO | ⏳ Pending (Phase 15) |
+| No Re-proposal After Rejection | INFO | ✅ Fixed (Phase 15) |
 | No Community Model Removal | INFO | Acknowledged (Deferred) |
 
 **Phases Overview:**
@@ -22,7 +22,7 @@ This report addresses voting mechanism improvements identified in the January 20
 | Phase | Description | Lines | Status |
 |-------|-------------|-------|--------|
 | 14 | Vote Extension (Anti-Sniping) | ~25 | ✅ Complete |
-| 15 | Re-proposal Cooldown System | ~25 | ⏳ Pending |
+| 15 | Re-proposal Cooldown System | ~25 | ✅ Complete |
 | 16 | Multi-Type Proposals | ~75 | Deferred |
 
 **Estimated Total:** ~50 lines of new code
@@ -372,12 +372,12 @@ function proposeModel(...) external {
 
 **Tasks:**
 
-- [ ] Write test: Re-proposing immediately after rejection reverts
-- [ ] Write test: Re-proposing after cooldown succeeds
-- [ ] Write test: Re-proposing approved model still blocked (model exists)
-- [ ] Write test: Old proposal data is cleared on re-proposal
-- [ ] Update `proposeModel()` with cooldown check
-- [ ] Update `proposeModel()` with old proposal cleanup
+- [x] Write test: Re-proposing immediately after rejection reverts
+- [x] Write test: Re-proposing after cooldown succeeds
+- [x] Write test: Re-proposing approved model still blocked (model exists)
+- [x] Write test: Old proposal data is cleared on re-proposal
+- [x] Update `proposeModel()` with cooldown check
+- [x] Update `proposeModel()` with old proposal cleanup
 
 ---
 
@@ -393,9 +393,9 @@ lastProposalExecutionTime[modelId] = block.timestamp;  // Track for cooldown
 
 **Tasks:**
 
-- [ ] Write test: `lastProposalExecutionTime` is set on execution
-- [ ] Write test: `lastProposalExecutionTime` is set for both approved and rejected
-- [ ] Update `executeProposal()` to set `lastProposalExecutionTime`
+- [x] Write test: `lastProposalExecutionTime` is set on execution
+- [x] Write test: `lastProposalExecutionTime` is set for both approved and rejected
+- [x] Update `executeProposal()` to set `lastProposalExecutionTime`
 
 ---
 
@@ -405,8 +405,8 @@ lastProposalExecutionTime[modelId] = block.timestamp;  // Track for cooldown
 |-----------|-------------|--------|
 | 15.1 | Add cooldown constants and state variables | ✅ Complete |
 | 15.2 | Add cooldown helper functions | ✅ Complete |
-| 15.3 | Update propose model for re-proposals | ⏳ Pending |
-| 15.4 | Update execute proposal to track time | ⏳ Pending |
+| 15.3 | Update propose model for re-proposals | ✅ Complete |
+| 15.4 | Update execute proposal to track time | ✅ Complete |
 
 ---
 
