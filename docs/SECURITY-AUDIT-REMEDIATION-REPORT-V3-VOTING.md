@@ -13,15 +13,15 @@ This report addresses voting mechanism improvements identified in the January 20
 
 | Finding | Severity | Status |
 |---------|----------|--------|
-| Unfair Voting Model (whale sniping) | INFO | ⏳ In Progress |
-| No Re-proposal After Rejection | INFO | ⏳ In Progress |
+| Unfair Voting Model (whale sniping) | INFO | ✅ Fixed (Phase 14) |
+| No Re-proposal After Rejection | INFO | ⏳ Pending (Phase 15) |
 | No Community Model Removal | INFO | Acknowledged (Deferred) |
 
 **Phases Overview:**
 
 | Phase | Description | Lines | Status |
 |-------|-------------|-------|--------|
-| 14 | Vote Extension (Anti-Sniping) | ~25 | ⏳ In Progress |
+| 14 | Vote Extension (Anti-Sniping) | ~25 | ✅ Complete |
 | 15 | Re-proposal Cooldown System | ~25 | ⏳ Pending |
 | 16 | Multi-Type Proposals | ~75 | Deferred |
 
@@ -255,9 +255,9 @@ require(proposal.executed ||
 
 **Tasks:**
 
-- [ ] Write test: Cannot withdraw before `endTime + 7 days` if not executed
-- [ ] Write test: Can withdraw after `endTime + 7 days` even if not executed
-- [ ] Update `withdrawVotes()` to use `endTime`
+- [x] Write test: Cannot withdraw before `endTime + 7 days` if not executed
+- [x] Write test: Can withdraw after `endTime + 7 days` even if not executed
+- [x] Update `withdrawVotes()` to use `endTime`
 
 ---
 
@@ -270,7 +270,7 @@ require(proposal.executed ||
 | 14.3 | Add cumulative late vote tracking | ✅ Complete |
 | 14.4 | Update vote function with extension logic | ✅ Complete |
 | 14.5 | Update execute proposal | ✅ Complete |
-| 14.6 | Update withdraw votes | ⏳ Pending |
+| 14.6 | Update withdraw votes | ✅ Complete |
 
 ---
 

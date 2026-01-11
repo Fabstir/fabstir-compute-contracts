@@ -484,4 +484,72 @@ contract VoteExtensionTest is Test {
         (,,,,,bool executed,,,) = modelRegistry.proposals(modelId);
         assertTrue(executed, "Proposal should be executed after extended endTime");
     }
+
+    // ============================================
+    // Phase 14.6 Tests: Withdraw Votes Timing
+    // ============================================
+
+    function test_CannotWithdrawBeforeEndTimePlus7DaysIfNotExecuted() public {
+        bytes32 modelId = _createProposal();
+
+        // Vote (but not enough to pass threshold)
+        vm.prank(voter1);
+        modelRegistry.voteOnProposal(modelId, 5000 * 10**18, true);
+
+        (,,,,,,,uint256 endTime,) = modelRegistry.proposals(modelId);
+
+        // Warp to endTime + 6 days (before 7 day window)
+        vm.warp(endTime + 6 days);
+
+        // Should revert - not executed and before 7 days
+        vm.prank(voter1);
+        vm.expectRevert("Cannot withdraw yet");
+        modelRegistry.withdrawVotes(modelId);
+    }
+
+    function test_CanWithdrawAfterEndTimePlus7DaysEvenIfNotExecuted() public {
+        bytes32 modelId = _createProposal();
+
+        // Vote (but not enough to pass threshold)
+        vm.prank(voter1);
+        modelRegistry.voteOnProposal(modelId, 5000 * 10**18, true);
+
+        (,,,,,,,uint256 endTime,) = modelRegistry.proposals(modelId);
+
+        // Warp to endTime + 7 days + 1 second
+        vm.warp(endTime + 7 days + 1);
+
+        // Should succeed even without execution
+        vm.prank(voter1);
+        modelRegistry.withdrawVotes(modelId);
+
+        // Verify votes are withdrawn
+        assertEq(modelRegistry.votes(modelId, voter1), 0, "Votes should be withdrawn");
+    }
+
+    function test_CanWithdrawAfterExtendedEndTimePlus7Days() public {
+        bytes32 modelId = _createProposal();
+
+        (,,,,,,,uint256 originalEndTime,) = modelRegistry.proposals(modelId);
+
+        // Trigger an extension
+        vm.warp(originalEndTime - 2 hours);
+        vm.prank(voter1);
+        modelRegistry.voteOnProposal(modelId, 10000 * 10**18, true);
+
+        (,,,,,,,uint256 extendedEndTime,) = modelRegistry.proposals(modelId);
+
+        // Cannot withdraw at originalEndTime + 7 days
+        vm.warp(originalEndTime + 7 days + 1);
+        vm.prank(voter1);
+        vm.expectRevert("Cannot withdraw yet");
+        modelRegistry.withdrawVotes(modelId);
+
+        // CAN withdraw after extendedEndTime + 7 days
+        vm.warp(extendedEndTime + 7 days + 1);
+        vm.prank(voter1);
+        modelRegistry.withdrawVotes(modelId);
+
+        assertEq(modelRegistry.votes(modelId, voter1), 0, "Votes should be withdrawn after extended endTime + 7 days");
+    }
 }

@@ -253,7 +253,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     function withdrawVotes(bytes32 modelId) external {
         ModelProposal storage proposal = proposals[modelId];
         require(proposal.executed ||
-                block.timestamp > proposal.proposalTime + PROPOSAL_DURATION + 7 days,
+                block.timestamp > proposal.endTime + 7 days,
                 "Cannot withdraw yet");
 
         uint256 amount = votes[modelId][msg.sender];
