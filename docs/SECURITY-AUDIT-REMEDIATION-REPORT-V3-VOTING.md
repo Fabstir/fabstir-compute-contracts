@@ -309,10 +309,10 @@ mapping(bytes32 => uint256) public lastProposalExecutionTime; // modelId => time
 
 **Tasks:**
 
-- [ ] Write test: `REPROPOSAL_COOLDOWN` constant equals `30 days`
-- [ ] Write test: `lastProposalExecutionTime` mapping is accessible
-- [ ] Add `REPROPOSAL_COOLDOWN` constant
-- [ ] Add `lastProposalExecutionTime` mapping
+- [x] Write test: `REPROPOSAL_COOLDOWN` constant equals `30 days`
+- [x] Write test: `lastProposalExecutionTime` mapping is accessible
+- [x] Add `REPROPOSAL_COOLDOWN` constant
+- [x] Add `lastProposalExecutionTime` mapping
 
 ---
 
@@ -403,7 +403,7 @@ lastProposalExecutionTime[modelId] = block.timestamp;  // Track for cooldown
 
 | Sub-phase | Description | Status |
 |-----------|-------------|--------|
-| 15.1 | Add cooldown constants and state variables | ⏳ Pending |
+| 15.1 | Add cooldown constants and state variables | ✅ Complete |
 | 15.2 | Add cooldown helper functions | ⏳ Pending |
 | 15.3 | Update propose model for re-proposals | ⏳ Pending |
 | 15.4 | Update execute proposal to track time | ⏳ Pending |

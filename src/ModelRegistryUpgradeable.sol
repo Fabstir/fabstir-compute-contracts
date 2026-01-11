@@ -51,6 +51,9 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     uint256 public constant EXTENSION_DURATION = 1 days;          // Extend by 1 day
     uint256 public constant MAX_EXTENSIONS = 3;                   // Cap at 3 extensions
 
+    // Re-proposal cooldown constant
+    uint256 public constant REPROPOSAL_COOLDOWN = 30 days;
+
     // Mappings
     mapping(bytes32 => Model) public models;           // modelId => Model data
     mapping(bytes32 => ModelProposal) public proposals; // modelId => Proposal
@@ -65,6 +68,9 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     // Cumulative late votes for anti-sniping extension
     mapping(bytes32 => uint256) public lateVotes;
 
+    // Track last proposal execution time for cooldown
+    mapping(bytes32 => uint256) public lastProposalExecutionTime;
+
     // Events
     event ModelAdded(bytes32 indexed modelId, string huggingfaceRepo, string fileName, uint256 tier);
     event ModelProposed(bytes32 indexed modelId, address indexed proposer, string huggingfaceRepo);
@@ -74,8 +80,8 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event ModelReactivated(bytes32 indexed modelId);
     event VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensionCount);
 
-    // Storage gap for future upgrades (reduced by 1 for lateVotes mapping)
-    uint256[48] private __gap;
+    // Storage gap for future upgrades (reduced for lateVotes + lastProposalExecutionTime)
+    uint256[47] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
