@@ -413,4 +413,75 @@ contract VoteExtensionTest is Test {
         (,,uint256 votesFor,,,,,,) = modelRegistry.proposals(modelId);
         assertEq(votesFor, 11000 * 10**18, "Vote should succeed using endTime");
     }
+
+    // ============================================
+    // Phase 14.5 Tests: Execute Proposal Timing
+    // ============================================
+
+    function test_CannotExecuteBeforeEndTime() public {
+        bytes32 modelId = _createProposal();
+
+        // Vote to meet threshold
+        vm.prank(whale);
+        modelRegistry.voteOnProposal(modelId, 100000 * 10**18, true);
+
+        (,,,,,,,uint256 endTime,) = modelRegistry.proposals(modelId);
+
+        // Warp to just before endTime
+        vm.warp(endTime - 1);
+
+        // Should revert
+        vm.expectRevert("Voting still active");
+        modelRegistry.executeProposal(modelId);
+    }
+
+    function test_CanExecuteAfterEndTime() public {
+        bytes32 modelId = _createProposal();
+
+        // Vote to meet threshold
+        vm.prank(whale);
+        modelRegistry.voteOnProposal(modelId, 100000 * 10**18, true);
+
+        (,,,,,,,uint256 endTime,) = modelRegistry.proposals(modelId);
+
+        // Warp to just after endTime
+        vm.warp(endTime + 1);
+
+        // Should succeed
+        modelRegistry.executeProposal(modelId);
+
+        // Verify executed
+        (,,,,,bool executed,,,) = modelRegistry.proposals(modelId);
+        assertTrue(executed, "Proposal should be executed");
+    }
+
+    function test_CanExecuteAfterExtendedEndTime() public {
+        bytes32 modelId = _createProposal();
+
+        (,,,,,,,uint256 originalEndTime,) = modelRegistry.proposals(modelId);
+
+        // Trigger an extension
+        vm.warp(originalEndTime - 2 hours);
+        vm.prank(voter1);
+        modelRegistry.voteOnProposal(modelId, 10000 * 10**18, true);
+
+        (,,,,,,,uint256 extendedEndTime,) = modelRegistry.proposals(modelId);
+        assertTrue(extendedEndTime > originalEndTime, "endTime should be extended");
+
+        // Vote to meet threshold
+        vm.prank(whale);
+        modelRegistry.voteOnProposal(modelId, 100000 * 10**18, true);
+
+        // Cannot execute at original end time
+        vm.warp(originalEndTime + 1);
+        vm.expectRevert("Voting still active");
+        modelRegistry.executeProposal(modelId);
+
+        // CAN execute after extended end time
+        vm.warp(extendedEndTime + 1);
+        modelRegistry.executeProposal(modelId);
+
+        (,,,,,bool executed,,,) = modelRegistry.proposals(modelId);
+        assertTrue(executed, "Proposal should be executed after extended endTime");
+    }
 }

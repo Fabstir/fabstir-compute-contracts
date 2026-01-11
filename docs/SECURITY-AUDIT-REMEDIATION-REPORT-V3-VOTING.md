@@ -228,10 +228,10 @@ require(block.timestamp > proposal.endTime, "Voting still active");
 
 **Tasks:**
 
-- [ ] Write test: Cannot execute before `endTime`
-- [ ] Write test: Can execute after `endTime`
-- [ ] Write test: Can execute after extended `endTime`
-- [ ] Update `executeProposal()` to use `endTime`
+- [x] Write test: Cannot execute before `endTime`
+- [x] Write test: Can execute after `endTime`
+- [x] Write test: Can execute after extended `endTime`
+- [x] Update `executeProposal()` to use `endTime`
 
 ---
 
@@ -269,7 +269,7 @@ require(proposal.executed ||
 | 14.2 | Update proposal creation | ✅ Complete |
 | 14.3 | Add cumulative late vote tracking | ✅ Complete |
 | 14.4 | Update vote function with extension logic | ✅ Complete |
-| 14.5 | Update execute proposal | ⏳ Pending |
+| 14.5 | Update execute proposal | ✅ Complete |
 | 14.6 | Update withdraw votes | ⏳ Pending |
 
 ---

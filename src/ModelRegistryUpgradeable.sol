@@ -217,7 +217,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         ModelProposal storage proposal = proposals[modelId];
         require(proposal.proposalTime > 0, "Proposal does not exist");
         require(!proposal.executed, "Already executed");
-        require(block.timestamp > proposal.proposalTime + PROPOSAL_DURATION, "Voting still active");
+        require(block.timestamp > proposal.endTime, "Voting still active");
 
         proposal.executed = true;
 
