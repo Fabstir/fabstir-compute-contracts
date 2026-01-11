@@ -352,6 +352,31 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     }
 
     /**
+     * @notice Check if re-proposal cooldown has passed
+     * @dev Reverts if within cooldown period after a previous proposal was executed
+     */
+    function _checkReproposalCooldown(bytes32 modelId) internal view {
+        uint256 lastExecution = lastProposalExecutionTime[modelId];
+        if (lastExecution > 0) {
+            require(
+                block.timestamp >= lastExecution + REPROPOSAL_COOLDOWN,
+                "Must wait cooldown period"
+            );
+        }
+    }
+
+    /**
+     * @notice Clear old executed proposal data to allow re-proposal
+     * @dev Deletes proposal if executed, reverts if active proposal exists
+     */
+    function _clearOldProposal(bytes32 modelId) internal {
+        if (proposals[modelId].executed) {
+            delete proposals[modelId];
+        }
+        require(proposals[modelId].endTime == 0, "Active proposal exists");
+    }
+
+    /**
      * @notice Batch add trusted models (owner only, for initial setup)
      */
     function batchAddTrustedModels(

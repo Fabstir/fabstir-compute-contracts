@@ -342,13 +342,13 @@ function _clearOldProposal(bytes32 modelId) internal {
 
 **Tasks:**
 
-- [ ] Write test: `_checkReproposalCooldown` passes when no previous proposal
-- [ ] Write test: `_checkReproposalCooldown` reverts within cooldown period
-- [ ] Write test: `_checkReproposalCooldown` passes after cooldown expires
-- [ ] Write test: `_clearOldProposal` deletes executed proposals
-- [ ] Write test: `_clearOldProposal` reverts if active proposal exists
-- [ ] Add `_checkReproposalCooldown()` function
-- [ ] Add `_clearOldProposal()` function
+- [x] Write test: `_checkReproposalCooldown` passes when no previous proposal (tested via 15.3)
+- [x] Write test: `_checkReproposalCooldown` reverts within cooldown period (tested via 15.3)
+- [x] Write test: `_checkReproposalCooldown` passes after cooldown expires (tested via 15.3)
+- [x] Write test: `_clearOldProposal` deletes executed proposals (tested via 15.3)
+- [x] Write test: `_clearOldProposal` reverts if active proposal exists (tested via 15.3)
+- [x] Add `_checkReproposalCooldown()` function
+- [x] Add `_clearOldProposal()` function
 
 ---
 
@@ -404,7 +404,7 @@ lastProposalExecutionTime[modelId] = block.timestamp;  // Track for cooldown
 | Sub-phase | Description | Status |
 |-----------|-------------|--------|
 | 15.1 | Add cooldown constants and state variables | ✅ Complete |
-| 15.2 | Add cooldown helper functions | ⏳ Pending |
+| 15.2 | Add cooldown helper functions | ✅ Complete |
 | 15.3 | Update propose model for re-proposals | ⏳ Pending |
 | 15.4 | Update execute proposal to track time | ⏳ Pending |
 
