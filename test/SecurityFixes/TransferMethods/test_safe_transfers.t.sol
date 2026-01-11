@@ -305,7 +305,7 @@ contract SafeTransferMethodsTest is Test {
         vm.stopPrank();
 
         bytes32 newModelId = modelRegistry.getModelId("new-org/new-model", "new-model.bin");
-        (,,,, uint256 proposalTime,,) = modelRegistry.proposals(newModelId);
+        (,,,, uint256 proposalTime,,,,) = modelRegistry.proposals(newModelId);
         assertGt(proposalTime, 0, "Proposal should be created");
     }
 

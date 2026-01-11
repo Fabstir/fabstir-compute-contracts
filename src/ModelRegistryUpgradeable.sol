@@ -35,6 +35,8 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         uint256 proposalTime;       // When proposal was created
         bool executed;              // Whether proposal has been executed
         Model modelData;            // The model data being proposed
+        uint256 endTime;            // Dynamic end time for anti-sniping extension
+        uint8 extensionCount;       // Track number of extensions (max MAX_EXTENSIONS)
     }
 
     // State variables (governanceToken was immutable, now regular storage)
@@ -42,6 +44,12 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     uint256 public constant PROPOSAL_DURATION = 3 days;
     uint256 public constant APPROVAL_THRESHOLD = 100000 * 10**18; // 100k FAB tokens
     uint256 public constant PROPOSAL_FEE = 100 * 10**18;          // 100 FAB to propose
+
+    // Vote extension constants (anti-sniping)
+    uint256 public constant EXTENSION_THRESHOLD = 10000 * 10**18; // 10k FAB triggers extension
+    uint256 public constant EXTENSION_WINDOW = 4 hours;           // Last 4 hours is "danger zone"
+    uint256 public constant EXTENSION_DURATION = 1 days;          // Extend by 1 day
+    uint256 public constant MAX_EXTENSIONS = 3;                   // Cap at 3 extensions
 
     // Mappings
     mapping(bytes32 => Model) public models;           // modelId => Model data
@@ -148,7 +156,9 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
                 approvalTier: 2,
                 active: false,
                 timestamp: 0
-            })
+            }),
+            endTime: block.timestamp + PROPOSAL_DURATION,
+            extensionCount: 0
         });
 
         // Track index for O(1) removal
