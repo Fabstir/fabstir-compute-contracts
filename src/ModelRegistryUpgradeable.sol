@@ -178,7 +178,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         ModelProposal storage proposal = proposals[modelId];
         require(proposal.proposalTime > 0, "Proposal does not exist");
         require(!proposal.executed, "Proposal already executed");
-        require(block.timestamp <= proposal.proposalTime + PROPOSAL_DURATION, "Voting period ended");
+        require(block.timestamp <= proposal.endTime, "Voting period ended");
 
         // Transfer tokens from voter (tokens are locked until proposal ends)
         governanceToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -190,6 +190,23 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         }
 
         votes[modelId][msg.sender] += amount;
+
+        // Anti-sniping extension logic
+        uint256 timeUntilEnd = proposal.endTime - block.timestamp;
+        if (timeUntilEnd <= EXTENSION_WINDOW) {
+            lateVotes[modelId] += amount;
+
+            if (
+                lateVotes[modelId] >= EXTENSION_THRESHOLD &&
+                proposal.extensionCount < MAX_EXTENSIONS
+            ) {
+                proposal.endTime += EXTENSION_DURATION;
+                proposal.extensionCount++;
+                lateVotes[modelId] = 0;  // Reset for next potential extension
+                emit VotingExtended(modelId, proposal.endTime, proposal.extensionCount);
+            }
+        }
+
         emit VoteCast(modelId, msg.sender, amount, support);
     }
 

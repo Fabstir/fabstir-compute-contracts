@@ -196,19 +196,19 @@ function voteOnProposal(bytes32 modelId, uint256 amount, bool support) external 
 
 **Tasks:**
 
-- [ ] Write test: Vote outside extension window does NOT trigger extension
-- [ ] Write test: Small vote (< threshold) in extension window does NOT trigger extension
-- [ ] Write test: Large vote (>= threshold) in extension window DOES trigger extension
-- [ ] Write test: Extension increases `endTime` by `EXTENSION_DURATION`
-- [ ] Write test: Extension increments `extensionCount`
-- [ ] Write test: Extension resets `lateVotes[modelId]` to 0
-- [ ] Write test: Cumulative small votes reaching threshold trigger extension
-- [ ] Write test: Cannot extend beyond `MAX_EXTENSIONS`
-- [ ] Write test: Voting after original end time but before extended end time succeeds
-- [ ] Update `voteOnProposal()` to check `endTime` instead of calculated time
-- [ ] Add late vote tracking logic
-- [ ] Add extension trigger logic
-- [ ] Emit `VotingExtended` event
+- [x] Write test: Vote outside extension window does NOT trigger extension
+- [x] Write test: Small vote (< threshold) in extension window does NOT trigger extension
+- [x] Write test: Large vote (>= threshold) in extension window DOES trigger extension
+- [x] Write test: Extension increases `endTime` by `EXTENSION_DURATION`
+- [x] Write test: Extension increments `extensionCount`
+- [x] Write test: Extension resets `lateVotes[modelId]` to 0
+- [x] Write test: Cumulative small votes reaching threshold trigger extension
+- [x] Write test: Cannot extend beyond `MAX_EXTENSIONS`
+- [x] Write test: Voting after original end time but before extended end time succeeds
+- [x] Update `voteOnProposal()` to check `endTime` instead of calculated time
+- [x] Add late vote tracking logic
+- [x] Add extension trigger logic
+- [x] Emit `VotingExtended` event
 
 ---
 
@@ -268,7 +268,7 @@ require(proposal.executed ||
 | 14.1 | Add extension constants and state variables | ✅ Complete |
 | 14.2 | Update proposal creation | ✅ Complete |
 | 14.3 | Add cumulative late vote tracking | ✅ Complete |
-| 14.4 | Update vote function with extension logic | ⏳ Pending |
+| 14.4 | Update vote function with extension logic | ✅ Complete |
 | 14.5 | Update execute proposal | ⏳ Pending |
 | 14.6 | Update withdraw votes | ⏳ Pending |
 
