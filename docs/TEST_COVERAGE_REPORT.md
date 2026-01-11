@@ -1,8 +1,8 @@
 # Test Coverage Report
 
-**Generated:** January 9, 2026
+**Generated:** January 11, 2026
 **Test Framework:** Foundry/Forge
-**Total Tests:** 520 passing
+**Total Tests:** 635 passing
 
 ---
 
@@ -38,8 +38,8 @@
 |---------------|------------|----------------|
 | JobMarketplace | 171 | Session lifecycle, proofs, payments |
 | ProofSystem | 83 | Verification, access control |
+| ModelRegistry | 94 | Governance, voting, anti-sniping, re-proposal |
 | HostEarnings | 61 | Withdrawals, credits |
-| ModelRegistry | 57 | Governance, voting |
 | NodeRegistry | 52 | Registration, pricing |
 | Integration | 96 | Cross-contract flows |
 

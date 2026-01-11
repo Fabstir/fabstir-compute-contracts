@@ -2,6 +2,89 @@
 
 ---
 
+## January 11, 2026: ModelRegistry Voting Improvements (Phase 14-15)
+
+**Contracts Affected**: ModelRegistryUpgradeable
+**Impact Level**: LOW - Struct field addition (backward compatible)
+
+### Summary
+
+Voting mechanism improvements from security audit remediation:
+
+| Change | Impact | Action Required |
+|--------|--------|-----------------|
+| `ModelProposal` struct expanded | LOW | Update struct destructuring (7 → 9 fields) |
+| New constants added | NONE | Optional - use for UI display |
+| New `VotingExtended` event | NONE | Optional - subscribe for UI updates |
+
+### 1. ModelProposal Struct Change
+
+**Before (7 fields):**
+```solidity
+struct ModelProposal {
+    bytes32 modelId;
+    address proposer;
+    uint256 votesFor;
+    uint256 votesAgainst;
+    uint256 proposalTime;
+    bool executed;
+    Model modelData;
+}
+```
+
+**After (9 fields):**
+```solidity
+struct ModelProposal {
+    bytes32 modelId;
+    address proposer;
+    uint256 votesFor;
+    uint256 votesAgainst;
+    uint256 proposalTime;
+    bool executed;
+    Model modelData;
+    uint256 endTime;        // NEW: Dynamic end time for anti-sniping
+    uint8 extensionCount;   // NEW: Number of extensions applied
+}
+```
+
+**Impact for SDK Developers**: If you destructure `proposals(bytes32)` return value, update from 7 to 9 fields:
+```javascript
+// Before
+const [modelId, proposer, votesFor, votesAgainst, proposalTime, executed, modelData] =
+  await modelRegistry.proposals(proposalId);
+
+// After
+const [modelId, proposer, votesFor, votesAgainst, proposalTime, executed, modelData, endTime, extensionCount] =
+  await modelRegistry.proposals(proposalId);
+```
+
+### 2. New Constants (Read-Only)
+
+```solidity
+EXTENSION_THRESHOLD = 10000 * 10**18  // 10k FAB triggers extension
+EXTENSION_WINDOW = 4 hours            // Last 4 hours is danger zone
+EXTENSION_DURATION = 1 days           // Extend by 1 day
+MAX_EXTENSIONS = 3                    // Maximum extensions per proposal
+REPROPOSAL_COOLDOWN = 30 days         // Wait time before re-proposing
+```
+
+### 3. New Event
+
+```solidity
+event VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensionCount);
+```
+
+Subscribe to this event to update UI when voting is extended due to late whale votes.
+
+### 4. New Mappings
+
+```solidity
+mapping(bytes32 => uint256) public lateVotes;                  // Cumulative late votes
+mapping(bytes32 => uint256) public lastProposalExecutionTime;  // For cooldown tracking
+```
+
+---
+
 ## January 9, 2026: Security Audit Remediation - Solidity Upgrade & Contract Changes
 
 **Contracts Affected**: All upgradeable contracts
@@ -95,7 +178,7 @@ After deploying the upgraded implementations, proxy implementations will change:
 |----------|-------|----------------|
 | JobMarketplace | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` ⚠️ NEW | `0x26f27C19F80596d228D853dC39A204f0f6C45C7E` |
 | NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xb85424dd91D4ae0C6945e512bfDdF8a494299115` |
-| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x1D31d9688a4ffD2aFE738BC6C9a4cb27C272AA5A` |
+| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` |
 | ProofSystem | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` | `0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9` |
 | HostEarnings | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x8584AeAC9687613095D13EF7be4dE0A796F84D7a` |
 

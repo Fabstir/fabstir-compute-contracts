@@ -1,6 +1,6 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** January 9, 2026
+**Last Updated:** January 11, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 **PRICE_PRECISION:** 1000 (all prices multiplied by 1000 for sub-$1/million support)
 
@@ -31,7 +31,7 @@ const contracts = {
 const implementations = {
   jobMarketplace: "0x26f27C19F80596d228D853dC39A204f0f6C45C7E",  // ⚠️ NEW
   nodeRegistry: "0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7",    // ⚠️ Corrupt node fix (Jan 10)
-  modelRegistry: "0x1D31d9688a4ffD2aFE738BC6C9a4cb27C272AA5A",   // ⚠️ NEW
+  modelRegistry: "0x8491af1f0D47f6367b56691dCA0F4996431fB0A5",   // ⚠️ NEW
   proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // ⚠️ NEW
   hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // ⚠️ NEW
 };
@@ -1021,7 +1021,7 @@ const config = {
   implementations: {
     jobMarketplace: "0x26f27C19F80596d228D853dC39A204f0f6C45C7E",  // ⚠️ NEW
     nodeRegistry: "0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7",    // ⚠️ Corrupt node fix (Jan 10)
-    modelRegistry: "0x1D31d9688a4ffD2aFE738BC6C9a4cb27C272AA5A",   // ⚠️ NEW
+    modelRegistry: "0x8491af1f0D47f6367b56691dCA0F4996431fB0A5",   // ⚠️ NEW
     proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // ⚠️ NEW
     hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // ⚠️ NEW
   }
