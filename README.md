@@ -139,11 +139,6 @@ await marketplace.completeSessionJob(jobId, conversationCID);
 ### 🚀 Deployment
 - [Contract Deployment Checklist](docs/CONTRACT_DEPLOYMENT_CHECKLIST.md) - Complete deployment steps
 
-### 📖 Additional Resources
-- [Best Practices](docs/best-practices/) - Security, performance, and operations
-- [Examples](docs/examples/) - Code examples (basic to advanced)
-- [Guides](docs/guides/) - Developer and operator guides
-
 ## Development
 
 ### Prerequisites

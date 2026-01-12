@@ -48,8 +48,8 @@ contract LegacyRemovalTest is Test {
 
     bytes32 public modelId;
 
-    uint256 constant FEE_BASIS_POINTS = 1000;
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000;
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
@@ -94,8 +94,8 @@ contract LegacyRemovalTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
@@ -163,7 +163,7 @@ contract LegacyRemovalTest is Test {
         vm.prank(host);
         marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof");
 
-        vm.warp(startTime + DISPUTE_WINDOW + 2);
+        vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConversation");
 

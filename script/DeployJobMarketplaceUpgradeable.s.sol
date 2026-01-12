@@ -71,8 +71,8 @@ contract DeployJobMarketplaceUpgradeable is DeployUpgradeable {
         console.log("  Treasury:", marketplace.treasuryAddress());
         console.log("  Node Registry:", address(marketplace.nodeRegistry()));
         console.log("  Host Earnings:", address(marketplace.hostEarnings()));
-        console.log("  Fee Basis Points:", marketplace.FEE_BASIS_POINTS());
-        console.log("  Dispute Window:", marketplace.DISPUTE_WINDOW());
+        console.log("  Fee Basis Points:", marketplace.feeBasisPoints());
+        console.log("  Dispute Window:", marketplace.disputeWindow());
 
         console.log("");
         console.log("IMPORTANT: After deployment, authorize this contract in HostEarnings:");
@@ -129,7 +129,7 @@ contract UpgradeJobMarketplace is DeployUpgradeable {
         console.log("  Owner:", marketplace.owner());
         console.log("  Treasury:", marketplace.treasuryAddress());
         console.log("  Node Registry:", address(marketplace.nodeRegistry()));
-        console.log("  Fee Basis Points:", marketplace.FEE_BASIS_POINTS());
+        console.log("  Fee Basis Points:", marketplace.feeBasisPoints());
         console.log("  Next Job ID:", marketplace.nextJobId());
     }
 }

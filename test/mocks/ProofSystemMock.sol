@@ -21,7 +21,7 @@ contract ProofSystemMock {
         _verificationResult = result;
     }
     
-    function verifyEKZL(
+    function verifyHostSignature(
         bytes calldata,
         address,
         uint256

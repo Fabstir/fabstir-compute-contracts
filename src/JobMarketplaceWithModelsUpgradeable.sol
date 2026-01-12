@@ -1,21 +1,21 @@
 // Copyright (c) 2025 Fabstir
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import "./NodeRegistryWithModelsUpgradeable.sol";
 import "./interfaces/IJobMarketplace.sol";
-// REMOVED: import "./interfaces/IReputationSystem.sol"; (never used)
 import "./HostEarningsUpgradeable.sol";
-import "./utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Proof system interface
 interface IProofSystemUpgradeable {
-    function verifyEKZL(bytes calldata proof, address prover, uint256 claimedTokens) external view returns (bool);
+    function verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens) external view returns (bool);
 
     function verifyAndMarkComplete(bytes calldata proof, address prover, uint256 claimedTokens)
         external
@@ -29,14 +29,14 @@ interface IProofSystemUpgradeable {
  */
 contract JobMarketplaceWithModelsUpgradeable is
     Initializable,
-    ReentrancyGuardUpgradeable,
+    ReentrancyGuardTransient,
     OwnableUpgradeable,
     PausableUpgradeable,
     UUPSUpgradeable
 {
-    // Session status enum
-    // Note: Only Active, Completed, TimedOut are used. Disputed/Abandoned/Cancelled
-    // were removed in Phase 7 cleanup as they were never implemented.
+    using SafeERC20 for IERC20;
+
+    // Session status enum (Active, Completed, TimedOut)
     enum SessionStatus {
         Active,
         Completed,
@@ -73,7 +73,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         string lastProofCID; // S5: CID of most recent proof in S5 storage
     }
 
-    // Chain configuration structure (Phase 4.1)
+    // Chain configuration structure
     struct ChainConfig {
         address nativeWrapper; // WETH on Base, WBNB on opBNB
         address stablecoin; // USDC address per chain
@@ -81,21 +81,33 @@ contract JobMarketplaceWithModelsUpgradeable is
         string nativeTokenSymbol; // "ETH" or "BNB"
     }
 
+    // Session creation parameters
+    struct SessionParams {
+        address host;
+        address paymentToken;
+        uint256 deposit;
+        uint256 pricePerToken;
+        uint256 maxDuration;
+        uint256 proofInterval;
+        bytes32 modelId;  // bytes32(0) if no model
+    }
+
     // Constants (non-upgradeable)
     uint256 public constant MIN_DEPOSIT = 0.0001 ether; // ~$0.50 @ $5000/ETH
     uint256 public constant MIN_PROVEN_TOKENS = 100;
-    // REMOVED: ABANDONMENT_TIMEOUT was defined but never used
 
-    // Converted from immutable to storage (set in initialize)
-    uint256 public DISPUTE_WINDOW;
-    uint256 public FEE_BASIS_POINTS;
+    /// @notice Time window before non-depositor can complete session (default 30s)
+    uint256 public disputeWindow;
+
+    /// @notice Treasury fee in basis points (1000 = 10%)
+    uint256 public feeBasisPoints;
 
     // State variables
     mapping(uint256 => SessionJob) public sessionJobs;
     mapping(address => uint256[]) public userSessions;
     mapping(address => uint256[]) public hostSessions;
 
-    // Session model tracking (sessionId => modelId) - Phase 3.1
+    // Session model tracking (sessionId => modelId)
     mapping(uint256 => bytes32) public sessionModel;
 
     uint256 public nextJobId;
@@ -108,6 +120,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     // USDC-specific configuration
     uint256 public constant USDC_MIN_DEPOSIT = 500000; // 0.50 USDC
+    uint256 public constant USDC_MAX_DEPOSIT = 1_000_000 * 10**6; // 1M USDC cap
 
     // Price precision: prices are stored with 1000x precision for sub-cent granularity
     // Payment calculation: (tokensUsed * pricePerToken) / PRICE_PRECISION
@@ -115,16 +128,17 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     mapping(address => bool) public acceptedTokens;
     mapping(address => uint256) public tokenMinDeposits;
+    mapping(address => uint256) public tokenMaxDeposits;
 
     // Treasury accumulation mappings
     uint256 public accumulatedTreasuryNative;
     mapping(address => uint256) public accumulatedTreasuryTokens;
 
-    // Wallet-agnostic deposit tracking (Phase 1.1)
+    // Wallet-agnostic deposit tracking
     mapping(address => uint256) public userDepositsNative;
     mapping(address => mapping(address => uint256)) public userDepositsToken;
 
-    // Chain configuration storage (Phase 4.1)
+    // Chain configuration storage
     ChainConfig public chainConfig;
 
     // Storage gap for future upgrades
@@ -136,7 +150,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID
     );
     event SessionCompleted(uint256 indexed jobId, uint256 totalTokensUsed, uint256 hostEarnings, uint256 userRefund);
-    // New event that tracks who completed the session (Phase 3.1 - Anyone-can-complete pattern)
+    // Event that tracks who completed the session (anyone-can-complete pattern)
     event SessionCompletedBy(
         uint256 indexed jobId,
         address indexed completedBy,
@@ -145,27 +159,27 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 refundAmount
     );
     event SessionTimedOut(uint256 indexed jobId, uint256 hostEarnings, uint256 userRefund);
-    // REMOVED in Phase 7: event SessionAbandoned - was never emitted
     event PaymentSent(address indexed recipient, uint256 amount);
     event TreasuryWithdrawal(address indexed token, uint256 amount);
 
-    // Wallet-agnostic deposit events (Phase 1.1)
+    // Wallet-agnostic deposit events
     event DepositReceived( // address(0) for native
     address indexed depositor, uint256 amount, address indexed token);
 
     event WithdrawalProcessed( // address(0) for native
     address indexed depositor, uint256 amount, address indexed token);
 
-    // Session events using depositor terminology (Phase 2.1)
+    // Session events using depositor terminology
     event SessionCreatedByDepositor(
         uint256 indexed sessionId, address indexed depositor, address indexed host, uint256 deposit
     );
 
-    // Token acceptance event (Phase 2.4)
-    event TokenAccepted(address indexed token, uint256 minDeposit);
+    // Token acceptance event
+    event TokenAccepted(address indexed token, uint256 minDeposit, uint256 maxDeposit);
     event TokenMinDepositUpdated(address indexed token, uint256 oldMinDeposit, uint256 newMinDeposit);
+    event TokenMaxDepositUpdated(address indexed token, uint256 oldMaxDeposit, uint256 newMaxDeposit);
 
-    // Model-aware session event (Phase 3.2)
+    // Model-aware session event
     event SessionJobCreatedForModel(
         uint256 indexed jobId, address indexed depositor, address indexed host, bytes32 modelId, uint256 deposit
     );
@@ -199,8 +213,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 _disputeWindow
     ) public initializer {
         __Ownable_init(msg.sender);
-        __ReentrancyGuard_init();
         __Pausable_init();
+        // Note: ReentrancyGuardTransient uses transient storage, no init needed
         // Note: OZ 5.x UUPSUpgradeable doesn't require __UUPSUpgradeable_init()
 
         require(_nodeRegistry != address(0), "Invalid node registry");
@@ -208,8 +222,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(_feeBasisPoints <= 10000, "Fee cannot exceed 100%");
         require(_disputeWindow > 0 && _disputeWindow <= 7 days, "Invalid dispute window");
 
-        FEE_BASIS_POINTS = _feeBasisPoints;
-        DISPUTE_WINDOW = _disputeWindow;
+        feeBasisPoints = _feeBasisPoints;
+        disputeWindow = _disputeWindow;
         nodeRegistry = NodeRegistryWithModelsUpgradeable(_nodeRegistry);
         hostEarnings = HostEarningsUpgradeable(_hostEarnings);
 
@@ -221,6 +235,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         // Initialize accepted tokens
         acceptedTokens[usdcAddress] = true;
         tokenMinDeposits[usdcAddress] = USDC_MIN_DEPOSIT;
+        tokenMaxDeposits[usdcAddress] = USDC_MAX_DEPOSIT;
     }
 
     /**
@@ -278,9 +293,10 @@ contract JobMarketplaceWithModelsUpgradeable is
         usdcAddress = _usdc;
         acceptedTokens[_usdc] = true;
         tokenMinDeposits[_usdc] = USDC_MIN_DEPOSIT;
+        tokenMaxDeposits[_usdc] = USDC_MAX_DEPOSIT;
     }
 
-    // Initialize chain configuration (Phase 4.1)
+    // Initialize chain configuration
     function initializeChainConfig(ChainConfig memory _config) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
         require(chainConfig.nativeWrapper == address(0), "Already initialized");
@@ -299,42 +315,28 @@ contract JobMarketplaceWithModelsUpgradeable is
         returns (uint256 jobId)
     {
         require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
-        require(msg.value <= 1000 ether, "Deposit too large");
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(host != address(0), "Invalid host");
 
-        _validateProofRequirements(proofInterval, msg.value, pricePerToken);
-        _validateHostRegistration(host);
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: address(0),
+            deposit: msg.value,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            modelId: bytes32(0)
+        });
+
+        _validateSessionParams(params);
 
         // Validate price meets host's minimum for native token (ETH/BNB)
-        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, address(0)); // address(0) = native token
+        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, address(0));
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
         jobId = nextJobId++;
-
-        SessionJob storage session = sessionJobs[jobId];
-        session.id = jobId;
-        session.depositor = msg.sender; // NEW: track depositor (wallet-agnostic)
-                session.host = host;
-        session.paymentToken = address(0);
-        session.deposit = msg.value;
-        session.pricePerToken = pricePerToken;
-        session.maxDuration = maxDuration;
-        session.startTime = block.timestamp;
-        session.lastProofTime = block.timestamp;
-        session.proofInterval = proofInterval;
-        session.status = SessionStatus.Active;
-
-        // NOTE: Do NOT credit userDepositsNative here - inline session deposits
-        // are locked in the session, not available for withdrawal (security fix)
-
-        userSessions[msg.sender].push(jobId);
-        hostSessions[host].push(jobId);
+        _initializeSession(jobId, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
-        emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value); // NEW event
+        emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value);
 
         return jobId;
     }
@@ -347,48 +349,31 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxDuration,
         uint256 proofInterval
     ) external payable nonReentrant whenNotPaused returns (uint256 jobId) {
-        // Standard validations
         require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
-        require(msg.value <= 1000 ether, "Deposit too large");
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(host != address(0), "Invalid host");
 
-        // Host validation MUST come before model validation
-        _validateHostRegistration(host);
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: address(0),
+            deposit: msg.value,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            modelId: modelId
+        });
+
+        // Validates host registration before model check (security requirement)
+        _validateSessionParams(params);
 
         // Model-specific validations
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
-
-        _validateProofRequirements(proofInterval, msg.value, pricePerToken);
 
         // Get model-specific pricing (falls back to default if not set)
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, address(0));
         require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
 
         jobId = nextJobId++;
-
-        // Store model for this session (Phase 3.1)
         sessionModel[jobId] = modelId;
-
-        // Create session (same pattern as createSessionJob)
-        SessionJob storage session = sessionJobs[jobId];
-        session.id = jobId;
-        session.depositor = msg.sender;
-        session.host = host;
-        session.paymentToken = address(0);
-        session.deposit = msg.value;
-        session.pricePerToken = pricePerToken;
-        session.maxDuration = maxDuration;
-        session.startTime = block.timestamp;
-        session.lastProofTime = block.timestamp;
-        session.proofInterval = proofInterval;
-        session.status = SessionStatus.Active;
-
-        // NOTE: Do NOT credit userDepositsNative - inline deposits are locked (security fix)
-        userSessions[msg.sender].push(jobId);
-        hostSessions[host].push(jobId);
+        _initializeSession(jobId, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
         emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, msg.value);
@@ -404,50 +389,37 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxDuration,
         uint256 proofInterval
     ) external nonReentrant whenNotPaused returns (uint256 jobId) {
+        // Token-specific validations
         require(acceptedTokens[token], "Token not accepted");
         uint256 minRequired = tokenMinDeposits[token];
         require(minRequired > 0, "Token not configured");
         require(deposit >= minRequired, "Insufficient deposit");
         require(deposit > 0, "Zero deposit");
 
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(host != address(0), "Invalid host");
-        require(deposit <= 1000 ether, "Deposit too large");
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: token,
+            deposit: deposit,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            modelId: bytes32(0)
+        });
 
-        _validateHostRegistration(host);
-        _validateProofRequirements(proofInterval, deposit, pricePerToken);
+        _validateSessionParams(params);
 
         // Validate price meets host's minimum for the specified token (USDC or other stablecoin)
         uint256 hostMinPrice = nodeRegistry.getNodePricing(host, token);
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
-        IERC20(token).transferFrom(msg.sender, address(this), deposit);
+        // Transfer tokens after all validations pass
+        IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
 
         jobId = nextJobId++;
-
-        SessionJob storage session = sessionJobs[jobId];
-        session.id = jobId;
-        session.depositor = msg.sender; // NEW: track depositor (wallet-agnostic)
-                session.host = host;
-        session.paymentToken = token;
-        session.deposit = deposit;
-        session.pricePerToken = pricePerToken;
-        session.maxDuration = maxDuration;
-        session.startTime = block.timestamp;
-        session.lastProofTime = block.timestamp;
-        session.proofInterval = proofInterval;
-        session.status = SessionStatus.Active;
-
-        // NOTE: Do NOT credit userDepositsToken - inline deposits are locked in the session,
-        // not available for withdrawal (security fix for double-spend vulnerability)
-
-        userSessions[msg.sender].push(jobId);
-        hostSessions[host].push(jobId);
+        _initializeSession(jobId, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, deposit);
-        emit SessionCreatedByDepositor(jobId, msg.sender, host, deposit); // NEW event
+        emit SessionCreatedByDepositor(jobId, msg.sender, host, deposit);
 
         return jobId;
     }
@@ -462,58 +434,39 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxDuration,
         uint256 proofInterval
     ) external nonReentrant whenNotPaused returns (uint256 jobId) {
-        // Token validations
+        // Token-specific validations
         require(acceptedTokens[token], "Token not accepted");
         uint256 minRequired = tokenMinDeposits[token];
         require(minRequired > 0, "Token not configured");
         require(deposit >= minRequired, "Insufficient deposit");
         require(deposit > 0, "Zero deposit");
-        require(deposit <= 1000 ether, "Deposit too large");
 
-        // Standard validations
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(host != address(0), "Invalid host");
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: token,
+            deposit: deposit,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            modelId: modelId
+        });
 
-        // Host validation MUST come before model validation
-        _validateHostRegistration(host);
+        // Validates host registration before model check (security requirement)
+        _validateSessionParams(params);
 
         // Model-specific validations
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
-
-        _validateProofRequirements(proofInterval, deposit, pricePerToken);
 
         // Get model-specific pricing for this token (falls back to default stable if not set)
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, token);
         require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
 
-        IERC20(token).transferFrom(msg.sender, address(this), deposit);
+        // Transfer tokens after all validations pass
+        IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
 
         jobId = nextJobId++;
-
-        // Store model for this session (Phase 3.1)
         sessionModel[jobId] = modelId;
-
-        // Create session (same pattern as createSessionJobWithToken)
-        SessionJob storage session = sessionJobs[jobId];
-        session.id = jobId;
-        session.depositor = msg.sender;
-        session.host = host;
-        session.paymentToken = token;
-        session.deposit = deposit;
-        session.pricePerToken = pricePerToken;
-        session.maxDuration = maxDuration;
-        session.startTime = block.timestamp;
-        session.lastProofTime = block.timestamp;
-        session.proofInterval = proofInterval;
-        session.status = SessionStatus.Active;
-
-        // NOTE: Do NOT credit userDepositsToken - inline deposits are locked in the session,
-        // not available for withdrawal (security fix for double-spend vulnerability)
-
-        userSessions[msg.sender].push(jobId);
-        hostSessions[host].push(jobId);
+        _initializeSession(jobId, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, deposit);
         emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, deposit);
@@ -558,6 +511,65 @@ contract JobMarketplaceWithModelsUpgradeable is
     }
 
     // ============================================================
+    // Session Creation Helpers
+    // ============================================================
+
+    /**
+     * @notice Validate common session parameters
+     * @dev Checks price, duration, proof interval, and host address
+     * @param params Session parameters to validate
+     */
+    function _validateSessionParams(SessionParams memory params) internal view {
+        require(params.pricePerToken > 0, "Invalid price");
+        require(params.maxDuration > 0 && params.maxDuration <= 365 days, "Invalid duration");
+        require(params.proofInterval > 0, "Invalid proof interval");
+        require(params.host != address(0), "Invalid host");
+
+        // Token-specific max deposit validation
+        if (params.paymentToken == address(0)) {
+            require(params.deposit <= 1000 ether, "Deposit too large");
+        } else {
+            uint256 maxAllowed = tokenMaxDeposits[params.paymentToken];
+            require(maxAllowed > 0, "Token max deposit not configured");
+            require(params.deposit <= maxAllowed, "Deposit too large");
+        }
+
+        _validateHostRegistration(params.host);
+        _validateProofRequirements(params.proofInterval, params.deposit, params.pricePerToken);
+    }
+
+    /**
+     * @notice Initialize session storage with common fields
+     * @dev Sets all session fields and updates tracking mappings
+     * @param jobId The job ID for the session
+     * @param params Session parameters
+     * @return session Storage pointer to the initialized session
+     */
+    function _initializeSession(
+        uint256 jobId,
+        SessionParams memory params
+    ) internal returns (SessionJob storage session) {
+        session = sessionJobs[jobId];
+        session.id = jobId;
+        session.depositor = msg.sender;
+        session.host = params.host;
+        session.paymentToken = params.paymentToken;
+        session.deposit = params.deposit;
+        session.pricePerToken = params.pricePerToken;
+        session.maxDuration = params.maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = params.proofInterval;
+        session.status = SessionStatus.Active;
+
+        // Track session for user and host
+        userSessions[msg.sender].push(jobId);
+        hostSessions[params.host].push(jobId);
+
+        return session;
+    }
+
+    // ============================================================
     // Proof Submission
     // ============================================================
 
@@ -584,7 +596,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxTokens = (session.deposit * PRICE_PRECISION) / session.pricePerToken;
         require(newTotal <= maxTokens, "Exceeds deposit");
 
-        // VERIFY PROOF via ProofSystem (Phase 6.2)
+        // Verify proof via ProofSystem
         bool verified = false;
         if (address(proofSystem) != address(0)) {
             // Construct 97-byte proof: proofHash (32) + signature (65)
@@ -624,7 +636,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @notice Complete an active session and settle payments
      * @dev Only the depositor or host can complete a session:
      *      - Depositor can complete immediately (no dispute window)
-     *      - Host must wait for DISPUTE_WINDOW (default 30s) to complete
+     *      - Host must wait for disputeWindow (default 30s) to complete
      *
      *      This restriction ensures only authorized parties can set the
      *      conversationCID (IPFS reference to conversation record).
@@ -653,7 +665,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         // Dispute window only waived for the original depositor
         if (msg.sender != session.depositor) {
-            require(block.timestamp >= session.startTime + DISPUTE_WINDOW, "Must wait dispute window");
+            require(block.timestamp >= session.startTime + disputeWindow, "Must wait dispute window");
         }
 
         session.status = SessionStatus.Completed;
@@ -670,8 +682,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 userRefund = session.deposit > hostPayment ? session.deposit - hostPayment : 0;
 
         if (hostPayment > 0) {
-            // Calculate fees based on FEE_BASIS_POINTS
-            uint256 treasuryFee = (hostPayment * FEE_BASIS_POINTS) / 10000;
+            // Calculate fees based on feeBasisPoints
+            uint256 treasuryFee = (hostPayment * feeBasisPoints) / 10000;
             uint256 netHostPayment = hostPayment - treasuryFee;
 
             if (session.paymentToken == address(0)) {
@@ -684,7 +696,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             } else {
                 accumulatedTreasuryTokens[session.paymentToken] += treasuryFee;
                 // Transfer tokens to HostEarnings
-                IERC20(session.paymentToken).transfer(address(hostEarnings), netHostPayment);
+                IERC20(session.paymentToken).safeTransfer(address(hostEarnings), netHostPayment);
                 // Credit the host's earnings
                 hostEarnings.creditEarnings(session.host, netHostPayment, session.paymentToken);
             }
@@ -697,14 +709,14 @@ contract JobMarketplaceWithModelsUpgradeable is
                 (bool sent,) = payable(session.depositor).call{value: userRefund}("");
                 require(sent, "ETH refund failed");
             } else {
-                IERC20(session.paymentToken).transfer(session.depositor, userRefund);
+                IERC20(session.paymentToken).safeTransfer(session.depositor, userRefund);
             }
             session.refundedToUser = userRefund;
         }
 
         // Emit both events for backward compatibility
         emit SessionCompleted(jobId, session.tokensUsed, session.withdrawnByHost, userRefund);
-        // Emit new event showing who completed it (Phase 3.1)
+        // Emit event showing who completed the session
         emit SessionCompletedBy(jobId, completedBy, session.tokensUsed, hostPayment, userRefund);
     }
 
@@ -763,7 +775,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(amount > 0, "No tokens to withdraw");
 
         accumulatedTreasuryTokens[token] = 0;
-        IERC20(token).transfer(treasuryAddress, amount);
+        IERC20(token).safeTransfer(treasuryAddress, amount);
 
         emit TreasuryWithdrawal(token, amount);
     }
@@ -783,7 +795,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             uint256 amount = accumulatedTreasuryTokens[tokens[i]];
             if (amount > 0) {
                 accumulatedTreasuryTokens[tokens[i]] = 0;
-                IERC20(tokens[i]).transfer(treasuryAddress, amount);
+                IERC20(tokens[i]).safeTransfer(treasuryAddress, amount);
                 emit TreasuryWithdrawal(tokens[i], amount);
             }
         }
@@ -791,17 +803,22 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     /**
      * @notice Add a new accepted stablecoin token (treasury only)
+     * @param token The token address to accept
+     * @param minDeposit Minimum deposit amount required
+     * @param maxDeposit Maximum deposit amount allowed
      */
-    function addAcceptedToken(address token, uint256 minDeposit) external {
+    function addAcceptedToken(address token, uint256 minDeposit, uint256 maxDeposit) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
         require(!acceptedTokens[token], "Token already accepted");
         require(minDeposit > 0, "Invalid minimum deposit");
+        require(maxDeposit > minDeposit, "Max must exceed min");
         require(token != address(0), "Invalid token address");
 
         acceptedTokens[token] = true;
         tokenMinDeposits[token] = minDeposit;
+        tokenMaxDeposits[token] = maxDeposit;
 
-        emit TokenAccepted(token, minDeposit);
+        emit TokenAccepted(token, minDeposit, maxDeposit);
     }
 
     /**
@@ -820,6 +837,22 @@ contract JobMarketplaceWithModelsUpgradeable is
         emit TokenMinDepositUpdated(token, oldMinDeposit, minDeposit);
     }
 
+    /**
+     * @notice Update maximum deposit for an accepted token (treasury or owner only)
+     * @param token The token address to update
+     * @param maxDeposit The new maximum deposit amount
+     */
+    function updateTokenMaxDeposit(address token, uint256 maxDeposit) external {
+        require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
+        require(acceptedTokens[token], "Token not accepted");
+        require(maxDeposit > tokenMinDeposits[token], "Max must exceed min");
+
+        uint256 oldMaxDeposit = tokenMaxDeposits[token];
+        tokenMaxDeposits[token] = maxDeposit;
+
+        emit TokenMaxDepositUpdated(token, oldMaxDeposit, maxDeposit);
+    }
+
     // ============================================================
     // Wallet-Agnostic Deposit Functions
     // ============================================================
@@ -834,7 +867,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(amount > 0, "Zero deposit");
         require(token != address(0), "Invalid token");
 
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         userDepositsToken[msg.sender][token] += amount;
         emit DepositReceived(msg.sender, amount, token);
     }
@@ -847,7 +880,9 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(userDepositsNative[msg.sender] >= amount, "Insufficient balance");
 
         userDepositsNative[msg.sender] -= amount;
-        payable(msg.sender).transfer(amount);
+
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "ETH transfer failed");
 
         emit WithdrawalProcessed(msg.sender, amount, address(0));
     }
@@ -856,7 +891,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(userDepositsToken[msg.sender][token] >= amount, "Insufficient balance");
 
         userDepositsToken[msg.sender][token] -= amount;
-        IERC20(token).transfer(msg.sender, amount);
+        IERC20(token).safeTransfer(msg.sender, amount);
 
         emit WithdrawalProcessed(msg.sender, amount, token);
     }
@@ -983,7 +1018,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(proofInterval > 0, "Invalid proof interval");
         require(host != address(0), "Invalid host");
         require(deposit > 0, "Zero deposit");
-        require(deposit <= 1000 ether, "Deposit too large");
 
         _validateHostRegistration(host);
         _validateProofRequirements(proofInterval, deposit, pricePerToken);
@@ -992,16 +1026,20 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 hostMinPrice = nodeRegistry.getNodePricing(host, paymentToken);
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
-        // Verify user has sufficient pre-deposited balance
+        // Verify user has sufficient pre-deposited balance with token-specific limits
         if (paymentToken == address(0)) {
             require(deposit >= MIN_DEPOSIT, "Insufficient deposit");
+            require(deposit <= 1000 ether, "Deposit too large");
             require(userDepositsNative[msg.sender] >= deposit, "Insufficient native balance");
             userDepositsNative[msg.sender] -= deposit;
         } else {
             require(acceptedTokens[paymentToken], "Token not accepted");
             uint256 minRequired = tokenMinDeposits[paymentToken];
+            uint256 maxAllowed = tokenMaxDeposits[paymentToken];
             require(minRequired > 0, "Token not configured");
+            require(maxAllowed > 0, "Token max deposit not configured");
             require(deposit >= minRequired, "Insufficient deposit");
+            require(deposit <= maxAllowed, "Deposit too large");
             require(userDepositsToken[msg.sender][paymentToken] >= deposit, "Insufficient token balance");
             userDepositsToken[msg.sender][paymentToken] -= deposit;
         }
@@ -1029,11 +1067,4 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         return sessionId;
     }
-
-    // ============================================================
-    // Receive Functions
-    // ============================================================
-
-    receive() external payable {}
-    fallback() external payable {}
 }

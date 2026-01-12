@@ -1,6 +1,6 @@
 # UPGRADE_GUIDE.md - Contract Upgrade Procedures
 
-**Last Updated:** December 14, 2025
+**Last Updated:** January 11, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 
 ---
@@ -13,11 +13,11 @@ This guide documents the procedures for upgrading the Fabstir marketplace smart 
 
 | Contract | Proxy Address | Current Implementation |
 |----------|---------------|------------------------|
-| JobMarketplaceWithModelsUpgradeable | `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D` | `0xa2FDB6fe686262CC11314f33689b9057443A3001` |
-| NodeRegistryWithModelsUpgradeable | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0x68298e2b74a106763aC99E3D973E98012dB5c75F` |
-| ModelRegistryUpgradeable | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xd7Df5c6D4ffe6961d47753D1dd32f844e0F73f50` |
-| HostEarningsUpgradeable | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x588c42249F85C6ac4B4E27f97416C0289980aabB` |
-| ProofSystemUpgradeable | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` | `0x83eB050Aa3443a76a4De64aBeD90cA8d525E7A3A` |
+| JobMarketplaceWithModelsUpgradeable | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` ⚠️ NEW | `0x26f27C19F80596d228D853dC39A204f0f6C45C7E` |
+| NodeRegistryWithModelsUpgradeable | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7` |
+| ModelRegistryUpgradeable | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` |
+| HostEarningsUpgradeable | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x8584AeAC9687613095D13EF7be4dE0A796F84D7a` |
+| ProofSystemUpgradeable | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` | `0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9` |
 
 ---
 
@@ -85,7 +85,7 @@ forge verify-contract $NEW_IMPL_ADDRESS \
 
 ```bash
 # Define addresses
-PROXY_ADDRESS=0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D
+PROXY_ADDRESS=0x3CaCbf3f448B420918A93a88706B26Ab27a3523E
 NEW_IMPL_ADDRESS=0x1234... # From Step 1
 
 # Upgrade the proxy (owner only)
@@ -147,7 +147,7 @@ function reinitialize(uint256 version) public reinitializer(version) {
 
 ### JobMarketplaceWithModelsUpgradeable
 
-**Current Proxy**: `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D`
+**Current Proxy**: `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E`
 
 **Critical Dependencies**:
 - NodeRegistry address (immutable after deployment)
@@ -343,7 +343,8 @@ When deploying to Base Mainnet:
 
 | Version | Date | Changes | Implementation |
 |---------|------|---------|----------------|
-| 1.0.0 | December 14, 2025 | Initial upgradeable deployment | See table above |
+| 2.0.0 | January 9, 2026 | Clean slate JobMarketplace deployment (no deprecated storage) | See table above |
+| 1.0.0 | December 14, 2025 | Initial upgradeable deployment | Legacy |
 
 ---
 

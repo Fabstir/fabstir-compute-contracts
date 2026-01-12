@@ -243,7 +243,7 @@ contract ProofSystemUpgradeTest is Test {
         uint256 claimedTokens = 100;
         bytes memory newProof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystemV2.verifyEKZL(newProof, prover, claimedTokens);
+        bool result = proofSystemV2.verifyHostSignature(newProof, prover, claimedTokens);
         assertTrue(result);
     }
 

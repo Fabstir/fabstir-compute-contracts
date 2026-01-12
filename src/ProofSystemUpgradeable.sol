@@ -1,6 +1,6 @@
 // Copyright (c) 2025 Fabstir
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -9,8 +9,11 @@ import "./interfaces/IProofSystem.sol";
 
 /**
  * @title ProofSystemUpgradeable
- * @notice EZKL proof verification system for the Fabstir P2P LLM marketplace (UUPS Upgradeable)
- * @dev Verifies proofs of work for AI inference sessions
+ * @notice Host signature verification system for the Fabstir P2P LLM marketplace (UUPS Upgradeable)
+ * @dev Uses ECDSA signatures with optimistic trust model. Hosts stake FAB tokens
+ *      as economic bond against misbehavior. Proofs are stored on S5 for post-hoc auditing.
+ *      This is NOT zero-knowledge proof verification - it verifies host signatures on
+ *      claimed token counts, with economic security provided by host staking.
  */
 contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgradeable, IProofSystem {
     // Track verified proofs to prevent replay
@@ -20,7 +23,7 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     mapping(bytes32 => bool) public registeredCircuits;
     mapping(address => bytes32) public modelCircuits;
 
-    // Access control for recordVerifiedProof (Sub-phase 1.1 security fix)
+    // Access control for recordVerifiedProof - restricts to authorized callers only
     mapping(address => bool) public authorizedCallers;
 
     // Events
@@ -63,28 +66,30 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Verify proof using ECDSA signature validation
-     * @dev The prover must sign keccak256(proofHash, prover, claimedTokens)
+     * @notice Verify host signature on proof of work
+     * @dev The host must sign keccak256(proofHash, prover, claimedTokens) using eth_sign.
+     *      This provides cryptographic attestation that the host claims to have processed
+     *      the specified number of tokens. Economic security comes from host staking.
      * @param proof Proof bytes: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v]
      * @param prover Address that should have signed the proof (host)
      * @param claimedTokens Number of tokens being claimed
      * @return True if signature is valid and proof not replayed
      */
-    function verifyEKZL(bytes calldata proof, address prover, uint256 claimedTokens)
+    function verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens)
         external
         view
         override
         returns (bool)
     {
-        return _verifyEKZL(proof, prover, claimedTokens);
+        return _verifyHostSignature(proof, prover, claimedTokens);
     }
 
     /**
-     * @notice Internal verification logic using ECDSA signature verification
+     * @notice Internal host signature verification logic
      * @dev Proof format: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v] = 97 bytes minimum
-     *      The prover (host) must sign: keccak256(proofHash, prover, claimedTokens)
+     *      The host must sign: keccak256(proofHash, prover, claimedTokens)
      */
-    function _verifyEKZL(bytes calldata proof, address prover, uint256 claimedTokens) internal view returns (bool) {
+    function _verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens) internal view returns (bool) {
         // Proof must contain: proofHash (32) + r (32) + s (32) + v (1) = 97 bytes
         if (proof.length < 97) return false;
         if (claimedTokens == 0) return false;
@@ -140,7 +145,7 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
         returns (bool)
     {
         // First verify using internal function
-        if (!_verifyEKZL(proof, prover, claimedTokens)) {
+        if (!_verifyHostSignature(proof, prover, claimedTokens)) {
             return false;
         }
 
@@ -199,7 +204,7 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
 
         for (uint256 i = 0; i < proofs.length; i++) {
             // Verify each proof using internal function
-            require(_verifyEKZLInternal(proofs[i], prover, tokenCounts[i]), "Invalid proof at index");
+            require(_verifyHostSignatureInternal(proofs[i], prover, tokenCounts[i]), "Invalid proof at index");
 
             // Extract and record proof hash (first 32 bytes of proof)
             bytes32 proofHash;
@@ -229,7 +234,7 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
 
         results = new bool[](proofs.length);
         for (uint256 i = 0; i < proofs.length; i++) {
-            results[i] = this.verifyEKZL(proofs[i], prover, tokenCounts[i]);
+            results[i] = this.verifyHostSignature(proofs[i], prover, tokenCounts[i]);
         }
     }
 
@@ -251,13 +256,13 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Internal helper for batch verification
+     * @notice Internal helper for batch signature verification
      */
-    function _verifyEKZLInternal(bytes calldata proof, address prover, uint256 claimedTokens)
+    function _verifyHostSignatureInternal(bytes calldata proof, address prover, uint256 claimedTokens)
         internal
         view
         returns (bool)
     {
-        return _verifyEKZL(proof, prover, claimedTokens);
+        return _verifyHostSignature(proof, prover, claimedTokens);
     }
 }

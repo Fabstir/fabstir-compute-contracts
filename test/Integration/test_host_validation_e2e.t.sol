@@ -35,8 +35,8 @@ contract HostValidationE2ETest is Test {
 
     bytes32 public modelId;
 
-    uint256 constant FEE_BASIS_POINTS = 1000; // 10%
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000; // 10%
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
@@ -94,8 +94,8 @@ contract HostValidationE2ETest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
@@ -174,7 +174,7 @@ contract HostValidationE2ETest is Test {
         );
 
         // Step 5: Complete session (wait for dispute window)
-        vm.warp(block.timestamp + DISPUTE_WINDOW + 1);
+        vm.warp(block.timestamp + disputeWindow + 1);
 
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConversationCID456");
@@ -348,7 +348,7 @@ contract HostValidationE2ETest is Test {
         );
 
         // Session can still be completed
-        vm.warp(block.timestamp + DISPUTE_WINDOW + 1);
+        vm.warp(block.timestamp + disputeWindow + 1);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmFinalConversation");
 
@@ -386,7 +386,7 @@ contract HostValidationE2ETest is Test {
         nodeRegistry.unregisterNode();
 
         // Complete session - payments should still work
-        vm.warp(block.timestamp + DISPUTE_WINDOW + 1);
+        vm.warp(block.timestamp + disputeWindow + 1);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConvo");
 

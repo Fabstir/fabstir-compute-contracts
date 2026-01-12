@@ -1,12 +1,13 @@
 // Copyright (c) 2025 Fabstir
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./utils/ReentrancyGuardUpgradeable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import "./ModelRegistryUpgradeable.sol";
 
 /**
@@ -17,9 +18,11 @@ import "./ModelRegistryUpgradeable.sol";
 contract NodeRegistryWithModelsUpgradeable is
     Initializable,
     OwnableUpgradeable,
-    ReentrancyGuardUpgradeable,
+    ReentrancyGuardTransient,
     UUPSUpgradeable
 {
+    using SafeERC20 for IERC20;
+
     // Storage (was immutable, now regular storage)
     IERC20 public fabToken;
     ModelRegistryUpgradeable public modelRegistry;
@@ -53,6 +56,9 @@ contract NodeRegistryWithModelsUpgradeable is
     mapping(address => uint256) public activeNodesIndex;
     mapping(bytes32 => address[]) public modelToNodes;
 
+    // Index mapping for O(1) node removal from model arrays
+    mapping(bytes32 => mapping(address => uint256)) private modelNodeIndex;
+
     // Per-model pricing overrides
     mapping(address => mapping(bytes32 => uint256)) public modelPricingNative;
     mapping(address => mapping(bytes32 => uint256)) public modelPricingStable;
@@ -72,9 +78,10 @@ contract NodeRegistryWithModelsUpgradeable is
     event PricingUpdated(address indexed operator, uint256 newMinPrice);
     event ModelPricingUpdated(address indexed operator, bytes32 indexed modelId, uint256 nativePrice, uint256 stablePrice);
     event TokenPricingUpdated(address indexed operator, address indexed token, uint256 price);
+    event CorruptNodeRepaired(address indexed operator, uint256 stakeReturned);
 
-    // Storage gap for future upgrades
-    uint256[40] private __gap;
+    // Storage gap for future upgrades (40 - 1 for modelNodeIndex)
+    uint256[39] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -88,7 +95,7 @@ contract NodeRegistryWithModelsUpgradeable is
      */
     function initialize(address _fabToken, address _modelRegistry) public initializer {
         __Ownable_init(msg.sender);
-        __ReentrancyGuard_init();
+        // Note: ReentrancyGuardTransient uses transient storage, no init needed
         // Note: UUPSUpgradeable in OZ 5.x doesn't require initialization
 
         require(_fabToken != address(0), "Invalid FAB token address");
@@ -127,7 +134,7 @@ contract NodeRegistryWithModelsUpgradeable is
         }
 
         // Transfer stake
-        require(fabToken.transferFrom(msg.sender, address(this), MIN_STAKE), "Stake transfer failed");
+        fabToken.safeTransferFrom(msg.sender, address(this), MIN_STAKE);
 
         // Create node
         nodes[msg.sender] = Node({
@@ -145,8 +152,9 @@ contract NodeRegistryWithModelsUpgradeable is
         activeNodesIndex[msg.sender] = activeNodesList.length;
         activeNodesList.push(msg.sender);
 
-        // Update model-to-nodes mapping
+        // Update model-to-nodes mapping with O(1) index tracking
         for (uint i = 0; i < modelIds.length; i++) {
+            modelNodeIndex[modelIds[i]][msg.sender] = modelToNodes[modelIds[i]].length;
             modelToNodes[modelIds[i]].push(msg.sender);
         }
 
@@ -174,8 +182,9 @@ contract NodeRegistryWithModelsUpgradeable is
         // Update supported models
         nodes[msg.sender].supportedModels = newModelIds;
 
-        // Add node to new model mappings
+        // Add node to new model mappings with O(1) index tracking
         for (uint i = 0; i < newModelIds.length; i++) {
+            modelNodeIndex[newModelIds[i]][msg.sender] = modelToNodes[newModelIds[i]].length;
             modelToNodes[newModelIds[i]].push(msg.sender);
         }
 
@@ -337,22 +346,29 @@ contract NodeRegistryWithModelsUpgradeable is
             _removeNodeFromModel(models[i], msg.sender);
         }
 
-        // Remove from active nodes list
+        // Remove from active nodes list (with safety check for corrupt state)
         uint256 index = activeNodesIndex[msg.sender];
-        uint256 lastIndex = activeNodesList.length - 1;
-        if (index != lastIndex) {
-            address lastNode = activeNodesList[lastIndex];
-            activeNodesList[index] = lastNode;
-            activeNodesIndex[lastNode] = index;
+        bool isInActiveList = activeNodesList.length > 0 &&
+            index < activeNodesList.length &&
+            activeNodesList[index] == msg.sender;
+
+        if (isInActiveList) {
+            uint256 lastIndex = activeNodesList.length - 1;
+            if (index != lastIndex) {
+                address lastNode = activeNodesList[lastIndex];
+                activeNodesList[index] = lastNode;
+                activeNodesIndex[lastNode] = index;
+            }
+            activeNodesList.pop();
         }
-        activeNodesList.pop();
+        // If not in list (corrupt state), skip array manipulation
 
         // Delete node data
         delete activeNodesIndex[msg.sender];
         delete nodes[msg.sender];
 
         // Return stake
-        require(fabToken.transfer(msg.sender, stakeToReturn), "Stake return failed");
+        fabToken.safeTransfer(msg.sender, stakeToReturn);
 
         emit NodeUnregistered(msg.sender, stakeToReturn);
     }
@@ -364,7 +380,7 @@ contract NodeRegistryWithModelsUpgradeable is
         require(nodes[msg.sender].operator != address(0), "Not registered");
         require(amount > 0, "Zero amount");
 
-        require(fabToken.transferFrom(msg.sender, address(this), amount), "Stake transfer failed");
+        fabToken.safeTransferFrom(msg.sender, address(this), amount);
         nodes[msg.sender].stakedAmount += amount;
     }
 
@@ -488,23 +504,59 @@ contract NodeRegistryWithModelsUpgradeable is
     }
 
     /**
-     * @notice Remove node from model mapping
+     * @notice Repair a corrupt node that has node data but is not in activeNodesList (owner only)
+     * @dev This handles edge cases from contract upgrades where node data wasn't fully migrated
+     * @param nodeAddress The address of the corrupt node to repair
      */
-    function _removeNodeFromModel(bytes32 modelId, address nodeAddress) private {
-        address[] storage nodesForModel = modelToNodes[modelId];
-        for (uint i = 0; i < nodesForModel.length; i++) {
-            if (nodesForModel[i] == nodeAddress) {
-                nodesForModel[i] = nodesForModel[nodesForModel.length - 1];
-                nodesForModel.pop();
-                break;
-            }
+    function repairCorruptNode(address nodeAddress) external onlyOwner nonReentrant {
+        require(nodes[nodeAddress].operator != address(0), "Node not registered");
+
+        // Check if node is actually corrupt (has data but not in activeNodesList)
+        uint256 index = activeNodesIndex[nodeAddress];
+        bool isInActiveList = activeNodesList.length > 0 &&
+            index < activeNodesList.length &&
+            activeNodesList[index] == nodeAddress;
+
+        require(!isInActiveList, "Node is not corrupt - use unregisterNode instead");
+
+        uint256 stakeToReturn = nodes[nodeAddress].stakedAmount;
+        bytes32[] memory models = nodes[nodeAddress].supportedModels;
+
+        // Remove from model mappings
+        for (uint i = 0; i < models.length; i++) {
+            _removeNodeFromModel(models[i], nodeAddress);
         }
+
+        // Clear node data (no activeNodesList manipulation needed)
+        delete activeNodesIndex[nodeAddress];
+        delete nodes[nodeAddress];
+
+        // Return stake to the node operator
+        if (stakeToReturn > 0) {
+            fabToken.safeTransfer(nodeAddress, stakeToReturn);
+        }
+
+        emit CorruptNodeRepaired(nodeAddress, stakeToReturn);
     }
 
     /**
-     * @notice Legacy function for compatibility
+     * @notice Remove node from model mapping using O(1) indexed removal
+     * @dev Uses swap-and-pop with index tracking for gas efficiency
      */
-    function getNodeController(address) external pure returns (address) {
-        return address(0);
+    function _removeNodeFromModel(bytes32 modelId, address nodeAddress) private {
+        address[] storage nodesForModel = modelToNodes[modelId];
+        uint256 index = modelNodeIndex[modelId][nodeAddress];
+        uint256 lastIndex = nodesForModel.length - 1;
+
+        if (index != lastIndex) {
+            // Swap with last element
+            address lastNode = nodesForModel[lastIndex];
+            nodesForModel[index] = lastNode;
+            modelNodeIndex[modelId][lastNode] = index;
+        }
+
+        // Remove last element
+        nodesForModel.pop();
+        delete modelNodeIndex[modelId][nodeAddress];
     }
 }

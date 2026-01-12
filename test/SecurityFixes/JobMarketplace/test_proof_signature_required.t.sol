@@ -39,8 +39,8 @@ contract ProofSignatureRequiredTest is Test {
     bytes32 public modelId;
     uint256 public sessionId;
 
-    uint256 constant FEE_BASIS_POINTS = 1000;
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000;
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
@@ -100,8 +100,8 @@ contract ProofSignatureRequiredTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
@@ -169,8 +169,8 @@ contract ProofSignatureRequiredTest is Test {
         // NEW 5-parameter call
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID");
 
-        // Verify proof was stored - use tuple unpacking for all 18 fields
-        // SessionJob: id, depositor, requester, host, paymentToken, deposit, pricePerToken, tokensUsed,
+        // Verify proof was stored - use tuple unpacking for all 17 fields
+        // SessionJob: id, depositor, host, paymentToken, deposit, pricePerToken, tokensUsed,
         //             maxDuration, startTime, lastProofTime, proofInterval, status, withdrawnByHost,
         //             refundedToUser, conversationCID, lastProofHash, lastProofCID
         (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);

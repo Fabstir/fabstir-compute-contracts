@@ -225,8 +225,8 @@ contract DeployAllUpgradeable is DeployUpgradeable {
         JobMarketplaceWithModelsUpgradeable marketplace = JobMarketplaceWithModelsUpgradeable(payable(result.jobMarketplaceProxy));
         require(address(marketplace.nodeRegistry()) == result.nodeRegistryProxy, "JobMarketplace: Invalid NodeRegistry");
         require(address(marketplace.hostEarnings()) == result.hostEarningsProxy, "JobMarketplace: Invalid HostEarnings");
-        require(marketplace.FEE_BASIS_POINTS() == feeBasisPoints, "JobMarketplace: Invalid fee");
-        require(marketplace.DISPUTE_WINDOW() == disputeWindow, "JobMarketplace: Invalid dispute window");
+        require(marketplace.feeBasisPoints() == feeBasisPoints, "JobMarketplace: Invalid fee");
+        require(marketplace.disputeWindow() == disputeWindow, "JobMarketplace: Invalid dispute window");
         console.log("  JobMarketplace: OK");
 
         console.log("");

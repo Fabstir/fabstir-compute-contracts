@@ -3,7 +3,7 @@
 pragma solidity ^0.8.19;
 
 interface IProofSystem {
-    function verifyEKZL(
+    function verifyHostSignature(
         bytes calldata proof,
         address prover,
         uint256 claimedTokens

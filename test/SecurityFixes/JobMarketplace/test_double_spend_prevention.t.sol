@@ -40,8 +40,8 @@ contract DoubleSpendPreventionTest is Test {
 
     bytes32 public modelId;
 
-    uint256 constant FEE_BASIS_POINTS = 1000; // 10%
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000; // 10%
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
@@ -91,8 +91,8 @@ contract DoubleSpendPreventionTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
@@ -101,7 +101,7 @@ contract DoubleSpendPreventionTest is Test {
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
         // Add mock USDC to accepted tokens
-        marketplace.addAcceptedToken(address(usdcToken), 500000);
+        marketplace.addAcceptedToken(address(usdcToken), 500000, 1_000_000 * 10**6);
 
         vm.stopPrank();
 
@@ -414,7 +414,7 @@ contract DoubleSpendPreventionTest is Test {
         );
 
         // Complete session
-        vm.warp(block.timestamp + DISPUTE_WINDOW + 1);
+        vm.warp(block.timestamp + disputeWindow + 1);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConversation");
 

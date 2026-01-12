@@ -9,7 +9,7 @@ import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
  * @title ProofSystemUpgradeable Signature Verification Tests
  * @dev Tests for signature-based proof verification (Sub-phase 1.2)
  *
- * Security Fix: _verifyEKZL was returning true for any proof >= 64 bytes
+ * Security Fix: _verifyHostSignature (formerly _verifyEKZL) was returning true for any proof >= 64 bytes
  * without actual verification. Now requires valid ECDSA signature from prover.
  *
  * Proof format: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v] = 97 bytes
@@ -91,7 +91,7 @@ contract ProofSystemSignatureVerificationTest is Test {
             claimedTokens
         );
 
-        bool result = proofSystem.verifyEKZL(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
         assertTrue(result, "Valid signature should pass verification");
     }
 
@@ -111,7 +111,7 @@ contract ProofSystemSignatureVerificationTest is Test {
                 tokenCounts[i]
             );
 
-            bool result = proofSystem.verifyEKZL(proof, host, tokenCounts[i]);
+            bool result = proofSystem.verifyHostSignature(proof, host, tokenCounts[i]);
             assertTrue(result, "Valid signature should pass for any token count");
         }
     }
@@ -132,7 +132,7 @@ contract ProofSystemSignatureVerificationTest is Test {
             uint8(27)                  // v
         );
 
-        bool result = proofSystem.verifyEKZL(invalidProof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(invalidProof, host, claimedTokens);
         assertFalse(result, "Invalid signature should fail verification");
     }
 
@@ -149,7 +149,7 @@ contract ProofSystemSignatureVerificationTest is Test {
         );
 
         // Should fail because signature is from attacker, not host
-        bool result = proofSystem.verifyEKZL(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
         assertFalse(result, "Signature from wrong address should fail");
     }
 
@@ -173,7 +173,7 @@ contract ProofSystemSignatureVerificationTest is Test {
         }
 
         // Should fail because proof hash doesn't match signature
-        bool result = proofSystem.verifyEKZL(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
         assertFalse(result, "Tampered proof hash should fail verification");
     }
 
@@ -191,7 +191,7 @@ contract ProofSystemSignatureVerificationTest is Test {
         );
 
         // Try to verify with different token count
-        bool result = proofSystem.verifyEKZL(proof, host, tamperedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, tamperedTokens);
         assertFalse(result, "Tampered token count should fail verification");
     }
 
@@ -215,7 +215,7 @@ contract ProofSystemSignatureVerificationTest is Test {
         assertTrue(firstResult, "First verification should pass");
 
         // Second verification (replay) should fail
-        bool replayResult = proofSystem.verifyEKZL(proof, host, claimedTokens);
+        bool replayResult = proofSystem.verifyHostSignature(proof, host, claimedTokens);
         assertFalse(replayResult, "Replay attack should fail");
     }
 
@@ -233,7 +233,7 @@ contract ProofSystemSignatureVerificationTest is Test {
 
         // Try to use the same signature for a different prover address
         address differentProver = address(0x9999);
-        bool result = proofSystem.verifyEKZL(proof, differentProver, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, differentProver, claimedTokens);
         assertFalse(result, "Signature for different prover should fail");
     }
 
@@ -248,7 +248,7 @@ contract ProofSystemSignatureVerificationTest is Test {
             bytes32(uint256(0x5678))
         ); // Only 64 bytes
 
-        bool result = proofSystem.verifyEKZL(shortProof, host, 100);
+        bool result = proofSystem.verifyHostSignature(shortProof, host, 100);
         assertFalse(result, "Too short proof should fail");
     }
 
@@ -262,7 +262,7 @@ contract ProofSystemSignatureVerificationTest is Test {
             0  // Zero tokens
         );
 
-        bool result = proofSystem.verifyEKZL(proof, host, 0);
+        bool result = proofSystem.verifyHostSignature(proof, host, 0);
         assertFalse(result, "Zero tokens should fail");
     }
 
@@ -276,7 +276,7 @@ contract ProofSystemSignatureVerificationTest is Test {
             100
         );
 
-        bool result = proofSystem.verifyEKZL(proof, address(0), 100);
+        bool result = proofSystem.verifyHostSignature(proof, address(0), 100);
         assertFalse(result, "Zero prover address should fail");
     }
 
@@ -297,7 +297,7 @@ contract ProofSystemSignatureVerificationTest is Test {
         uint8 invalidV = 99;
         bytes memory invalidProof = abi.encodePacked(proofHash, r, s, invalidV);
 
-        bool result = proofSystem.verifyEKZL(invalidProof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(invalidProof, host, claimedTokens);
         assertFalse(result, "Invalid v value should fail or return zero address");
     }
 
@@ -320,7 +320,7 @@ contract ProofSystemSignatureVerificationTest is Test {
             claimedTokens
         );
 
-        bool result = proofSystem.verifyEKZL(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
         assertTrue(result, "Valid signature should always pass");
     }
 
@@ -340,7 +340,7 @@ contract ProofSystemSignatureVerificationTest is Test {
         );
 
         // Verify for host - should fail
-        bool result = proofSystem.verifyEKZL(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
         assertFalse(result, "Wrong signer should always fail");
     }
 }

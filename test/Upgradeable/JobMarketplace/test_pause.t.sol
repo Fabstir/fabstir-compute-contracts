@@ -28,8 +28,8 @@ contract JobMarketplacePauseTest is Test {
 
     bytes32 public modelId1;
 
-    uint256 constant FEE_BASIS_POINTS = 1000;
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000;
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
@@ -80,8 +80,8 @@ contract JobMarketplacePauseTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(proxyAddr));
@@ -291,8 +291,8 @@ contract JobMarketplacePauseTest is Test {
         vm.prank(host1);
         marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID");
 
-        // Verify tokens used (skip 7 fields: id, depositor, requester, host, paymentToken, deposit, pricePerToken)
-        // Total 18 return values (all except ProofSubmission[] array)
+        // Verify tokens used (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
+        // Total 17 return values (all except ProofSubmission[] array)
         (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, 100);
     }

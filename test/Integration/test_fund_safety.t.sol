@@ -32,8 +32,8 @@ contract FundSafetyTest is Test {
 
     bytes32 public modelId;
 
-    uint256 constant FEE_BASIS_POINTS = 1000; // 10%
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000; // 10%
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
@@ -81,14 +81,14 @@ contract FundSafetyTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
 
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
-        marketplace.addAcceptedToken(address(usdcToken), 500000);
+        marketplace.addAcceptedToken(address(usdcToken), 500000, 1_000_000 * 10**6);
 
         vm.stopPrank();
 
@@ -158,13 +158,13 @@ contract FundSafetyTest is Test {
         marketplace.submitProofOfWork(sessionId, tokensUsed, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof");
 
         // Complete session
-        vm.warp(startTime + DISPUTE_WINDOW + 2);
+        vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConversation");
 
         // Calculate expected distributions
         uint256 hostPaymentGross = (tokensUsed * MIN_PRICE_NATIVE) / PRICE_PRECISION;
-        uint256 treasuryFee = (hostPaymentGross * FEE_BASIS_POINTS) / 10000;
+        uint256 treasuryFee = (hostPaymentGross * feeBasisPoints) / 10000;
         uint256 hostPaymentNet = hostPaymentGross - treasuryFee;
         uint256 userRefund = deposit - hostPaymentGross;
 
@@ -210,13 +210,13 @@ contract FundSafetyTest is Test {
         marketplace.submitProofOfWork(sessionId, tokensUsed, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof");
 
         // Complete session
-        vm.warp(startTime + DISPUTE_WINDOW + 2);
+        vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConversation");
 
         // Calculate expected
         uint256 hostPaymentGross = (tokensUsed * MIN_PRICE_STABLE) / PRICE_PRECISION;
-        uint256 treasuryFee = (hostPaymentGross * FEE_BASIS_POINTS) / 10000;
+        uint256 treasuryFee = (hostPaymentGross * feeBasisPoints) / 10000;
         uint256 hostPaymentNet = hostPaymentGross - treasuryFee;
 
         // Verify host earnings
@@ -251,7 +251,7 @@ contract FundSafetyTest is Test {
         marketplace.submitProofOfWork(s1, 100, bytes32(uint256(0x1)), DUMMY_SIG, "QmProof1");
 
         // Complete session 1
-        vm.warp(startTime + DISPUTE_WINDOW + 2);
+        vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(s1, "QmConvo1");
 
@@ -259,17 +259,17 @@ contract FundSafetyTest is Test {
         assertEq(marketplace.getLockedBalanceNative(user), 5 ether, "Locked should be 5 ETH after s1 complete");
 
         // Complete remaining sessions (MIN_PROVEN_TOKENS = 100)
-        vm.warp(startTime + DISPUTE_WINDOW + 3);
+        vm.warp(startTime + disputeWindow + 3);
         vm.prank(host);
         marketplace.submitProofOfWork(s2, 150, bytes32(uint256(0x2)), DUMMY_SIG, "QmProof2");
-        vm.warp(startTime + 2*DISPUTE_WINDOW + 4);
+        vm.warp(startTime + 2*disputeWindow + 4);
         vm.prank(user);
         marketplace.completeSessionJob(s2, "QmConvo2");
 
-        vm.warp(startTime + 2*DISPUTE_WINDOW + 5);
+        vm.warp(startTime + 2*disputeWindow + 5);
         vm.prank(host2);
         marketplace.submitProofOfWork(s3, 200, bytes32(uint256(0x3)), DUMMY_SIG, "QmProof3");
-        vm.warp(startTime + 3*DISPUTE_WINDOW + 6);
+        vm.warp(startTime + 3*disputeWindow + 6);
         vm.prank(user);
         marketplace.completeSessionJob(s3, "QmConvo3");
 
@@ -335,7 +335,7 @@ contract FundSafetyTest is Test {
 
         // Calculate expected distributions
         uint256 hostPaymentGross = (200 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
-        uint256 treasuryFee = (hostPaymentGross * FEE_BASIS_POINTS) / 10000;
+        uint256 treasuryFee = (hostPaymentGross * feeBasisPoints) / 10000;
         uint256 hostPaymentNet = hostPaymentGross - treasuryFee;
         uint256 userRefund = deposit - hostPaymentGross;
 
@@ -371,7 +371,7 @@ contract FundSafetyTest is Test {
 
         // Host never submits any proofs
         // User completes session immediately (no work done = full refund)
-        vm.warp(startTime + DISPUTE_WINDOW + 1);
+        vm.warp(startTime + disputeWindow + 1);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConversation");
 
@@ -401,13 +401,13 @@ contract FundSafetyTest is Test {
         marketplace.submitProofOfWork(sessionId, 300, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof");
 
         // User completes session after some work done
-        vm.warp(startTime + DISPUTE_WINDOW + 2);
+        vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConversation");
 
         // Verify host got paid for work done
         uint256 hostPaymentGross = (300 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
-        uint256 treasuryFee = (hostPaymentGross * FEE_BASIS_POINTS) / 10000;
+        uint256 treasuryFee = (hostPaymentGross * feeBasisPoints) / 10000;
         uint256 hostPaymentNet = hostPaymentGross - treasuryFee;
 
         assertEq(hostEarnings.getBalance(host, address(0)), hostPaymentNet, "Host should receive payment for work done");

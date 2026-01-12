@@ -23,8 +23,8 @@ contract JobMarketplaceDeploymentScriptTest is Test {
 
     address public owner = address(this);
 
-    uint256 constant FEE_BASIS_POINTS = 1000;
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000;
+    uint256 constant disputeWindow = 30;
 
     function setUp() public {
         // Deploy mock token
@@ -57,8 +57,8 @@ contract JobMarketplaceDeploymentScriptTest is Test {
         // Set environment variables for deployment script
         vm.setEnv("NODE_REGISTRY", vm.toString(address(nodeRegistry)));
         vm.setEnv("HOST_EARNINGS", vm.toString(address(hostEarnings)));
-        vm.setEnv("FEE_BASIS_POINTS", vm.toString(FEE_BASIS_POINTS));
-        vm.setEnv("DISPUTE_WINDOW", vm.toString(DISPUTE_WINDOW));
+        vm.setEnv("feeBasisPoints", vm.toString(feeBasisPoints));
+        vm.setEnv("disputeWindow", vm.toString(disputeWindow));
 
         // Create deployment script
         deployScript = new DeployJobMarketplaceUpgradeable();
@@ -83,8 +83,8 @@ contract JobMarketplaceDeploymentScriptTest is Test {
         assertTrue(marketplace.owner() != address(0), "Owner should be set");
         assertEq(address(marketplace.nodeRegistry()), address(nodeRegistry), "Node registry should match");
         assertEq(address(marketplace.hostEarnings()), address(hostEarnings), "Host earnings should match");
-        assertEq(marketplace.FEE_BASIS_POINTS(), FEE_BASIS_POINTS, "Fee should match");
-        assertEq(marketplace.DISPUTE_WINDOW(), DISPUTE_WINDOW, "Dispute window should match");
+        assertEq(marketplace.feeBasisPoints(), feeBasisPoints, "Fee should match");
+        assertEq(marketplace.disputeWindow(), disputeWindow, "Dispute window should match");
     }
 
     function test_DeploymentStoresCorrectImplementation() public {

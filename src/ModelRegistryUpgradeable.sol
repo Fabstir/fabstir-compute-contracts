@@ -1,11 +1,12 @@
 // Copyright (c) 2025 Fabstir
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title ModelRegistryUpgradeable
@@ -13,6 +14,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev Implements a two-tier system: owner-curated trusted models and community-proposed models
  */
 contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+    using SafeERC20 for IERC20;
+
     // Model metadata structure
     struct Model {
         string huggingfaceRepo;     // e.g., "TheBloke/Llama-2-7B-GGUF"
@@ -32,6 +35,8 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         uint256 proposalTime;       // When proposal was created
         bool executed;              // Whether proposal has been executed
         Model modelData;            // The model data being proposed
+        uint256 endTime;            // Dynamic end time for anti-sniping extension
+        uint8 extensionCount;       // Track number of extensions (max MAX_EXTENSIONS)
     }
 
     // State variables (governanceToken was immutable, now regular storage)
@@ -40,14 +45,31 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     uint256 public constant APPROVAL_THRESHOLD = 100000 * 10**18; // 100k FAB tokens
     uint256 public constant PROPOSAL_FEE = 100 * 10**18;          // 100 FAB to propose
 
+    // Vote extension constants (anti-sniping)
+    uint256 public constant EXTENSION_THRESHOLD = 10000 * 10**18; // 10k FAB triggers extension
+    uint256 public constant EXTENSION_WINDOW = 4 hours;           // Last 4 hours is "danger zone"
+    uint256 public constant EXTENSION_DURATION = 1 days;          // Extend by 1 day
+    uint256 public constant MAX_EXTENSIONS = 3;                   // Cap at 3 extensions
+
+    // Re-proposal cooldown constant
+    uint256 public constant REPROPOSAL_COOLDOWN = 30 days;
+
     // Mappings
     mapping(bytes32 => Model) public models;           // modelId => Model data
-    mapping(bytes32 => bool) public trustedModels;     // modelId => is trusted (tier 1)
     mapping(bytes32 => ModelProposal) public proposals; // modelId => Proposal
     mapping(bytes32 => mapping(address => uint256)) public votes; // modelId => voter => vote amount
 
     bytes32[] public modelList;                        // List of all model IDs
     bytes32[] public activeProposals;                  // List of active proposal IDs
+
+    // Index mapping for O(1) proposal removal
+    mapping(bytes32 => uint256) private activeProposalIndex;
+
+    // Cumulative late votes for anti-sniping extension
+    mapping(bytes32 => uint256) public lateVotes;
+
+    // Track last proposal execution time for cooldown
+    mapping(bytes32 => uint256) public lastProposalExecutionTime;
 
     // Events
     event ModelAdded(bytes32 indexed modelId, string huggingfaceRepo, string fileName, uint256 tier);
@@ -56,9 +78,10 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event ProposalExecuted(bytes32 indexed modelId, bool approved);
     event ModelDeactivated(bytes32 indexed modelId);
     event ModelReactivated(bytes32 indexed modelId);
+    event VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensionCount);
 
-    // Storage gap for future upgrades (50 slots minus 1 for governanceToken)
-    uint256[49] private __gap;
+    // Storage gap for future upgrades (reduced for lateVotes + lastProposalExecutionTime)
+    uint256[47] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -109,7 +132,6 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
             timestamp: block.timestamp
         });
 
-        trustedModels[modelId] = true;
         modelList.push(modelId);
 
         emit ModelAdded(modelId, huggingfaceRepo, fileName, 1);
@@ -125,10 +147,13 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     ) external {
         bytes32 modelId = getModelId(huggingfaceRepo, fileName);
         require(models[modelId].timestamp == 0, "Model already exists");
-        require(proposals[modelId].proposalTime == 0, "Proposal already exists");
+
+        // Check cooldown and clear old proposal for re-proposals
+        _checkReproposalCooldown(modelId);
+        _clearOldProposal(modelId);
 
         // Charge proposal fee to prevent spam
-        require(governanceToken.transferFrom(msg.sender, address(this), PROPOSAL_FEE), "Fee transfer failed");
+        governanceToken.safeTransferFrom(msg.sender, address(this), PROPOSAL_FEE);
 
         proposals[modelId] = ModelProposal({
             modelId: modelId,
@@ -144,9 +169,13 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
                 approvalTier: 2,
                 active: false,
                 timestamp: 0
-            })
+            }),
+            endTime: block.timestamp + PROPOSAL_DURATION,
+            extensionCount: 0
         });
 
+        // Track index for O(1) removal
+        activeProposalIndex[modelId] = activeProposals.length;
         activeProposals.push(modelId);
         emit ModelProposed(modelId, msg.sender, huggingfaceRepo);
     }
@@ -158,10 +187,10 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         ModelProposal storage proposal = proposals[modelId];
         require(proposal.proposalTime > 0, "Proposal does not exist");
         require(!proposal.executed, "Proposal already executed");
-        require(block.timestamp <= proposal.proposalTime + PROPOSAL_DURATION, "Voting period ended");
+        require(block.timestamp <= proposal.endTime, "Voting period ended");
 
         // Transfer tokens from voter (tokens are locked until proposal ends)
-        require(governanceToken.transferFrom(msg.sender, address(this), amount), "Token transfer failed");
+        governanceToken.safeTransferFrom(msg.sender, address(this), amount);
 
         if (support) {
             proposal.votesFor += amount;
@@ -170,6 +199,23 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         }
 
         votes[modelId][msg.sender] += amount;
+
+        // Anti-sniping extension logic
+        uint256 timeUntilEnd = proposal.endTime - block.timestamp;
+        if (timeUntilEnd <= EXTENSION_WINDOW) {
+            lateVotes[modelId] += amount;
+
+            if (
+                lateVotes[modelId] >= EXTENSION_THRESHOLD &&
+                proposal.extensionCount < MAX_EXTENSIONS
+            ) {
+                proposal.endTime += EXTENSION_DURATION;
+                proposal.extensionCount++;
+                lateVotes[modelId] = 0;  // Reset for next potential extension
+                emit VotingExtended(modelId, proposal.endTime, proposal.extensionCount);
+            }
+        }
+
         emit VoteCast(modelId, msg.sender, amount, support);
     }
 
@@ -180,9 +226,10 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         ModelProposal storage proposal = proposals[modelId];
         require(proposal.proposalTime > 0, "Proposal does not exist");
         require(!proposal.executed, "Already executed");
-        require(block.timestamp > proposal.proposalTime + PROPOSAL_DURATION, "Voting still active");
+        require(block.timestamp > proposal.endTime, "Voting still active");
 
         proposal.executed = true;
+        lastProposalExecutionTime[modelId] = block.timestamp;
 
         // Check if proposal passed
         bool approved = proposal.votesFor >= APPROVAL_THRESHOLD &&
@@ -201,7 +248,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
 
         // Return proposal fee to proposer if approved
         if (approved) {
-            governanceToken.transfer(proposal.proposer, PROPOSAL_FEE);
+            governanceToken.safeTransfer(proposal.proposer, PROPOSAL_FEE);
         }
 
         // Remove from active proposals
@@ -216,14 +263,14 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     function withdrawVotes(bytes32 modelId) external {
         ModelProposal storage proposal = proposals[modelId];
         require(proposal.executed ||
-                block.timestamp > proposal.proposalTime + PROPOSAL_DURATION + 7 days,
+                block.timestamp > proposal.endTime + 7 days,
                 "Cannot withdraw yet");
 
         uint256 amount = votes[modelId][msg.sender];
         require(amount > 0, "No votes to withdraw");
 
         votes[modelId][msg.sender] = 0;
-        governanceToken.transfer(msg.sender, amount);
+        governanceToken.safeTransfer(msg.sender, amount);
     }
 
     /**
@@ -231,6 +278,15 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
      */
     function isModelApproved(bytes32 modelId) external view returns (bool) {
         return models[modelId].active;
+    }
+
+    /**
+     * @notice Check if a model is owner-trusted (tier 1)
+     * @param modelId The model identifier
+     * @return True if model is trusted (approvalTier == 1 and active)
+     */
+    function isTrustedModel(bytes32 modelId) external view returns (bool) {
+        return models[modelId].approvalTier == 1 && models[modelId].active;
     }
 
     /**
@@ -280,16 +336,48 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     }
 
     /**
-     * @notice Remove from active proposals list
+     * @notice Remove from active proposals list using O(1) indexed removal
+     * @dev Uses swap-and-pop with index tracking for gas efficiency
      */
     function _removeFromActiveProposals(bytes32 modelId) private {
-        for (uint i = 0; i < activeProposals.length; i++) {
-            if (activeProposals[i] == modelId) {
-                activeProposals[i] = activeProposals[activeProposals.length - 1];
-                activeProposals.pop();
-                break;
-            }
+        uint256 index = activeProposalIndex[modelId];
+        uint256 lastIndex = activeProposals.length - 1;
+
+        if (index != lastIndex) {
+            // Swap with last element
+            bytes32 lastProposal = activeProposals[lastIndex];
+            activeProposals[index] = lastProposal;
+            activeProposalIndex[lastProposal] = index;
         }
+
+        // Remove last element
+        activeProposals.pop();
+        delete activeProposalIndex[modelId];
+    }
+
+    /**
+     * @notice Check if re-proposal cooldown has passed
+     * @dev Reverts if within cooldown period after a previous proposal was executed
+     */
+    function _checkReproposalCooldown(bytes32 modelId) internal view {
+        uint256 lastExecution = lastProposalExecutionTime[modelId];
+        if (lastExecution > 0) {
+            require(
+                block.timestamp >= lastExecution + REPROPOSAL_COOLDOWN,
+                "Must wait cooldown period"
+            );
+        }
+    }
+
+    /**
+     * @notice Clear old executed proposal data to allow re-proposal
+     * @dev Deletes proposal if executed, reverts if active proposal exists
+     */
+    function _clearOldProposal(bytes32 modelId) internal {
+        if (proposals[modelId].executed) {
+            delete proposals[modelId];
+        }
+        require(proposals[modelId].endTime == 0, "Active proposal exists");
     }
 
     /**
@@ -314,7 +402,6 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
                     timestamp: block.timestamp
                 });
 
-                trustedModels[modelId] = true;
                 modelList.push(modelId);
 
                 emit ModelAdded(modelId, repos[i], fileNames[i], 1);

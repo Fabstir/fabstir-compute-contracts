@@ -67,8 +67,8 @@ contract UpgradeFlowIntegrationTest is Test {
 
     bytes32 public modelId1;
 
-    uint256 constant FEE_BASIS_POINTS = 1000;
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000;
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
@@ -117,8 +117,8 @@ contract UpgradeFlowIntegrationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         jobMarketplace = JobMarketplaceWithModelsUpgradeable(payable(jobMarketplaceProxy));
@@ -232,8 +232,8 @@ contract UpgradeFlowIntegrationTest is Test {
         assertEq(jobMarketplaceV2.nextJobId(), nextJobIdBefore, "nextJobId preserved");
         assertEq(address(jobMarketplaceV2.nodeRegistry()), address(nodeRegistry), "NodeRegistry reference preserved");
         assertEq(address(jobMarketplaceV2.hostEarnings()), address(hostEarnings), "HostEarnings reference preserved");
-        assertEq(jobMarketplaceV2.FEE_BASIS_POINTS(), FEE_BASIS_POINTS, "Fee preserved");
-        assertEq(jobMarketplaceV2.DISPUTE_WINDOW(), DISPUTE_WINDOW, "Dispute window preserved");
+        assertEq(jobMarketplaceV2.feeBasisPoints(), feeBasisPoints, "Fee preserved");
+        assertEq(jobMarketplaceV2.disputeWindow(), disputeWindow, "Dispute window preserved");
 
         // Step 7: Verify session data preserved
         (

@@ -29,8 +29,8 @@ contract JobMarketplaceInitializationTest is Test {
 
     bytes32 public modelId1;
 
-    uint256 constant FEE_BASIS_POINTS = 1000; // 10%
-    uint256 constant DISPUTE_WINDOW = 30; // 30 seconds
+    uint256 constant feeBasisPoints = 1000; // 10%
+    uint256 constant disputeWindow = 30; // 30 seconds
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
@@ -80,8 +80,8 @@ contract JobMarketplaceInitializationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(proxyAddr));
@@ -128,11 +128,11 @@ contract JobMarketplaceInitializationTest is Test {
     }
 
     function test_InitializeSetsFeeBasisPoints() public view {
-        assertEq(marketplace.FEE_BASIS_POINTS(), FEE_BASIS_POINTS);
+        assertEq(marketplace.feeBasisPoints(), feeBasisPoints);
     }
 
     function test_InitializeSetsDisputeWindow() public view {
-        assertEq(marketplace.DISPUTE_WINDOW(), DISPUTE_WINDOW);
+        assertEq(marketplace.disputeWindow(), disputeWindow);
     }
 
     function test_InitializeSetsTreasuryToOwner() public view {
@@ -148,8 +148,8 @@ contract JobMarketplaceInitializationTest is Test {
         marketplace.initialize(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            FEE_BASIS_POINTS,
-            DISPUTE_WINDOW
+            feeBasisPoints,
+            disputeWindow
         );
     }
 
@@ -162,8 +162,8 @@ contract JobMarketplaceInitializationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(0),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         );
     }
@@ -177,8 +177,8 @@ contract JobMarketplaceInitializationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(0)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         );
     }
@@ -193,7 +193,7 @@ contract JobMarketplaceInitializationTest is Test {
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
                 10001, // > 10000
-                DISPUTE_WINDOW
+                disputeWindow
             ))
         );
     }
@@ -207,7 +207,7 @@ contract JobMarketplaceInitializationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
+                feeBasisPoints,
                 0
             ))
         );
@@ -218,8 +218,8 @@ contract JobMarketplaceInitializationTest is Test {
         implementation.initialize(
             address(nodeRegistry),
             payable(address(hostEarnings)),
-            FEE_BASIS_POINTS,
-            DISPUTE_WINDOW
+            feeBasisPoints,
+            disputeWindow
         );
     }
 

@@ -44,8 +44,8 @@ contract ProofVerificationE2ETest is Test {
 
     bytes32 public modelId;
 
-    uint256 constant FEE_BASIS_POINTS = 1000;
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000;
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
@@ -104,8 +104,8 @@ contract ProofVerificationE2ETest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
@@ -200,7 +200,7 @@ contract ProofVerificationE2ETest is Test {
         assertEq(tokensUsed, tokensClaimed, "Tokens should be credited");
 
         // Step 7: Complete the session
-        vm.warp(block.timestamp + DISPUTE_WINDOW + 1);
+        vm.warp(block.timestamp + disputeWindow + 1);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmConversationCID");
 
@@ -501,7 +501,7 @@ contract ProofVerificationE2ETest is Test {
         uint256 tokensClaimed
     ) internal view returns (bytes memory) {
         // Create the message hash that will be signed
-        // Must match ProofSystem._verifyEKZL: keccak256(proofHash, prover, claimedTokens)
+        // Must match ProofSystem._verifyHostSignature: keccak256(proofHash, prover, claimedTokens)
         bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed));
 
         // Create Ethereum signed message hash (EIP-191)

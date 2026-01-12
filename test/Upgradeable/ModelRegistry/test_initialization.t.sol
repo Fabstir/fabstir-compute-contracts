@@ -90,7 +90,7 @@ contract ModelRegistryInitializationTest is Test {
 
         bytes32 modelId = registry.getModelId(repo, fileName);
         assertTrue(registry.isModelApproved(modelId));
-        assertTrue(registry.trustedModels(modelId));
+        assertTrue(registry.isTrustedModel(modelId));
         assertEq(registry.getModelHash(modelId), hash);
     }
 

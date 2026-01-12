@@ -96,7 +96,7 @@ contract ProofSystemDeploymentScriptTest is Test {
         uint256 claimedTokens = 100;
         bytes memory proof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystem.verifyEKZL(proof, prover, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, prover, claimedTokens);
         assertTrue(result);
     }
 

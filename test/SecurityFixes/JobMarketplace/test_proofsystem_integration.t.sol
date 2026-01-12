@@ -45,8 +45,8 @@ contract ProofSystemIntegrationTest is Test {
     bytes32 public modelId;
     uint256 public sessionId;
 
-    uint256 constant FEE_BASIS_POINTS = 1000;
-    uint256 constant DISPUTE_WINDOW = 30;
+    uint256 constant feeBasisPoints = 1000;
+    uint256 constant disputeWindow = 30;
     uint256 constant MIN_STAKE = 1000 * 10**18;
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
@@ -106,8 +106,8 @@ contract ProofSystemIntegrationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
@@ -252,8 +252,8 @@ contract ProofSystemIntegrationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         JobMarketplaceWithModelsUpgradeable marketplaceNoProof = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
@@ -328,8 +328,8 @@ contract ProofSystemIntegrationTest is Test {
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
                 address(nodeRegistry),
                 payable(address(hostEarnings)),
-                FEE_BASIS_POINTS,
-                DISPUTE_WINDOW
+                feeBasisPoints,
+                disputeWindow
             ))
         ));
         JobMarketplaceWithModelsUpgradeable marketplaceNoProof = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
@@ -382,7 +382,7 @@ contract ProofSystemIntegrationTest is Test {
         }
 
         // Create the message hash that will be signed
-        // Must match ProofSystem._verifyEKZL: keccak256(proofHash, prover, claimedTokens)
+        // Must match ProofSystem._verifyHostSignature: keccak256(proofHash, prover, claimedTokens)
         bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed));
 
         // Create Ethereum signed message hash (EIP-191)

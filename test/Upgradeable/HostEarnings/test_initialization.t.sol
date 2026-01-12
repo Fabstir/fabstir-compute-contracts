@@ -269,12 +269,24 @@ contract HostEarningsInitializationTest is Test {
     // Receive ETH Tests
     // ============================================================
 
-    function test_ReceiveETHWorks() public {
+    function test_ReceiveETH_FromAuthorizedCaller_Works() public {
         uint256 balanceBefore = address(hostEarnings).balance;
 
+        // Only authorized callers can send ETH directly
+        vm.deal(authorizedCaller, 10 ether);
+        vm.prank(authorizedCaller);
         (bool success, ) = address(hostEarnings).call{value: 1 ether}("");
         assertTrue(success);
 
         assertEq(address(hostEarnings).balance, balanceBefore + 1 ether);
+    }
+
+    function test_ReceiveETH_FromUnauthorized_Reverts() public {
+        // Unauthorized addresses cannot send ETH directly
+        address unauthorized = address(0x999);
+        vm.deal(unauthorized, 10 ether);
+        vm.prank(unauthorized);
+        (bool success, ) = address(hostEarnings).call{value: 1 ether}("");
+        assertFalse(success, "Should reject ETH from unauthorized sender");
     }
 }
