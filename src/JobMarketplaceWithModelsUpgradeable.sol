@@ -49,6 +49,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 tokensClaimed;
         uint256 timestamp;
         bool verified;
+        string deltaCID;  // Delta CID for incremental proof storage
     }
 
     // Session job structure
@@ -147,7 +148,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Events
     event SessionJobCreated(uint256 indexed jobId, address indexed depositor, address indexed host, uint256 deposit);
     event ProofSubmitted(
-        uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID
+        uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID, string deltaCID
     );
     event SessionCompleted(uint256 indexed jobId, uint256 totalTokensUsed, uint256 hostEarnings, uint256 userRefund);
     // Event that tracks who completed the session (anyone-can-complete pattern)
@@ -578,7 +579,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 tokensClaimed,
         bytes32 proofHash,
         bytes calldata signature,
-        string calldata proofCID
+        string calldata proofCID,
+        string calldata deltaCID
     ) external nonReentrant whenNotPaused {
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
@@ -618,14 +620,15 @@ contract JobMarketplaceWithModelsUpgradeable is
                 proofHash: proofHash,
                 tokensClaimed: tokensClaimed,
                 timestamp: block.timestamp,
-                verified: verified
+                verified: verified,
+                deltaCID: deltaCID
             })
         );
 
         session.tokensUsed = newTotal;
         session.lastProofTime = block.timestamp;
 
-        emit ProofSubmitted(jobId, msg.sender, tokensClaimed, proofHash, proofCID);
+        emit ProofSubmitted(jobId, msg.sender, tokensClaimed, proofHash, proofCID, deltaCID);
     }
 
     // ============================================================
@@ -989,16 +992,17 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @return tokensClaimed Number of tokens claimed in this proof
      * @return timestamp When the proof was submitted
      * @return verified Whether the proof was cryptographically verified
+     * @return deltaCID The delta CID for incremental proof storage
      */
     function getProofSubmission(uint256 sessionId, uint256 proofIndex)
         external
         view
-        returns (bytes32 proofHash, uint256 tokensClaimed, uint256 timestamp, bool verified)
+        returns (bytes32 proofHash, uint256 tokensClaimed, uint256 timestamp, bool verified, string memory deltaCID)
     {
         SessionJob storage session = sessionJobs[sessionId];
         require(proofIndex < session.proofs.length, "Proof index out of bounds");
         ProofSubmission storage proof = session.proofs[proofIndex];
-        return (proof.proofHash, proof.tokensClaimed, proof.timestamp, proof.verified);
+        return (proof.proofHash, proof.tokensClaimed, proof.timestamp, proof.verified, proof.deltaCID);
     }
 
     // ============================================================
