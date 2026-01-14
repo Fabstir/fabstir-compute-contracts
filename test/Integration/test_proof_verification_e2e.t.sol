@@ -187,10 +187,10 @@ contract ProofVerificationE2ETest is Test {
 
         // Step 4: Host submits signed proof
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID1");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID1", "");
 
         // Step 5: Verify proof was accepted and marked as verified
-        (bytes32 storedHash, uint256 storedTokens, , bool verified) = marketplace.getProofSubmission(sessionId, 0);
+        (bytes32 storedHash, uint256 storedTokens, , bool verified, ) = marketplace.getProofSubmission(sessionId, 0);
         assertEq(storedHash, proofHash, "Proof hash should match");
         assertEq(storedTokens, tokensClaimed, "Tokens claimed should match");
         assertTrue(verified, "Proof should be verified");
@@ -240,10 +240,10 @@ contract ProofVerificationE2ETest is Test {
 
         // 4. Host submits on-chain
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID", "");
 
         // Verify proof accepted
-        (,,, bool verified) = marketplace.getProofSubmission(sessionId, 0);
+        (,,, bool verified, ) = marketplace.getProofSubmission(sessionId, 0);
         assertTrue(verified, "Off-chain signed proof should be verified");
     }
 
@@ -274,7 +274,7 @@ contract ProofVerificationE2ETest is Test {
             bytes memory signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensPerProof);
 
             vm.prank(host1);
-            marketplace.submitProofOfWork(sessionId, tokensPerProof, proofHash, signature, "QmProofCID");
+            marketplace.submitProofOfWork(sessionId, tokensPerProof, proofHash, signature, "QmProofCID", "");
 
             // Advance time between proofs using explicit value
             baseTime += 1;
@@ -283,7 +283,7 @@ contract ProofVerificationE2ETest is Test {
 
         // Verify all 5 proofs are marked as verified
         for (uint256 i = 0; i < 5; i++) {
-            (,,, bool verified) = marketplace.getProofSubmission(sessionId, i);
+            (,,, bool verified, ) = marketplace.getProofSubmission(sessionId, i);
             assertTrue(verified, "All proofs should be verified");
         }
 
@@ -325,10 +325,10 @@ contract ProofVerificationE2ETest is Test {
 
         // Host1 can use their own signature - should succeed
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId1, tokensClaimed, proofHash, host1Signature, "QmProofCID");
+        marketplace.submitProofOfWork(sessionId1, tokensClaimed, proofHash, host1Signature, "QmProofCID", "");
 
         // Verify proof was accepted for host1's session
-        (,,, bool verified) = marketplace.getProofSubmission(sessionId1, 0);
+        (,,, bool verified, ) = marketplace.getProofSubmission(sessionId1, 0);
         assertTrue(verified, "Host1's signature should work for host1's session");
 
         // Generate different proofHash for host2 (cannot reuse same proofHash)
@@ -340,7 +340,7 @@ contract ProofVerificationE2ETest is Test {
 
         vm.prank(host2);
         vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId2, tokensClaimed, proofHash2, host1SignatureForHost2, "QmProofCID");
+        marketplace.submitProofOfWork(sessionId2, tokensClaimed, proofHash2, host1SignatureForHost2, "QmProofCID", "");
     }
 
     /**
@@ -378,15 +378,15 @@ contract ProofVerificationE2ETest is Test {
 
         // Host1 uses their signature on their session
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId1, tokensClaimed, proofHash1, sig1, "QmCID1");
+        marketplace.submitProofOfWork(sessionId1, tokensClaimed, proofHash1, sig1, "QmCID1", "");
 
         // Host2 uses their signature on their session
         vm.prank(host2);
-        marketplace.submitProofOfWork(sessionId2, tokensClaimed, proofHash2, sig2, "QmCID2");
+        marketplace.submitProofOfWork(sessionId2, tokensClaimed, proofHash2, sig2, "QmCID2", "");
 
         // Both proofs should be verified
-        (,,, bool verified1) = marketplace.getProofSubmission(sessionId1, 0);
-        (,,, bool verified2) = marketplace.getProofSubmission(sessionId2, 0);
+        (,,, bool verified1, ) = marketplace.getProofSubmission(sessionId1, 0);
+        (,,, bool verified2, ) = marketplace.getProofSubmission(sessionId2, 0);
 
         assertTrue(verified1, "Host1's proof should be verified");
         assertTrue(verified2, "Host2's proof should be verified");
@@ -416,7 +416,7 @@ contract ProofVerificationE2ETest is Test {
 
         vm.prank(host1);
         vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, tamperedSignature, "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, tamperedSignature, "QmProofCID", "");
     }
 
     /**
@@ -443,7 +443,7 @@ contract ProofVerificationE2ETest is Test {
         // Try to claim 600 tokens - should fail because signature was for 500
         vm.prank(host1);
         vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, claimedTokens, proofHash, signature, "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, claimedTokens, proofHash, signature, "QmProofCID", "");
     }
 
     /**
@@ -480,10 +480,10 @@ contract ProofVerificationE2ETest is Test {
         bytes memory signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensClaimed);
 
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID", "");
 
         // Verify proof is verified
-        (,,, bool verified) = marketplace.getProofSubmission(sessionId, 0);
+        (,,, bool verified, ) = marketplace.getProofSubmission(sessionId, 0);
         assertTrue(verified, "USDC session proof should be verified");
     }
 

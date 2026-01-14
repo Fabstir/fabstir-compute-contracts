@@ -174,7 +174,7 @@ contract ProofSystemIntegrationTest is Test {
         bytes memory signature = _generateHostSignature(proofHash, host, tokensClaimed);
 
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
 
         // Verify tokens were credited (proof was accepted)
         (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
@@ -198,7 +198,7 @@ contract ProofSystemIntegrationTest is Test {
 
         vm.prank(host);
         vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, invalidSignature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, invalidSignature, "QmTestCID", "");
     }
 
     /**
@@ -214,7 +214,7 @@ contract ProofSystemIntegrationTest is Test {
         // Host submits proof but with attacker's signature
         vm.prank(host);
         vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, attackerSignature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, attackerSignature, "QmTestCID", "");
     }
 
     /**
@@ -229,7 +229,7 @@ contract ProofSystemIntegrationTest is Test {
 
         // First submission should succeed
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
 
         // Advance time for rate limiting
         vm.warp(block.timestamp + 5);
@@ -237,7 +237,7 @@ contract ProofSystemIntegrationTest is Test {
         // Second submission with same proofHash should fail (replay attack)
         vm.prank(host);
         vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID2");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID2", "");
     }
 
     /**
@@ -284,7 +284,7 @@ contract ProofSystemIntegrationTest is Test {
 
         vm.prank(host);
         // Should NOT revert - graceful degradation
-        marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, dummySignature, "QmTestCID");
+        marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, dummySignature, "QmTestCID", "");
 
         // Verify tokens were credited
         (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplaceNoProof.sessionJobs(newSessionId);
@@ -301,14 +301,14 @@ contract ProofSystemIntegrationTest is Test {
         bytes memory signature = _generateHostSignature(proofHash, host, tokensClaimed);
 
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
 
         // Get the proof submission and check verified flag
         (
             bytes32 storedHash,
             uint256 storedTokens,
             ,
-            bool verified
+            bool verified,
         ) = marketplace.getProofSubmission(sessionId, 0);
 
         assertEq(storedHash, proofHash, "Proof hash should match");
@@ -353,10 +353,10 @@ contract ProofSystemIntegrationTest is Test {
         dummySignature[64] = 0x1b;
 
         vm.prank(host);
-        marketplaceNoProof.submitProofOfWork(newSessionId, 500, proofHash, dummySignature, "QmTestCID");
+        marketplaceNoProof.submitProofOfWork(newSessionId, 500, proofHash, dummySignature, "QmTestCID", "");
 
         // Get proof and check verified is false
-        (,,, bool verified) = marketplaceNoProof.getProofSubmission(newSessionId, 0);
+        (,,, bool verified, ) = marketplaceNoProof.getProofSubmission(newSessionId, 0);
         assertFalse(verified, "Proof should NOT be verified when ProofSystem not configured");
     }
 

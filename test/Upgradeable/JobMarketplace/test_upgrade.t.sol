@@ -414,7 +414,7 @@ contract JobMarketplaceUpgradeTest is Test {
         vm.warp(block.timestamp + 1);
 
         vm.prank(host1);
-        marketplaceV2.submitProofOfWork(1, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID");
+        marketplaceV2.submitProofOfWork(1, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
 
         // Verify tokens used updated (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 17 return values (all except ProofSubmission[] array)

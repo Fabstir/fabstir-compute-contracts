@@ -167,7 +167,7 @@ contract ProofSignatureRequiredTest is Test {
 
         vm.prank(host);
         // NEW 5-parameter call
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
 
         // Verify proof was stored - use tuple unpacking for all 17 fields
         // SessionJob: id, depositor, host, paymentToken, deposit, pricePerToken, tokensUsed,
@@ -190,7 +190,7 @@ contract ProofSignatureRequiredTest is Test {
 
         vm.prank(host);
         vm.expectRevert("Invalid signature length");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, invalidSignature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, invalidSignature, "QmTestCID", "");
     }
 
     /**
@@ -204,7 +204,7 @@ contract ProofSignatureRequiredTest is Test {
 
         vm.prank(host);
         vm.expectRevert("Invalid signature length");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, emptySignature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, emptySignature, "QmTestCID", "");
     }
 
     /**
@@ -219,7 +219,7 @@ contract ProofSignatureRequiredTest is Test {
 
         vm.prank(host);
         vm.expectRevert("Invalid signature length");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, tooLongSignature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, tooLongSignature, "QmTestCID", "");
     }
 
     /**
@@ -234,7 +234,7 @@ contract ProofSignatureRequiredTest is Test {
         assertEq(signature.length, 65, "Signature should be 65 bytes");
 
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
 
         // Success - no revert
     }
@@ -249,7 +249,7 @@ contract ProofSignatureRequiredTest is Test {
         bytes memory sig1 = _generateHostSignature(proofHash1, tokens1);
 
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokens1, proofHash1, sig1, "QmCID1");
+        marketplace.submitProofOfWork(sessionId, tokens1, proofHash1, sig1, "QmCID1", "");
 
         // Advance time for rate limiting
         vm.warp(block.timestamp + 5);
@@ -260,7 +260,7 @@ contract ProofSignatureRequiredTest is Test {
         bytes memory sig2 = _generateHostSignature(proofHash2, tokens2);
 
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokens2, proofHash2, sig2, "QmCID2");
+        marketplace.submitProofOfWork(sessionId, tokens2, proofHash2, sig2, "QmCID2", "");
 
         // Verify total tokens
         (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);

@@ -215,7 +215,7 @@ contract DeployAllUpgradeableTest is Test {
         // Step 4: Submit proof
         vm.warp(100);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof");
+        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof", "");
 
         // Step 5: Complete session
         vm.prank(user);

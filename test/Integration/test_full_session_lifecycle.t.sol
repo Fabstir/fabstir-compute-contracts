@@ -144,7 +144,7 @@ contract FullSessionLifecycleTest is Test {
             totalTokensClaimed += tokensClaimed;
 
             vm.prank(host);
-            marketplace.submitProofOfWork(jobId, tokensClaimed, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID);
+            marketplace.submitProofOfWork(jobId, tokensClaimed, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
         }
 
         // Verify tokens were tracked (tokensUsed is 7th field, 17 total excluding array)
@@ -193,7 +193,7 @@ contract FullSessionLifecycleTest is Test {
         vm.warp(block.timestamp + 1); // Allow enough tokens
 
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, 100, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID);
+        marketplace.submitProofOfWork(jobId, 100, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
 
         // Step 3: Host goes offline (time passes beyond 3x proofInterval)
         vm.warp(block.timestamp + 400); // 4x proofInterval
@@ -249,7 +249,7 @@ contract FullSessionLifecycleTest is Test {
         for (uint256 i = 0; i < 3; i++) {
             vm.warp(block.timestamp + 1); // Allow enough tokens
             vm.prank(host);
-            marketplace.submitProofOfWork(jobIds[i], tokens[i], DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID);
+            marketplace.submitProofOfWork(jobIds[i], tokens[i], DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
         }
 
         // Wait for dispute window
@@ -286,7 +286,7 @@ contract FullSessionLifecycleTest is Test {
 
         // Host submits some proofs (MIN_PROVEN_TOKENS = 100)
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, 100, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID);
+        marketplace.submitProofOfWork(jobId, 100, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
 
         // Depositor decides to end early - NO dispute window needed for depositor
         uint256 depositorBalanceBefore = depositor.balance;

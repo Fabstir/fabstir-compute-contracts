@@ -410,7 +410,8 @@ contract DoubleSpendPreventionTest is Test {
             1000,
             bytes32(uint256(0x1234)),
             DUMMY_SIG,
-            "QmProof"
+            "QmProof",
+            ""
         );
 
         // Complete session

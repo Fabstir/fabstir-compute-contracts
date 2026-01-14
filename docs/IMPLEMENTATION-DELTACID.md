@@ -15,9 +15,9 @@ Add `deltaCID` parameter to `submitProofOfWork` function and `ProofSubmitted` ev
 |-------|-------------|--------|
 | Phase 1 | Write Tests First (RED) | ✅ Complete |
 | Phase 2 | Contract Implementation (GREEN) | ✅ Complete |
-| Phase 3 | Update Existing Tests | Pending |
-| Phase 4 | Deployment | Pending |
-| Phase 5 | Documentation & ABI Export | Pending |
+| Phase 3 | Update Existing Tests | ✅ Complete |
+| Phase 4 | Deployment | ⏸️ Blocked (wallet needs ETH) |
+| Phase 5 | Documentation & ABI Export | ⏸️ Blocked (needs deploy + permissions) |
 
 **Breaking Changes:**
 - `submitProofOfWork` signature: 5 → 6 parameters
@@ -265,7 +265,7 @@ function getProofSubmission(uint256 sessionId, uint256 proofIndex)
 | Task | Status | Description |
 |------|--------|-------------|
 | [x] | Run deltaCID tests | Contract compiles with `forge build --skip test` |
-| [ ] | Verify all pass | All 5 tests should pass |
+| [x] | Verify all pass | All 5 deltaCID tests pass |
 
 **Verification Command:**
 ```bash
@@ -283,20 +283,20 @@ forge test --match-path test/JobMarketplace/test_deltaCID.t.sol -vvv
 
 | Task | Status | Description |
 |------|--------|-------------|
-| [ ] | Update `test/Integration/test_proof_verification_e2e.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/Integration/test_full_session_lifecycle.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/Integration/test_fund_safety.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/Integration/test_host_validation_e2e.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/SecurityFixes/JobMarketplace/test_balance_separation.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/SecurityFixes/JobMarketplace/test_double_spend_prevention.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/SecurityFixes/JobMarketplace/test_legacy_removal.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/SecurityFixes/JobMarketplace/test_proof_signature_required.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/SecurityFixes/JobMarketplace/test_proofsystem_integration.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/Upgradeable/JobMarketplace/test_upgrade.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/Upgradeable/JobMarketplace/test_pause.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/Upgradeable/Integration/test_deploy_all.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/Upgradeable/Integration/test_full_flow.t.sol` | Add `""` as 6th parameter |
-| [ ] | Update `test/Upgradeable/Integration/test_upgrade_flow.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/Integration/test_proof_verification_e2e.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/Integration/test_full_session_lifecycle.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/Integration/test_fund_safety.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/Integration/test_host_validation_e2e.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/SecurityFixes/JobMarketplace/test_balance_separation.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/SecurityFixes/JobMarketplace/test_double_spend_prevention.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/SecurityFixes/JobMarketplace/test_legacy_removal.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/SecurityFixes/JobMarketplace/test_proof_signature_required.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/SecurityFixes/JobMarketplace/test_proofsystem_integration.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/Upgradeable/JobMarketplace/test_upgrade.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/Upgradeable/JobMarketplace/test_pause.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/Upgradeable/Integration/test_deploy_all.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/Upgradeable/Integration/test_full_flow.t.sol` | Add `""` as 6th parameter |
+| [x] | Update `test/Upgradeable/Integration/test_upgrade_flow.t.sol` | Add `""` as 6th parameter |
 
 **Update Pattern:**
 ```solidity
@@ -313,8 +313,8 @@ marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "Q
 
 | Task | Status | Description |
 |------|--------|-------------|
-| [ ] | Update `test/Integration/test_proof_verification_e2e.t.sol` | Add 5th wildcard `_` |
-| [ ] | Update `test/SecurityFixes/JobMarketplace/test_proofsystem_integration.t.sol` | Add 5th wildcard `_` |
+| [x] | Update `test/Integration/test_proof_verification_e2e.t.sol` | Add 5th wildcard `_` |
+| [x] | Update `test/SecurityFixes/JobMarketplace/test_proofsystem_integration.t.sol` | Add 5th wildcard `_` |
 
 **Update Pattern:**
 ```solidity
@@ -331,9 +331,9 @@ marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "Q
 
 | Task | Status | Description |
 |------|--------|-------------|
-| [ ] | Run full test suite | `forge test -vvv` |
-| [ ] | Verify all tests pass | 415+ tests should pass |
-| [ ] | Document test count | Record total passing tests |
+| [x] | Run full test suite | `forge test -vvv` |
+| [x] | Verify all tests pass | 640 tests passed |
+| [x] | Document test count | 640 tests passing |
 
 **Verification Command:**
 ```bash
@@ -345,6 +345,17 @@ forge test -vvv
 
 ## Phase 4: Deployment
 
+### ⚠️ BLOCKED: Deployment Wallet Needs Funding
+
+**Deployer Address:** `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
+**Current Balance:** 0 ETH
+**Required:** ~0.01 ETH for deployment gas
+
+**To proceed:**
+1. Get Base Sepolia ETH from a faucet (e.g., https://docs.base.org/tools/network-faucets/)
+2. Fund the deployer address
+3. Re-run the deployment command
+
 ### Sub-phase 4.1: Build and Deploy Implementation
 
 **Prerequisites:**
@@ -353,9 +364,9 @@ forge test -vvv
 
 | Task | Status | Description |
 |------|--------|-------------|
-| [ ] | Build contracts | `forge build` |
-| [ ] | Verify build clean | No compiler warnings in main contracts |
-| [ ] | Deploy new implementation | Record deployed address |
+| [x] | Build contracts | `forge build` - All tests pass (640/640) |
+| [x] | Verify build clean | No compiler warnings in main contracts |
+| [ ] | Deploy new implementation | **BLOCKED: wallet has 0 ETH** |
 
 **Commands:**
 ```bash

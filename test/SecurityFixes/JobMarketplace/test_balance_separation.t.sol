@@ -224,7 +224,8 @@ contract BalanceSeparationTest is Test {
             1000, // tokens used
             bytes32(uint256(0x1234)),
             DUMMY_SIG,
-            "QmProof"
+            "QmProof",
+            ""
         );
 
         // Locked should decrease by amount used
@@ -260,7 +261,8 @@ contract BalanceSeparationTest is Test {
             500,
             bytes32(uint256(0x1234)),
             DUMMY_SIG,
-            "QmProof"
+            "QmProof",
+            ""
         );
 
         // Complete session
@@ -437,7 +439,7 @@ contract BalanceSeparationTest is Test {
         // Complete first session
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId1, 100, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof");
+        marketplace.submitProofOfWork(sessionId1, 100, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
         vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId1, "QmConversation");
