@@ -16,8 +16,8 @@ Add `deltaCID` parameter to `submitProofOfWork` function and `ProofSubmitted` ev
 | Phase 1 | Write Tests First (RED) | ✅ Complete |
 | Phase 2 | Contract Implementation (GREEN) | ✅ Complete |
 | Phase 3 | Update Existing Tests | ✅ Complete |
-| Phase 4 | Deployment | ⏸️ Blocked (wallet needs ETH) |
-| Phase 5 | Documentation & ABI Export | ⏸️ Blocked (needs deploy + permissions) |
+| Phase 4 | Deployment | ✅ Complete |
+| Phase 5 | Documentation & ABI Export | ✅ Complete |
 
 **Breaking Changes:**
 - `submitProofOfWork` signature: 5 → 6 parameters
@@ -345,16 +345,11 @@ forge test -vvv
 
 ## Phase 4: Deployment
 
-### ⚠️ BLOCKED: Deployment Wallet Needs Funding
+### ✅ Deployment Complete (January 14, 2026)
 
-**Deployer Address:** `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
-**Current Balance:** 0 ETH
-**Required:** ~0.01 ETH for deployment gas
-
-**To proceed:**
-1. Get Base Sepolia ETH from a faucet (e.g., https://docs.base.org/tools/network-faucets/)
-2. Fund the deployer address
-3. Re-run the deployment command
+**Deployer Address:** `0xbeaBB2a5AEd358aA0bd442dFFd793411519Bdc11`
+**New Implementation:** `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c`
+**Proxy Address:** `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` (unchanged)
 
 ### Sub-phase 4.1: Build and Deploy Implementation
 
@@ -366,7 +361,7 @@ forge test -vvv
 |------|--------|-------------|
 | [x] | Build contracts | `forge build` - All tests pass (640/640) |
 | [x] | Verify build clean | No compiler warnings in main contracts |
-| [ ] | Deploy new implementation | **BLOCKED: wallet has 0 ETH** |
+| [x] | Deploy new implementation | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
 
 **Commands:**
 ```bash
@@ -388,8 +383,8 @@ forge create src/JobMarketplaceWithModelsUpgradeable.sol:JobMarketplaceWithModel
 
 | Task | Status | Description |
 |------|--------|-------------|
-| [ ] | Upgrade proxy to new implementation | `upgradeToAndCall` |
-| [ ] | Record upgrade transaction hash | For audit trail |
+| [x] | Upgrade proxy to new implementation | `upgradeToAndCall` |
+| [x] | Record upgrade transaction hash | `0x7ad500e8e2a4d48f92473551803ab5c08c7f518b9538b2abbb7e75e2b727ef3f` |
 
 **Commands:**
 ```bash
@@ -406,9 +401,9 @@ cast send 0x3CaCbf3f448B420918A93a88706B26Ab27a3523E \
 
 | Task | Status | Description |
 |------|--------|-------------|
-| [ ] | Verify implementation address | `cast call` to check implementation |
-| [ ] | Verify contract code exists | `cast code` check |
-| [ ] | Test function signature | Verify submitProofOfWork accepts 6 params |
+| [x] | Verify implementation address | Confirmed: `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
+| [x] | Verify contract code exists | Non-empty bytecode confirmed |
+| [x] | Test function signature | Selector `0x3338f1e5` for 6-param function |
 
 **Verification Commands:**
 ```bash
@@ -431,8 +426,8 @@ cast code <NEW_IMPL_ADDRESS> --rpc-url "https://sepolia.base.org"
 
 | Task | Status | Description |
 |------|--------|-------------|
-| [ ] | Extract ABI from build output | `jq '.abi'` |
-| [ ] | Save to client-abis directory | Update existing file |
+| [x] | Extract ABI from build output | `jq '.abi'` |
+| [x] | Save to client-abis directory | Updated `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json` |
 
 **Command:**
 ```bash
@@ -444,9 +439,9 @@ cat out/JobMarketplaceWithModelsUpgradeable.sol/JobMarketplaceWithModelsUpgradea
 
 | Task | Status | Description |
 |------|--------|-------------|
-| [ ] | Add new implementation address | Under JobMarketplace section |
-| [ ] | Update "Last Updated" date | January 14, 2026 |
-| [ ] | Add deployment notes | deltaCID feature addition |
+| [x] | Add new implementation address | Updated in CLAUDE.md |
+| [x] | Update "Last Updated" date | January 14, 2026 |
+| [x] | Add deployment notes | deltaCID feature addition |
 
 ### Sub-phase 5.3: Update client-abis Documentation
 
@@ -473,8 +468,8 @@ cat out/JobMarketplaceWithModelsUpgradeable.sol/JobMarketplaceWithModelsUpgradea
 
 | Task | Status | Description |
 |------|--------|-------------|
-| [ ] | Update implementation address | New JobMarketplace implementation |
-| [ ] | Update submitProofOfWork docs | Add deltaCID parameter |
+| [x] | Update implementation address | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` in CLAUDE.md |
+| [x] | Update submitProofOfWork docs | deltaCID parameter documented |
 
 ---
 
