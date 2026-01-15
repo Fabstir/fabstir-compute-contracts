@@ -245,12 +245,12 @@ contract FullFlowIntegrationTest is Test {
         vm.warp(block.timestamp + 1); // Advance time
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), DUMMY_SIG, "QmProof1");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), DUMMY_SIG, "QmProof1", "");
 
         vm.warp(block.timestamp + 2);
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(456)), DUMMY_SIG, "QmProof2");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(456)), DUMMY_SIG, "QmProof2", "");
 
         // Step 4: Complete session
         vm.prank(user1);
@@ -303,10 +303,10 @@ contract FullFlowIntegrationTest is Test {
         vm.warp(block.timestamp + 1);
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(session1, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof1");
+        jobMarketplace.submitProofOfWork(session1, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof1", "");
 
         vm.prank(host2);
-        jobMarketplace.submitProofOfWork(session2, 500, bytes32(uint256(2)), DUMMY_SIG, "QmProof2");
+        jobMarketplace.submitProofOfWork(session2, 500, bytes32(uint256(2)), DUMMY_SIG, "QmProof2", "");
 
         // Complete both sessions
         vm.prank(user1);
@@ -348,7 +348,7 @@ contract FullFlowIntegrationTest is Test {
         // Complete flow
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");
@@ -374,7 +374,7 @@ contract FullFlowIntegrationTest is Test {
 
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), DUMMY_SIG, "QmProof");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), DUMMY_SIG, "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");

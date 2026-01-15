@@ -170,7 +170,8 @@ contract HostValidationE2ETest is Test {
             1000, // tokens claimed
             bytes32(uint256(0x1234)), // proof hash
             DUMMY_SIG,
-            "QmProofCID123"
+            "QmProofCID123",
+            ""
         );
 
         // Step 5: Complete session (wait for dispute window)
@@ -327,7 +328,8 @@ contract HostValidationE2ETest is Test {
             500,
             bytes32(uint256(0xABCD)),
             DUMMY_SIG,
-            "QmProof1"
+            "QmProof1",
+            ""
         );
 
         // Host unregisters (deactivates)
@@ -344,7 +346,8 @@ contract HostValidationE2ETest is Test {
             200, // Reduced to ensure within rate limit
             bytes32(uint256(0xEF01)),
             DUMMY_SIG,
-            "QmProof2"
+            "QmProof2",
+            ""
         );
 
         // Session can still be completed
@@ -378,7 +381,8 @@ contract HostValidationE2ETest is Test {
             1000,
             bytes32(uint256(0x1111)),
             DUMMY_SIG,
-            "QmProof"
+            "QmProof",
+            ""
         );
 
         // Host unregisters

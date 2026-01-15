@@ -1,5 +1,94 @@
 # Client ABIs Changelog
 
+## January 14, 2026 - deltaCID Support for Proof Submissions (BREAKING CHANGE)
+
+### ⚠️ SDK BREAKING CHANGE
+**`submitProofOfWork` signature changed from 5 to 6 parameters**
+
+A new `deltaCID` parameter has been added to track delta CIDs for incremental proof storage.
+
+**Old signature (no longer works):**
+```solidity
+function submitProofOfWork(
+    uint256 jobId,
+    uint256 tokensClaimed,
+    bytes32 proofHash,
+    bytes calldata signature,
+    string calldata proofCID
+)
+```
+
+**New signature (required):**
+```solidity
+function submitProofOfWork(
+    uint256 jobId,
+    uint256 tokensClaimed,
+    bytes32 proofHash,
+    bytes calldata signature,
+    string calldata proofCID,
+    string calldata deltaCID  // NEW: Delta CID for incremental storage
+)
+```
+
+### Additional Breaking Changes
+
+**`getProofSubmission` returns 5 values instead of 4:**
+```solidity
+// Old (4 values)
+(bytes32 proofHash, uint256 tokensClaimed, uint256 timestamp, bool verified)
+
+// New (5 values)
+(bytes32 proofHash, uint256 tokensClaimed, uint256 timestamp, bool verified, string deltaCID)
+```
+
+**`ProofSubmitted` event has new field:**
+```solidity
+// Old
+event ProofSubmitted(uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID);
+
+// New
+event ProofSubmitted(uint256 indexed jobId, address indexed host, uint256 tokensClaimed, bytes32 proofHash, string proofCID, string deltaCID);
+```
+
+### SDK Migration Guide
+```javascript
+// OLD (no longer works):
+await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, signature, proofCID);
+
+// NEW (required):
+const deltaCID = "QmDeltaCID..."; // or "" if no delta
+await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, signature, proofCID, deltaCID);
+
+// Reading proofs - OLD (4 values):
+const [proofHash, tokens, timestamp, verified] = await marketplace.getProofSubmission(sessionId, 0);
+
+// Reading proofs - NEW (5 values):
+const [proofHash, tokens, timestamp, verified, deltaCID] = await marketplace.getProofSubmission(sessionId, 0);
+```
+
+### Implementation Upgrade
+| Contract | Proxy (unchanged) | New Implementation |
+|----------|-------------------|-------------------|
+| JobMarketplace | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
+
+### ProofSubmission Struct Change
+```solidity
+struct ProofSubmission {
+    bytes32 proofHash;
+    uint256 tokensClaimed;
+    uint256 timestamp;
+    bool verified;
+    string deltaCID;  // NEW field
+}
+```
+
+### What is deltaCID?
+- Used for incremental/delta proof storage on decentralized networks
+- Allows tracking changes between consecutive proofs
+- Pass empty string `""` if not using delta storage
+
+---
+
 ## January 11, 2026 - ModelRegistry Voting Improvements (Phase 14-15)
 
 ### Security Audit Remediation

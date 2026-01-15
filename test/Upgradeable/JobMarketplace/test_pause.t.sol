@@ -264,7 +264,7 @@ contract JobMarketplacePauseTest is Test {
         // Try to submit proof
         vm.prank(host1);
         vm.expectRevert();
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
     }
 
     function test_SubmitProofWorksWhenUnpaused() public {
@@ -289,7 +289,7 @@ contract JobMarketplacePauseTest is Test {
 
         // Submit proof should work
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
 
         // Verify tokens used (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 17 return values (all except ProofSubmission[] array)
@@ -383,7 +383,7 @@ contract JobMarketplacePauseTest is Test {
         // Submit proof
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
 
         // Complete session
         vm.prank(user1);

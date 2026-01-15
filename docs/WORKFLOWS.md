@@ -1,7 +1,7 @@
 # Usage Workflows
 
-**Version:** 1.0
-**Last Updated:** January 9, 2026
+**Version:** 1.1
+**Last Updated:** January 15, 2026
 **Network:** Base Sepolia (Testnet)
 
 This document provides step-by-step guides for common operations with code examples.
@@ -155,7 +155,7 @@ console.log('Node info:', {
 ### Code Example (ETH Session)
 
 ```javascript
-const JOB_MARKETPLACE = '0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D';
+const JOB_MARKETPLACE = '0x3CaCbf3f448B420918A93a88706B26Ab27a3523E';
 const NODE_REGISTRY = '0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22';
 
 const marketplace = new ethers.Contract(JOB_MARKETPLACE, JobMarketplaceABI, signer);
@@ -183,10 +183,10 @@ const proofInterval = 100;  // Proof every 100 tokens
 
 const createTx = await marketplace.createSessionJobForModel(
   hostAddress,
+  modelId,           // modelId is 2nd parameter
   pricePerToken,
   maxDuration,
   proofInterval,
-  modelId,
   { value: depositAmount }
 );
 
@@ -224,12 +224,12 @@ await (await usdc.approve(JOB_MARKETPLACE, depositAmount)).wait();
 // Step 4: Create session with USDC
 const createTx = await marketplace.createSessionJobForModelWithToken(
   hostAddress,
-  stablePrice,
+  modelId,           // modelId is 2nd parameter
+  USDC_TOKEN,        // token address
+  depositAmount,     // deposit amount
+  stablePrice,       // price per token
   maxDuration,
-  proofInterval,
-  modelId,
-  USDC_TOKEN,
-  depositAmount
+  proofInterval
 );
 
 const receipt = await createTx.wait();
@@ -264,12 +264,16 @@ const receipt = await createTx.wait();
 ├─────────────────────────────────────────────────────────────┤
 │  1. Provide AI inference service off-chain                  │
 │  2. Track tokens consumed in the session                    │
-│  3. Create proof data and sign with host key                │
-│  4. Call submitProofOfWork() with:                          │
+│  3. Create proof hash and sign with host key                │
+│  4. Upload proof data to S5/IPFS, get proofCID & deltaCID   │
+│  5. Call submitProofOfWork() with:                          │
 │     - jobId: session identifier                             │
 │     - tokensClaimed: tokens since last proof                │
-│     - proof: signed message (proofHash + signature)         │
-│  5. Repeat every proofInterval tokens                       │
+│     - proofHash: keccak256 hash of proof data               │
+│     - signature: host's 65-byte signature                   │
+│     - proofCID: S5/IPFS CID of full proof                   │
+│     - deltaCID: S5/IPFS CID of delta since last proof       │
+│  6. Repeat every proofInterval tokens                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -277,13 +281,13 @@ const receipt = await createTx.wait();
 
 ```javascript
 // Host submits proof of work
-async function submitProof(jobId, tokensClaimed) {
+async function submitProof(jobId, tokensClaimed, proofCID, deltaCID) {
   const marketplace = new ethers.Contract(JOB_MARKETPLACE, JobMarketplaceABI, signer);
 
   // Get session details
   const session = await marketplace.sessionJobs(jobId);
 
-  // Create proof data
+  // Create proof hash from job data
   const proofHash = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
     ['uint256', 'uint256', 'address'],
     [jobId, tokensClaimed, signer.address]
@@ -292,14 +296,14 @@ async function submitProof(jobId, tokensClaimed) {
   // Sign the proof hash (EIP-191 personal sign)
   const signature = await signer.signMessage(ethers.getBytes(proofHash));
 
-  // Combine hash and signature into proof bytes
-  const proof = ethers.concat([proofHash, signature]);
-
-  // Submit proof
+  // Submit proof with all 6 parameters
   const tx = await marketplace.submitProofOfWork(
     jobId,
     tokensClaimed,
-    proof
+    proofHash,        // 32-byte hash
+    signature,        // 65-byte signature
+    proofCID,         // S5/IPFS CID of full proof data
+    deltaCID          // S5/IPFS CID of delta since last proof
   );
 
   const receipt = await tx.wait();
@@ -309,26 +313,43 @@ async function submitProof(jobId, tokensClaimed) {
 }
 
 // Example: Submit proofs during inference
-async function handleInference(jobId, proofInterval) {
+async function handleInference(jobId, proofInterval, s5Client) {
   let tokensGenerated = 0;
   let tokensSinceLastProof = 0;
+  let conversationLog = [];
+  let lastProofContent = null;
 
   // Simulated inference loop
   while (sessionActive) {
-    const newTokens = await generateTokens();  // Your AI inference
+    const { tokens: newTokens, content } = await generateTokens();  // Your AI inference
     tokensGenerated += newTokens;
     tokensSinceLastProof += newTokens;
+    conversationLog.push(content);
 
     // Submit proof when interval reached
     if (tokensSinceLastProof >= proofInterval) {
-      await submitProof(jobId, tokensSinceLastProof);
+      // Upload proof data to S5/IPFS
+      const proofData = JSON.stringify({ tokens: tokensSinceLastProof, content: conversationLog });
+      const proofCID = await s5Client.upload(proofData);
+
+      // Calculate delta from last proof
+      const deltaContent = lastProofContent
+        ? conversationLog.slice(lastProofContent.length)
+        : conversationLog;
+      const deltaCID = await s5Client.upload(JSON.stringify(deltaContent));
+
+      await submitProof(jobId, tokensSinceLastProof, proofCID, deltaCID);
+
+      lastProofContent = [...conversationLog];
       tokensSinceLastProof = 0;
     }
   }
 
   // Submit final proof for remaining tokens
-  if (tokensSinceLastProof > 0) {
-    await submitProof(jobId, tokensSinceLastProof);
+  if (tokensSinceLastProof >= 100) {  // MIN_PROVEN_TOKENS = 100
+    const proofCID = await s5Client.upload(JSON.stringify(conversationLog));
+    const deltaCID = await s5Client.upload(JSON.stringify(conversationLog.slice(lastProofContent?.length || 0)));
+    await submitProof(jobId, tokensSinceLastProof, proofCID, deltaCID);
   }
 }
 ```
@@ -344,9 +365,13 @@ async function handleInference(jobId, proofInterval) {
 │                                                             │
 │  signature = personalSign(proofHash)                        │
 │            = sign("\x19Ethereum Signed Message:\n32" + hash)│
+│            = 65 bytes (r: 32, s: 32, v: 1)                  │
 │                                                             │
-│  proof bytes = proofHash (32) + signature (65)              │
-│              = 97 bytes total                               │
+│  submitProofOfWork parameters:                              │
+│    - proofHash: bytes32 (32 bytes)                          │
+│    - signature: bytes (65 bytes)                            │
+│    - proofCID: string (S5/IPFS content identifier)          │
+│    - deltaCID: string (delta changes CID)                   │
 │                                                             │
 │  Verification: ECDSA.recover(ethHash, sig) == host         │
 │                                                             │
@@ -359,8 +384,11 @@ async function handleInference(jobId, proofInterval) {
 |-------|-------|----------|
 | `Only host can submit proof` | Caller is not session host | Only host can submit |
 | `Session not active` | Session completed/timed out | Cannot submit to inactive session |
-| `Invalid proof signature` | Signature verification failed | Check signing format |
-| `Tokens claimed exceed deposit` | Claiming more than deposited | Reduce tokens claimed |
+| `Invalid signature length` | Signature not 65 bytes | Ensure signature is exactly 65 bytes |
+| `Invalid proof signature` | Signature verification failed | Check signing format matches host address |
+| `Must claim minimum tokens` | tokensClaimed < 100 | Claim at least MIN_PROVEN_TOKENS (100) |
+| `Exceeds deposit` | Claiming more than deposited | Reduce tokens claimed |
+| `Excessive tokens claimed` | Rate limit exceeded | Wait longer between proofs |
 
 ---
 
@@ -376,16 +404,18 @@ async function handleInference(jobId, proofInterval) {
 ┌─────────────────────────────────────────────────────────────┐
 │              SESSION COMPLETION FLOW                         │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Host or Depositor calls completeSessionJob(jobId)       │
-│  2. Contract calculates:                                    │
+│  1. Upload conversation to S5/IPFS, get conversationCID     │
+│  2. Host or Depositor calls:                                │
+│     completeSessionJob(jobId, conversationCID)              │
+│  3. Contract calculates:                                    │
 │     - hostPayment = tokensProven × pricePerToken × 90%      │
 │     - treasuryFee = tokensProven × pricePerToken × 10%      │
 │     - refund = deposit - hostPayment - treasuryFee          │
-│  3. Payments distributed:                                   │
+│  4. Payments distributed:                                   │
 │     - Host payment → HostEarnings (credited, not sent)      │
 │     - Treasury fee → Accumulated in contract                │
 │     - Refund → Sent directly to depositor                   │
-│  4. Session marked as Completed                             │
+│  5. Session marked as Completed, conversationCID stored     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -393,31 +423,34 @@ async function handleInference(jobId, proofInterval) {
 
 ```javascript
 // Complete session (as host or depositor)
-async function completeSession(jobId) {
+async function completeSession(jobId, s5Client, conversationLog) {
   const marketplace = new ethers.Contract(JOB_MARKETPLACE, JobMarketplaceABI, signer);
 
   // Check session status first
   const session = await marketplace.sessionJobs(jobId);
-  if (session.status !== 1) {  // 1 = Active
+  if (session.status !== 0n) {  // 0 = Active, 1 = Completed, 2 = TimedOut
     throw new Error('Session is not active');
   }
 
-  // Complete the session
-  const tx = await marketplace.completeSessionJob(jobId);
+  // Upload conversation to S5/IPFS
+  const conversationCID = await s5Client.upload(JSON.stringify(conversationLog));
+
+  // Complete the session with conversationCID
+  const tx = await marketplace.completeSessionJob(jobId, conversationCID);
   const receipt = await tx.wait();
 
   // Parse completion event
   const event = receipt.logs.find(log => {
     try {
-      return marketplace.interface.parseLog(log)?.name === 'SessionJobCompleted';
+      return marketplace.interface.parseLog(log)?.name === 'SessionCompleted';
     } catch { return false; }
   });
 
   if (event) {
     const parsed = marketplace.interface.parseLog(event);
     console.log('✅ Session completed');
-    console.log('Host payment:', ethers.formatEther(parsed.args.hostPayment));
-    console.log('Refund:', ethers.formatEther(parsed.args.refund));
+    console.log('Host earnings:', ethers.formatEther(parsed.args.hostEarnings));
+    console.log('User refund:', ethers.formatEther(parsed.args.userRefund));
   }
 
   return receipt;

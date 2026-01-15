@@ -1,6 +1,6 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** January 11, 2026
+**Last Updated:** January 15, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 **PRICE_PRECISION:** 1000 (all prices multiplied by 1000 for sub-$1/million support)
 
@@ -27,13 +27,13 @@ const contracts = {
   usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 };
 
-// Implementation addresses (for verification only) - Updated Jan 9, 2026
+// Implementation addresses (for verification only) - Updated Jan 15, 2026
 const implementations = {
-  jobMarketplace: "0x26f27C19F80596d228D853dC39A204f0f6C45C7E",  // ⚠️ NEW
-  nodeRegistry: "0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7",    // ⚠️ Corrupt node fix (Jan 10)
-  modelRegistry: "0x8491af1f0D47f6367b56691dCA0F4996431fB0A5",   // ⚠️ NEW
-  proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // ⚠️ NEW
-  hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // ⚠️ NEW
+  jobMarketplace: "0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c",  // ⚠️ deltaCID support (Jan 14)
+  nodeRegistry: "0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7",    // Corrupt node fix (Jan 10)
+  modelRegistry: "0x8491af1f0D47f6367b56691dCA0F4996431fB0A5",   // Voting improvements (Jan 11)
+  proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // Phase 12 (Jan 9)
+  hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // Phase 12 (Jan 9)
 };
 ```
 
@@ -61,7 +61,7 @@ const GPT_OSS_20B = "0x7583557c14f71d2bf21d48ffb7cde9329f9494090869d2d311ea481b2
 Host registration and pricing management.
 
 **Proxy Address:** `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22`
-**Implementation:** `0x68298e2b74a106763aC99E3D973E98012dB5c75F`
+**Implementation:** `0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7`
 
 ### Constants
 
@@ -360,8 +360,8 @@ function isActiveNode(address operator) external view returns (bool)
 
 Session management and payments.
 
-**Proxy Address:** `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` ⚠️ NEW (Jan 9, 2026)
-**Implementation:** `0x26f27C19F80596d228D853dC39A204f0f6C45C7E`
+**Proxy Address:** `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E`
+**Implementation:** `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` (deltaCID support - Jan 14, 2026)
 
 ### Constants
 
@@ -546,7 +546,8 @@ function submitProofOfWork(
     uint256 tokensClaimed,  // Number of tokens in this proof
     bytes32 proofHash,      // SHA256 hash of STARK proof
     bytes calldata signature,  // Host's ECDSA signature (65 bytes)
-    string memory proofCID  // S5 CID where proof is stored
+    string calldata proofCID,  // S5 CID where full proof is stored
+    string calldata deltaCID   // S5 CID for delta since last proof (NEW - Jan 14, 2026)
 ) external
 ```
 
@@ -563,7 +564,8 @@ import { keccak256, solidityPacked, getBytes } from 'ethers';
 
 // Host submits signed proof after generating tokens
 const proofHash = keccak256(proofBytes);
-const proofCID = "bafyreib...";  // S5 storage CID
+const proofCID = "bafyreib...";  // S5 storage CID for full proof
+const deltaCID = "bafyreic...";  // S5 storage CID for delta changes
 const tokensClaimed = 1000;
 
 // 1. Generate signature
@@ -575,13 +577,14 @@ const dataHash = keccak256(
 );
 const signature = await hostWallet.signMessage(getBytes(dataHash));
 
-// 2. Submit with signature
+// 2. Submit with signature and CIDs
 await marketplace.submitProofOfWork(
   sessionId,
   tokensClaimed,
   proofHash,
   signature,
-  proofCID
+  proofCID,
+  deltaCID    // Can be "" if not tracking incremental changes
 );
 ```
 
@@ -597,15 +600,16 @@ function getProofSubmission(
     bytes32 proofHash,
     uint256 tokensClaimed,
     uint256 timestamp,
-    bool verified
+    bool verified,
+    string memory deltaCID    // NEW - Jan 14, 2026
 )
 ```
 
 **Example:**
 ```javascript
-const [proofHash, tokensClaimed, timestamp, verified] =
+const [proofHash, tokensClaimed, timestamp, verified, deltaCID] =
   await marketplace.getProofSubmission(sessionId, 0);
-console.log(`Proof verified: ${verified}`);
+console.log(`Proof verified: ${verified}, deltaCID: ${deltaCID}`);
 ```
 
 **Events:**
@@ -615,7 +619,8 @@ event ProofSubmitted(
     address indexed host,
     uint256 tokensClaimed,
     bytes32 proofHash,
-    string proofCID
+    string proofCID,
+    string deltaCID    // NEW - Jan 14, 2026
 );
 ```
 
@@ -891,7 +896,7 @@ marketplace.on("SessionJobCreated", async (jobId, requester, host, deposit) => {
   }
 });
 
-// 2. Submit signed proofs periodically
+// 2. Submit signed proofs periodically with CID evidence
 const tokensClaimed = 1000;
 const proofHash = keccak256(proofBytes);
 
@@ -901,16 +906,22 @@ const dataHash = keccak256(
 );
 const signature = await hostWallet.signMessage(getBytes(dataHash));
 
+// Upload proof data to S5/IPFS
+const proofCID = await s5Client.upload(proofData);
+const deltaCID = await s5Client.upload(deltaData);  // Incremental changes
+
 await marketplace.submitProofOfWork(
   sessionId,
   tokensClaimed,
   proofHash,
   signature,        // Host's ECDSA signature
-  "bafyreib..."     // S5 CID
+  proofCID,         // Full proof CID
+  deltaCID          // Delta CID (can be "" if not tracking)
 );
 
-// 3. Complete session when done
-await marketplace.completeSessionJob(sessionId, "bafyreic...");
+// 3. Complete session when done with conversation record
+const conversationCID = await s5Client.upload(conversationLog);
+await marketplace.completeSessionJob(sessionId, conversationCID);
 
 // 4. Withdraw earnings from HostEarnings contract
 const hostEarningsContract = new ethers.Contract(contracts.hostEarnings, HostEarningsABI, signer);
@@ -940,7 +951,7 @@ await hostEarningsContract.withdrawNative();
 |-------|-------------|
 | `SessionJobCreated(uint256 jobId, address requester, address host, uint256 deposit)` | Session created |
 | `SessionJobCreatedForModel(uint256 jobId, address requester, address host, bytes32 modelId, uint256 deposit)` | Model-aware session created |
-| `ProofSubmitted(uint256 jobId, address host, uint256 tokensClaimed, bytes32 proofHash, string proofCID)` | Proof of work submitted |
+| `ProofSubmitted(uint256 jobId, address host, uint256 tokensClaimed, bytes32 proofHash, string proofCID, string deltaCID)` | Proof of work submitted |
 | `SessionCompleted(uint256 jobId, address completedBy, uint256 tokensUsed, uint256 paymentAmount, uint256 refundAmount)` | Session completed |
 | `SessionTimedOut(uint256 jobId, uint256 hostEarnings, uint256 userRefund)` | Session timed out |
 | `DepositReceived(address account, address token, uint256 amount)` | Deposit received |
@@ -1006,9 +1017,9 @@ const config = {
   rpcUrl: "https://sepolia.base.org",
   explorer: "https://sepolia.basescan.org",
 
-  // UPGRADEABLE CONTRACTS (UUPS Proxies) - January 9, 2026
+  // UPGRADEABLE CONTRACTS (UUPS Proxies) - January 15, 2026
   contracts: {
-    jobMarketplace: "0x3CaCbf3f448B420918A93a88706B26Ab27a3523E",  // ⚠️ NEW
+    jobMarketplace: "0x3CaCbf3f448B420918A93a88706B26Ab27a3523E",
     nodeRegistry: "0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22",
     modelRegistry: "0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2",
     proofSystem: "0x5afB91977e69Cc5003288849059bc62d47E7deeb",
@@ -1017,13 +1028,13 @@ const config = {
     usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
   },
 
-  // Implementation addresses (for contract verification) - January 9, 2026
+  // Implementation addresses (for contract verification) - January 15, 2026
   implementations: {
-    jobMarketplace: "0x26f27C19F80596d228D853dC39A204f0f6C45C7E",  // ⚠️ NEW
-    nodeRegistry: "0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7",    // ⚠️ Corrupt node fix (Jan 10)
-    modelRegistry: "0x8491af1f0D47f6367b56691dCA0F4996431fB0A5",   // ⚠️ NEW
-    proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // ⚠️ NEW
-    hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // ⚠️ NEW
+    jobMarketplace: "0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c",  // deltaCID support (Jan 14)
+    nodeRegistry: "0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7",    // Corrupt node fix (Jan 10)
+    modelRegistry: "0x8491af1f0D47f6367b56691dCA0F4996431fB0A5",   // Voting improvements (Jan 11)
+    proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",     // Phase 12 (Jan 9)
+    hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a"     // Phase 12 (Jan 9)
   }
 };
 ```

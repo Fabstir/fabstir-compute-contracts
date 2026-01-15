@@ -1,8 +1,8 @@
 # Test Coverage Report
 
-**Generated:** January 11, 2026
+**Generated:** January 15, 2026
 **Test Framework:** Foundry/Forge
-**Total Tests:** 635 passing
+**Total Tests:** 640 passing
 
 ---
 
@@ -28,7 +28,7 @@
 | **ModelRegistryUpgradeable.sol** | 97.94% | 97.67% | 22.22% | 100% | LOW |
 | **ProofSystemUpgradeable.sol** | 89.47% | 89.04% | 23.81% | 100% | MEDIUM |
 | **HostEarningsUpgradeable.sol** | 87.32% | 82.09% | 8.57% | 100% | MEDIUM |
-| **ReentrancyGuardUpgradeable.sol** | 61.90% | 52.63% | 0.00% | 85.71% | LOW |
+| **ReentrancyGuardTransient.sol** | 61.90% | 52.63% | 0.00% | 85.71% | LOW (EIP-1153) |
 
 ---
 
@@ -36,7 +36,7 @@
 
 | Contract Area | Test Count | Coverage Focus |
 |---------------|------------|----------------|
-| JobMarketplace | 171 | Session lifecycle, proofs, payments |
+| JobMarketplace | 176 | Session lifecycle, proofs, payments, deltaCID |
 | ProofSystem | 83 | Verification, access control |
 | ModelRegistry | 94 | Governance, voting, anti-sniping, re-proposal |
 | HostEarnings | 61 | Withdrawals, credits |
@@ -102,8 +102,8 @@ test_SetTokenPricing_RejectsInactiveNode()
 |----------|------------------|-----|
 | `createSessionJobForModel()` | Partial | ETH path tested, edge cases missing |
 | `createSessionJobForModelWithToken()` | Partial | USDC path tested, edge cases missing |
-| `submitProofOfWork()` | Good | Branch coverage low |
-| `completeSessionJob()` | Good | Timeout scenarios under-tested |
+| `submitProofOfWork()` | Good | 6-param signature with deltaCID, branch coverage low |
+| `completeSessionJob()` | Good | 2-param signature with conversationCID, timeout scenarios under-tested |
 | `triggerSessionTimeout()` | Partial | Edge cases missing |
 
 ### Negative Cases Needed
@@ -116,23 +116,50 @@ test_CreateSession_RejectsInactiveHost()
 test_CreateSession_RejectsPriceBelowHostMinimum()
 test_CreateSession_RejectsWhenPaused()
 
-// Proof submission failures
+// Proof submission failures (6-param signature with deltaCID)
 test_SubmitProof_RejectsNonHost()
 test_SubmitProof_RejectsCompletedSession()
 test_SubmitProof_RejectsInvalidSignature()
 test_SubmitProof_RejectsZeroTokens()
 test_SubmitProof_RejectsExceedingDeposit()
+test_SubmitProof_ValidatesProofCIDFormat()  // NEW: CID validation
+test_SubmitProof_ValidatesDeltaCIDFormat()  // NEW: deltaCID validation
 
-// Completion failures
+// Completion failures (2-param signature with conversationCID)
 test_CompleteSession_RejectsNonParticipant()
 test_CompleteSession_RejectsAlreadyCompleted()
 test_CompleteSession_RejectsTimedOutSession()
+test_CompleteSession_RequiresConversationCID()  // NEW: conversationCID required
 
 // Timeout failures
 test_TriggerTimeout_RejectsActiveSession()
 test_TriggerTimeout_RejectsCompletedSession()
 test_TriggerTimeout_RejectsAlreadyTimedOut()
 ```
+
+---
+
+## Recent Additions: deltaCID Tests (January 14, 2026)
+
+The deltaCID feature was added to `submitProofOfWork()` to support incremental proof tracking on S5/IPFS.
+
+**New Test File:** `test/JobMarketplace/test_deltaCID.t.sol`
+
+| Test | Purpose |
+|------|---------|
+| `test_ProofSubmittedEventIncludesDeltaCID()` | Verify event emits deltaCID |
+| `test_DeltaCIDStoredInProofSubmission()` | Verify deltaCID stored in ProofSystem |
+| `test_MultipleProofsWithDifferentDeltaCIDs()` | Verify sequential proofs track different CIDs |
+| `test_EmptyDeltaCIDAllowed()` | Verify empty string is valid deltaCID |
+| `test_GetProofSubmissionReturnsDeltaCID()` | Verify getter returns deltaCID correctly |
+
+**Coverage Status:** ✅ All 5 tests passing
+
+**Related Changes:**
+- `submitProofOfWork()`: 5 params → 6 params (added `deltaCID`)
+- `getProofSubmission()`: 4 returns → 5 returns (added `deltaCID`)
+- `completeSessionJob()`: 1 param → 2 params (added `conversationCID`)
+- `ProofSubmitted` event: 5 fields → 6 fields (added `deltaCID`)
 
 ---
 
@@ -206,8 +233,8 @@ Branch coverage is critically low across all contracts (14.92% overall).
 
 ### P3: Low (Future)
 
-8. **ReentrancyGuard coverage** - Already protected
-   - Internal function coverage
+8. **ReentrancyGuardTransient coverage** - Already protected (EIP-1153)
+   - Internal function coverage (transient storage)
    - Estimated: 5 new tests
 
 ---
