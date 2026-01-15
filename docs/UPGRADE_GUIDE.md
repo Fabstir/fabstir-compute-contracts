@@ -1,6 +1,6 @@
 # UPGRADE_GUIDE.md - Contract Upgrade Procedures
 
-**Last Updated:** January 11, 2026
+**Last Updated:** January 15, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 
 ---
@@ -13,7 +13,7 @@ This guide documents the procedures for upgrading the Fabstir marketplace smart 
 
 | Contract | Proxy Address | Current Implementation |
 |----------|---------------|------------------------|
-| JobMarketplaceWithModelsUpgradeable | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` ⚠️ NEW | `0x26f27C19F80596d228D853dC39A204f0f6C45C7E` |
+| JobMarketplaceWithModelsUpgradeable | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
 | NodeRegistryWithModelsUpgradeable | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7` |
 | ModelRegistryUpgradeable | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` |
 | HostEarningsUpgradeable | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x8584AeAC9687613095D13EF7be4dE0A796F84D7a` |
@@ -343,7 +343,8 @@ When deploying to Base Mainnet:
 
 | Version | Date | Changes | Implementation |
 |---------|------|---------|----------------|
-| 2.0.0 | January 9, 2026 | Clean slate JobMarketplace deployment (no deprecated storage) | See table above |
+| 2.1.0 | January 14, 2026 | deltaCID support in submitProofOfWork (6 params) | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
+| 2.0.0 | January 9, 2026 | Clean slate JobMarketplace deployment (no deprecated storage) | `0x26f27C19F80596d228D853dC39A204f0f6C45C7E` |
 | 1.0.0 | December 14, 2025 | Initial upgradeable deployment | Legacy |
 
 ---

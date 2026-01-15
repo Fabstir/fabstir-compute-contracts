@@ -1,7 +1,7 @@
 # Fabstir Compute Contracts - Formal Requirements Specification
 
-**Version:** 1.0
-**Last Updated:** January 9, 2026
+**Version:** 1.1
+**Last Updated:** January 15, 2026
 **Status:** Production (Base Sepolia Testnet)
 
 ---
@@ -76,8 +76,8 @@ Fabstir Compute solves these problems by:
 | Function | Owner | Host | Depositor | Anyone |
 |----------|:-----:|:----:|:---------:|:------:|
 | `initialize()` | ✓ (once) | - | - | - |
-| `pause()` | ✓ | - | - | - |
-| `unpause()` | ✓ | - | - | - |
+| `pause()` | ✓** | - | - | - |
+| `unpause()` | ✓** | - | - | - |
 | `updateTreasury()` | ✓ | - | - | - |
 | `updateTokenMinDeposit()` | ✓ | - | - | - |
 | `createSessionJobForModel()` | - | - | ✓ | - |
@@ -90,6 +90,8 @@ Fabstir Compute solves these problems by:
 | `upgradeToAndCall()` | ✓ | - | - | - |
 
 *\* Only for sessions where actor is the host or depositor*
+
+*\*\* Treasury address can also call these functions*
 
 ### 3.2 NodeRegistryWithModelsUpgradeable
 
@@ -171,7 +173,7 @@ Fabstir Compute solves these problems by:
 | **FS-1** | Total withdrawable ≤ Total deposited - Total withdrawn | Balance tracking in sessionJobs |
 | **FS-2** | Host cannot claim more than session deposit | `tokensUsed * pricePerToken <= deposit` check |
 | **FS-3** | Session deposits are locked until completion/timeout | State machine prevents early withdrawal |
-| **FS-4** | Treasury receives exactly FEE_BASIS_POINTS/10000 of host payment | Calculation in `_completeSessionInternal()` |
+| **FS-4** | Treasury receives exactly FEE_BASIS_POINTS/10000 of host payment | Calculation in `_settleSessionPayments()` |
 | **FS-5** | Refund = deposit - (tokensUsed × pricePerToken) | Calculated atomically in completion |
 | **FS-6** | Host stake cannot be withdrawn while active | `unregisterNode()` requires full withdrawal |
 
@@ -179,11 +181,11 @@ Fabstir Compute solves these problems by:
 
 | ID | Invariant | Enforcement |
 |----|-----------|-------------|
-| **SM-1** | Session state transitions: Created → Active → Completed/TimedOut | Status enum and require checks |
-| **SM-2** | Completed sessions cannot be modified | `require(status == Status.Active)` |
+| **SM-1** | Session state transitions: Active → Completed/TimedOut | Status enum and require checks |
+| **SM-2** | Completed sessions cannot be modified | `require(status == SessionStatus.Active)` |
 | **SM-3** | Proofs can only be submitted to active sessions | Status check in `submitProofOfWork()` |
 | **SM-4** | Timeout can only trigger after 3× proofInterval | Time check in `triggerSessionTimeout()` |
-| **SM-5** | tokensProven monotonically increases | `tokensProven += tokensClaimed` only |
+| **SM-5** | tokensUsed monotonically increases | `tokensUsed += tokensClaimed` only |
 
 ### 4.3 Access Control Invariants
 
@@ -278,17 +280,19 @@ Fabstir Compute solves these problems by:
 | FR-SESSION-2 | Depositor can create session with USDC | JobMarketplace | `createSessionJobForModelWithToken()` |
 | FR-SESSION-3 | Session price must meet host minimum | JobMarketplace | Session creation |
 | FR-SESSION-4 | Session must specify approved model | JobMarketplace | Session creation |
-| FR-SESSION-5 | Host can submit proofs during active session | JobMarketplace | `submitProofOfWork()` |
-| FR-SESSION-6 | Session can be completed by host or depositor | JobMarketplace | `completeSessionJob()` |
-| FR-SESSION-7 | Inactive session can be timed out by anyone | JobMarketplace | `triggerSessionTimeout()` |
+| FR-SESSION-5 | Host can submit proofs with CID evidence | JobMarketplace | `submitProofOfWork()` |
+| FR-SESSION-6 | Proofs include proofCID and deltaCID for audit trail | JobMarketplace | `submitProofOfWork()` |
+| FR-SESSION-7 | Session completion requires conversationCID | JobMarketplace | `completeSessionJob()` |
+| FR-SESSION-8 | Session can be completed by host or depositor | JobMarketplace | `completeSessionJob()` |
+| FR-SESSION-9 | Inactive session can be timed out by anyone | JobMarketplace | `triggerSessionTimeout()` |
 
 ### 6.3 Payment Settlement (FR-PAYMENT)
 
 | ID | Requirement | Contract | Function |
 |----|-------------|----------|----------|
-| FR-PAYMENT-1 | Host receives 90% of tokens used × price | JobMarketplace | `_completeSessionInternal()` |
-| FR-PAYMENT-2 | Treasury receives 10% fee | JobMarketplace | `_completeSessionInternal()` |
-| FR-PAYMENT-3 | Depositor receives refund of unused deposit | JobMarketplace | `_completeSessionInternal()` |
+| FR-PAYMENT-1 | Host receives 90% of tokens used × price | JobMarketplace | `_settleSessionPayments()` |
+| FR-PAYMENT-2 | Treasury receives 10% fee | JobMarketplace | `_settleSessionPayments()` |
+| FR-PAYMENT-3 | Depositor receives refund of unused deposit | JobMarketplace | `_settleSessionPayments()` |
 | FR-PAYMENT-4 | Host earnings accumulate in HostEarnings | HostEarnings | `creditEarnings*()` |
 | FR-PAYMENT-5 | Host can withdraw accumulated earnings | HostEarnings | `withdraw*()` |
 
@@ -341,8 +345,8 @@ Fabstir Compute solves these problems by:
 | Contract | Key Functions | Requirements |
 |----------|---------------|--------------|
 | JobMarketplace | `createSessionJobForModel()` | FR-SESSION-1, FR-SESSION-3, FR-SESSION-4 |
-| JobMarketplace | `submitProofOfWork()` | FR-SESSION-5 |
-| JobMarketplace | `completeSessionJob()` | FR-SESSION-6, FR-PAYMENT-1-3 |
+| JobMarketplace | `submitProofOfWork()` | FR-SESSION-5, FR-SESSION-6 |
+| JobMarketplace | `completeSessionJob()` | FR-SESSION-7, FR-SESSION-8, FR-PAYMENT-1-3 |
 | NodeRegistry | `registerNode()` | FR-HOST-1-4 |
 | NodeRegistry | `updatePricingNative()` | FR-HOST-5 |
 | ModelRegistry | `proposeModel()` | FR-MODEL-2 |
