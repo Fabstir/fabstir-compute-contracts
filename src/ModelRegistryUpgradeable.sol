@@ -7,13 +7,14 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 /**
  * @title ModelRegistryUpgradeable
  * @notice Manages approved AI models for the Fabstir P2P LLM marketplace (UUPS Upgradeable)
  * @dev Implements a two-tier system: owner-curated trusted models and community-proposed models
  */
-contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     // Model metadata structure
@@ -144,7 +145,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         string memory huggingfaceRepo,
         string memory fileName,
         bytes32 sha256Hash
-    ) external {
+    ) external nonReentrant {
         bytes32 modelId = getModelId(huggingfaceRepo, fileName);
         require(models[modelId].timestamp == 0, "Model already exists");
 
@@ -183,7 +184,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     /**
      * @notice Vote on a model proposal
      */
-    function voteOnProposal(bytes32 modelId, uint256 amount, bool support) external {
+    function voteOnProposal(bytes32 modelId, uint256 amount, bool support) external nonReentrant {
         ModelProposal storage proposal = proposals[modelId];
         require(proposal.proposalTime > 0, "Proposal does not exist");
         require(!proposal.executed, "Proposal already executed");
@@ -260,7 +261,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     /**
      * @notice Withdraw voting tokens after proposal execution
      */
-    function withdrawVotes(bytes32 modelId) external {
+    function withdrawVotes(bytes32 modelId) external nonReentrant {
         ModelProposal storage proposal = proposals[modelId];
         require(proposal.executed ||
                 block.timestamp > proposal.endTime + 7 days,
