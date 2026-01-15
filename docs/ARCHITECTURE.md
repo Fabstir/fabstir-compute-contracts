@@ -180,7 +180,7 @@
    │  1. Generate inference        │                                  │
    │     (off-chain)               │                                  │
    │                               │                                  │
-   │  2. Upload proof to S5/IPFS   │                                  │
+   │  2. Upload proof to S5   │                                  │
    │     → get proofCID, deltaCID  │                                  │
    │                               │                                  │
    │  3. Sign proof:               │                                  │
@@ -329,8 +329,8 @@ struct SessionJob {
     uint256 proofInterval;     // 32 bytes
     uint256 lastProofTime;     // 32 bytes
     bytes32 lastProofHash;     // 32 bytes
-    string lastProofCID;       // Dynamic (S5/IPFS CID)
-    string conversationCID;    // Dynamic (S5/IPFS CID) - set on completion
+    string lastProofCID;       // Dynamic (S5 CID)
+    string conversationCID;    // Dynamic (S5 CID) - set on completion
     SessionStatus status;      // 1 byte (enum: Active=0, Completed=1, TimedOut=2)
 }
 // Total: ~12 storage slots per session (plus dynamic strings)

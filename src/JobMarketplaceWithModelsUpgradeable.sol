@@ -642,7 +642,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      *      - Host must wait for disputeWindow (default 30s) to complete
      *
      *      This restriction ensures only authorized parties can set the
-     *      conversationCID (IPFS reference to conversation record).
+     *      conversationCID (S5 reference to conversation record).
      *
      *      PROOF-THEN-SETTLE ARCHITECTURE:
      *      - Proof of work happens in submitProofOfWork() which requires host signature
@@ -654,7 +654,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      *      and can be called by anyone when timeout conditions are met.
      *
      * @param jobId The session ID to complete
-     * @param conversationCID IPFS CID of the conversation record (for audit trail)
+     * @param conversationCID S5 CID of the conversation record (for audit trail)
      */
     function completeSessionJob(uint256 jobId, string calldata conversationCID) external nonReentrant {
         SessionJob storage session = sessionJobs[jobId];

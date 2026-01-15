@@ -906,7 +906,7 @@ const dataHash = keccak256(
 );
 const signature = await hostWallet.signMessage(getBytes(dataHash));
 
-// Upload proof data to S5/IPFS
+// Upload proof data to S5
 const proofCID = await s5Client.upload(proofData);
 const deltaCID = await s5Client.upload(deltaData);  // Incremental changes
 

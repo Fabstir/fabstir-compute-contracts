@@ -265,14 +265,14 @@ const receipt = await createTx.wait();
 │  1. Provide AI inference service off-chain                  │
 │  2. Track tokens consumed in the session                    │
 │  3. Create proof hash and sign with host key                │
-│  4. Upload proof data to S5/IPFS, get proofCID & deltaCID   │
+│  4. Upload proof data to S5, get proofCID & deltaCID   │
 │  5. Call submitProofOfWork() with:                          │
 │     - jobId: session identifier                             │
 │     - tokensClaimed: tokens since last proof                │
 │     - proofHash: keccak256 hash of proof data               │
 │     - signature: host's 65-byte signature                   │
-│     - proofCID: S5/IPFS CID of full proof                   │
-│     - deltaCID: S5/IPFS CID of delta since last proof       │
+│     - proofCID: S5 CID of full proof                   │
+│     - deltaCID: S5 CID of delta since last proof       │
 │  6. Repeat every proofInterval tokens                       │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -302,8 +302,8 @@ async function submitProof(jobId, tokensClaimed, proofCID, deltaCID) {
     tokensClaimed,
     proofHash,        // 32-byte hash
     signature,        // 65-byte signature
-    proofCID,         // S5/IPFS CID of full proof data
-    deltaCID          // S5/IPFS CID of delta since last proof
+    proofCID,         // S5 CID of full proof data
+    deltaCID          // S5 CID of delta since last proof
   );
 
   const receipt = await tx.wait();
@@ -328,7 +328,7 @@ async function handleInference(jobId, proofInterval, s5Client) {
 
     // Submit proof when interval reached
     if (tokensSinceLastProof >= proofInterval) {
-      // Upload proof data to S5/IPFS
+      // Upload proof data to S5
       const proofData = JSON.stringify({ tokens: tokensSinceLastProof, content: conversationLog });
       const proofCID = await s5Client.upload(proofData);
 
@@ -370,7 +370,7 @@ async function handleInference(jobId, proofInterval, s5Client) {
 │  submitProofOfWork parameters:                              │
 │    - proofHash: bytes32 (32 bytes)                          │
 │    - signature: bytes (65 bytes)                            │
-│    - proofCID: string (S5/IPFS content identifier)          │
+│    - proofCID: string (S5 content identifier)          │
 │    - deltaCID: string (delta changes CID)                   │
 │                                                             │
 │  Verification: ECDSA.recover(ethHash, sig) == host         │
@@ -404,7 +404,7 @@ async function handleInference(jobId, proofInterval, s5Client) {
 ┌─────────────────────────────────────────────────────────────┐
 │              SESSION COMPLETION FLOW                         │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Upload conversation to S5/IPFS, get conversationCID     │
+│  1. Upload conversation to S5, get conversationCID     │
 │  2. Host or Depositor calls:                                │
 │     completeSessionJob(jobId, conversationCID)              │
 │  3. Contract calculates:                                    │
@@ -432,7 +432,7 @@ async function completeSession(jobId, s5Client, conversationLog) {
     throw new Error('Session is not active');
   }
 
-  // Upload conversation to S5/IPFS
+  // Upload conversation to S5
   const conversationCID = await s5Client.upload(JSON.stringify(conversationLog));
 
   // Complete the session with conversationCID

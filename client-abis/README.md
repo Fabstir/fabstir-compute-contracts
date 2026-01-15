@@ -614,7 +614,7 @@ struct SessionJob {
     uint256 tokensConsumed;     // Total tokens consumed (via S5 proofs)
     uint256 createdAt;          // Creation timestamp
     bool active;                // Session status
-    string conversationCID;     // IPFS/S5 CID after completion
+    string conversationCID;     // S5 CID after completion
     address paymentToken;       // Payment token (0x0 for ETH)
     uint256 lastProofTimestamp; // Last proof submission time
     uint256 totalPayment;       // Total paid to host

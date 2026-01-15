@@ -141,7 +141,7 @@ test_TriggerTimeout_RejectsAlreadyTimedOut()
 
 ## Recent Additions: deltaCID Tests (January 14, 2026)
 
-The deltaCID feature was added to `submitProofOfWork()` to support incremental proof tracking on S5/IPFS.
+The deltaCID feature was added to `submitProofOfWork()` to support incremental proof tracking on S5.
 
 **New Test File:** `test/JobMarketplace/test_deltaCID.t.sol`
 

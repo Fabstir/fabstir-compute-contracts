@@ -144,12 +144,12 @@ await marketplace.completeSessionJob(jobId, conversationCID);
 
 - [ ] Update proof submission code to pass `deltaCID` (can be empty string)
 - [ ] Update session completion code to pass `conversationCID`
-- [ ] Implement S5/IPFS upload for CID generation (optional but recommended)
+- [ ] Implement S5 upload for CID generation (optional but recommended)
 
 ### Why This Change?
 
 The deltaCID and conversationCID parameters enable:
-1. **Audit trail**: Every proof and conversation is stored on S5/IPFS
+1. **Audit trail**: Every proof and conversation is stored on S5
 2. **Dispute evidence**: CIDs provide cryptographic proof of what was delivered
 3. **Future DAO governance**: Evidence-based dispute resolution with stake slashing
 
