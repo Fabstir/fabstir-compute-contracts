@@ -866,9 +866,10 @@ contract JobMarketplaceWithModelsUpgradeable is
         emit DepositReceived(msg.sender, msg.value, address(0));
     }
 
-    function depositToken(address token, uint256 amount) external whenNotPaused {
+    function depositToken(address token, uint256 amount) external whenNotPaused nonReentrant {
         require(amount > 0, "Zero deposit");
         require(token != address(0), "Invalid token");
+        require(acceptedTokens[token], "Token not accepted");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         userDepositsToken[msg.sender][token] += amount;
