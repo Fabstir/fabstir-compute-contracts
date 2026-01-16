@@ -40,6 +40,11 @@ contract NodeRegistryWithModelsUpgradeable is
     uint256 public constant MIN_PRICE_PER_TOKEN_NATIVE = 227_273;
     uint256 public constant MAX_PRICE_PER_TOKEN_NATIVE = 22_727_272_727_273_000;
 
+    // Slashing constants
+    uint256 public constant MAX_SLASH_PERCENTAGE = 50;          // 50% maximum per slash
+    uint256 public constant MIN_STAKE_AFTER_SLASH = 100 * 1e18; // 100 FAB minimum
+    uint256 public constant SLASH_COOLDOWN = 24 hours;          // Cooldown between slashes
+
     struct Node {
         address operator;
         uint256 stakedAmount;
@@ -68,6 +73,11 @@ contract NodeRegistryWithModelsUpgradeable is
 
     address[] public activeNodesList;
 
+    // Slashing state variables
+    address public slashingAuthority;
+    address public treasury;
+    mapping(address => uint256) public lastSlashTime;
+
     // Events
     event NodeRegistered(address indexed operator, uint256 stakedAmount, string metadata, bytes32[] models);
     event NodeUnregistered(address indexed operator, uint256 returnedAmount);
@@ -80,12 +90,42 @@ contract NodeRegistryWithModelsUpgradeable is
     event TokenPricingUpdated(address indexed operator, address indexed token, uint256 price);
     event CorruptNodeRepaired(address indexed operator, uint256 stakeReturned);
 
-    // Storage gap for future upgrades (40 - 1 for modelNodeIndex)
-    uint256[39] private __gap;
+    // Slashing events
+    event SlashExecuted(
+        address indexed host,
+        uint256 amount,
+        uint256 remainingStake,
+        string evidenceCID,
+        string reason,
+        address indexed executor,
+        uint256 timestamp
+    );
+    event HostAutoUnregistered(
+        address indexed host,
+        uint256 slashedAmount,
+        uint256 returnedAmount,
+        string reason
+    );
+    event SlashingAuthorityUpdated(
+        address indexed previousAuthority,
+        address indexed newAuthority
+    );
+    event TreasuryUpdated(address indexed newTreasury);
+
+    // Storage gap for future upgrades (40 - 1 for modelNodeIndex - 3 for slashing vars)
+    uint256[36] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
+    }
+
+    /**
+     * @notice Modifier to restrict functions to slashing authority only
+     */
+    modifier onlySlashingAuthority() {
+        require(msg.sender == slashingAuthority, "Not slashing authority");
+        _;
     }
 
     /**
@@ -501,6 +541,28 @@ contract NodeRegistryWithModelsUpgradeable is
         require(newRegistry != address(0), "Invalid registry address");
         modelRegistry = ModelRegistryUpgradeable(newRegistry);
         emit ModelRegistryUpdated(newRegistry);
+    }
+
+    /**
+     * @notice Set the slashing authority address
+     * @dev Only callable by owner. Authority can be transferred to DAO later.
+     * @param newAuthority New slashing authority address
+     */
+    function setSlashingAuthority(address newAuthority) external onlyOwner {
+        require(newAuthority != address(0), "Invalid authority");
+        emit SlashingAuthorityUpdated(slashingAuthority, newAuthority);
+        slashingAuthority = newAuthority;
+    }
+
+    /**
+     * @notice Set the treasury address for slashed tokens
+     * @dev Only callable by owner
+     * @param newTreasury New treasury address
+     */
+    function setTreasury(address newTreasury) external onlyOwner {
+        require(newTreasury != address(0), "Invalid treasury");
+        emit TreasuryUpdated(newTreasury);
+        treasury = newTreasury;
     }
 
     /**
