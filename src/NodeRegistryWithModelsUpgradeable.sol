@@ -386,25 +386,10 @@ contract NodeRegistryWithModelsUpgradeable is
             _removeNodeFromModel(models[i], msg.sender);
         }
 
-        // Remove from active nodes list (with safety check for corrupt state)
-        uint256 index = activeNodesIndex[msg.sender];
-        bool isInActiveList = activeNodesList.length > 0 &&
-            index < activeNodesList.length &&
-            activeNodesList[index] == msg.sender;
-
-        if (isInActiveList) {
-            uint256 lastIndex = activeNodesList.length - 1;
-            if (index != lastIndex) {
-                address lastNode = activeNodesList[lastIndex];
-                activeNodesList[index] = lastNode;
-                activeNodesIndex[lastNode] = index;
-            }
-            activeNodesList.pop();
-        }
-        // If not in list (corrupt state), skip array manipulation
+        // Remove from active nodes list
+        _removeFromActiveNodes(msg.sender);
 
         // Delete node data
-        delete activeNodesIndex[msg.sender];
         delete nodes[msg.sender];
 
         // Return stake
@@ -566,6 +551,91 @@ contract NodeRegistryWithModelsUpgradeable is
     }
 
     /**
+     * @notice Initialize slashing functionality after upgrade
+     * @dev Call this after upgrading to the new implementation
+     * @param _treasury Address to receive slashed FAB tokens
+     */
+    function initializeSlashing(address _treasury) external onlyOwner {
+        require(slashingAuthority == address(0), "Already initialized");
+        require(_treasury != address(0), "Invalid treasury");
+        slashingAuthority = owner();
+        treasury = _treasury;
+    }
+
+    /**
+     * @notice Slash a portion of a host's stake for proven misbehavior
+     * @dev Only callable by slashing authority (owner at MVP, DAO later)
+     * @param host Address of the host to slash
+     * @param amount Amount of FAB tokens to slash
+     * @param evidenceCID S5 CID containing evidence (proofCID, deltaCID, or custom report)
+     * @param reason Human-readable reason for the slash
+     */
+    function slashStake(
+        address host,
+        uint256 amount,
+        string calldata evidenceCID,
+        string calldata reason
+    ) external onlySlashingAuthority nonReentrant {
+        // Validation
+        require(nodes[host].operator != address(0), "Host not registered");
+        require(nodes[host].active, "Host not active");
+        require(nodes[host].stakedAmount > 0, "No stake to slash");
+        require(bytes(evidenceCID).length > 0, "Evidence CID required");
+        require(bytes(reason).length > 0, "Reason required");
+        require(amount <= nodes[host].stakedAmount, "Amount exceeds stake");
+
+        // Safety constraints
+        uint256 maxSlash = (nodes[host].stakedAmount * MAX_SLASH_PERCENTAGE) / 100;
+        require(amount <= maxSlash, "Exceeds max slash percentage");
+        // Allow first slash (lastSlashTime == 0), otherwise check cooldown
+        require(
+            lastSlashTime[host] == 0 || block.timestamp >= lastSlashTime[host] + SLASH_COOLDOWN,
+            "Slash cooldown active"
+        );
+
+        // Execute slash
+        nodes[host].stakedAmount -= amount;
+        lastSlashTime[host] = block.timestamp;
+
+        // Transfer slashed tokens to treasury
+        fabToken.safeTransfer(treasury, amount);
+
+        emit SlashExecuted(
+            host,
+            amount,
+            nodes[host].stakedAmount,
+            evidenceCID,
+            reason,
+            msg.sender,
+            block.timestamp
+        );
+
+        // Auto-unregister if stake falls below minimum
+        if (nodes[host].stakedAmount < MIN_STAKE_AFTER_SLASH) {
+            uint256 remainingStake = nodes[host].stakedAmount;
+            bytes32[] memory models = nodes[host].supportedModels;
+
+            // Remove from model mappings
+            for (uint i = 0; i < models.length; i++) {
+                _removeNodeFromModel(models[i], host);
+            }
+
+            // Remove from active nodes list
+            _removeFromActiveNodes(host);
+
+            // Delete node data
+            delete nodes[host];
+
+            // Return remaining stake to host
+            if (remainingStake > 0) {
+                fabToken.safeTransfer(host, remainingStake);
+            }
+
+            emit HostAutoUnregistered(host, amount, remainingStake, reason);
+        }
+    }
+
+    /**
      * @notice Repair a corrupt node that has node data but is not in activeNodesList (owner only)
      * @dev This handles edge cases from contract upgrades where node data wasn't fully migrated
      * @param nodeAddress The address of the corrupt node to repair
@@ -602,9 +672,31 @@ contract NodeRegistryWithModelsUpgradeable is
     }
 
     /**
-     * @notice Remove node from model mapping using O(1) indexed removal
-     * @dev Uses swap-and-pop with index tracking for gas efficiency
+     * @notice Remove a node from the active nodes list using swap-and-pop
+     * @dev Internal helper used by unregisterNode and slashStake auto-unregister
+     * @param nodeAddress Address of the node to remove
      */
+    function _removeFromActiveNodes(address nodeAddress) private {
+        uint256 index = activeNodesIndex[nodeAddress];
+
+        // Safety check for corrupt state
+        bool isInActiveList = activeNodesList.length > 0 &&
+            index < activeNodesList.length &&
+            activeNodesList[index] == nodeAddress;
+
+        if (isInActiveList) {
+            uint256 lastIndex = activeNodesList.length - 1;
+            if (index != lastIndex) {
+                address lastNode = activeNodesList[lastIndex];
+                activeNodesList[index] = lastNode;
+                activeNodesIndex[lastNode] = index;
+            }
+            activeNodesList.pop();
+        }
+
+        delete activeNodesIndex[nodeAddress];
+    }
+
     function _removeNodeFromModel(bytes32 modelId, address nodeAddress) private {
         address[] storage nodesForModel = modelToNodes[modelId];
         uint256 index = modelNodeIndex[modelId][nodeAddress];
