@@ -16,14 +16,14 @@ fabstir-compute-contracts
 
 ## Feature Summary
 
-| Feature | Description |
-|---------|-------------|
-| Core Function | `slashStake(address host, uint256 amount, string evidenceCID, string reason)` |
-| Max Slash | 50% per action |
-| Cooldown | 24 hours between slashes on same host |
-| Minimum Stake | 100 FAB after slash (auto-unregister if below) |
-| Access Control | `slashingAuthority` (owner at MVP, DAO later) |
-| Slashed Tokens | Transfer to treasury address |
+| Feature        | Description                                                                   |
+| -------------- | ----------------------------------------------------------------------------- |
+| Core Function  | `slashStake(address host, uint256 amount, string evidenceCID, string reason)` |
+| Max Slash      | 50% per action                                                                |
+| Cooldown       | 24 hours between slashes on same host                                         |
+| Minimum Stake  | 100 FAB after slash (auto-unregister if below)                                |
+| Access Control | `slashingAuthority` (owner at MVP, DAO later)                                 |
+| Slashed Tokens | Transfer to treasury address                                                  |
 
 ## Goals
 
@@ -43,7 +43,7 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: ✅ IMPLEMENTATION COMPLETE (Phases 1-3) - Ready for Deployment**
+**Overall Status: ✅ ALL PHASES COMPLETE - Deployed to Base Sepolia**
 
 - [x] **Phase 1: Core Slashing Infrastructure** (3/3 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 1.1: Add Constants and State Variables ✅
@@ -52,17 +52,25 @@ fabstir-compute-contracts
 - [x] **Phase 2: Slashing Logic Implementation** (3/3 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 2.1: Implement slashStake() Function ✅
   - [x] Sub-phase 2.2: Implement Auto-Unregister Logic ✅
-  - [x] Sub-phase 2.3: Add _removeFromActiveNodes Helper ✅
+  - [x] Sub-phase 2.3: Add \_removeFromActiveNodes Helper ✅
 - [x] **Phase 3: Upgrade Initialization** (1/1 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 3.1: Implement initializeSlashing() ✅
-- [ ] **Phase 4: Final Verification & Deployment** (1/3 sub-phases)
+- [x] **Phase 4: Final Verification & Deployment** (3/3 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 4.1: Full Test Suite ✅ (681 tests pass)
-  - [ ] Sub-phase 4.2: Deploy to Testnet
-  - [ ] Sub-phase 4.3: Update Documentation and ABIs
+  - [x] Sub-phase 4.2: Deploy to Testnet ✅ (Implementation: 0xF2D98D38B2dF95f4e8e4A49750823C415E795377)
+  - [x] Sub-phase 4.3: Update Documentation and ABIs ✅
 
 **Last Updated:** 2026-01-16
 
 **Test Results:** 681 tests passing (41 slashing-specific tests + 640 existing tests)
+
+**Deployment Details (Jan 16, 2026):**
+
+- Implementation: `0xF2D98D38B2dF95f4e8e4A49750823C415E795377`
+- Proxy: `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22`
+- Treasury: `0x098f1Ea3FA1CA60d7A4A0f5927c6fc1DBe9c5e1C`
+- Test slash executed: 100 FAB from test host `0x048afA7126A3B684832886b78e7cC1Dd4019557E`
+- Tx: `0x1433107aa2e1ee2021c4d02096fd17ccfc5a74c653e7887196fa7e0584b4714c`
 
 ---
 
@@ -74,11 +82,13 @@ fabstir-compute-contracts
 **Issue**: Need to add slashing-related constants and state variables to contract.
 
 **Storage Layout Consideration:**
+
 - Current `__gap` is 39 slots
 - Adding 3 new state variables: `slashingAuthority` (1), `treasury` (1), `lastSlashTime` (1)
 - New `__gap` will be 36 slots
 
 **Tasks:**
+
 - [x] Write test file `test/Slashing/test_slashing.t.sol` with setup
 - [x] Test: Constants are accessible and have correct values
 - [x] Test: State variables are initialized correctly after upgrade
@@ -92,6 +102,7 @@ fabstir-compute-contracts
 - [x] Verify all tests pass (646/646)
 
 **Implementation:**
+
 ```solidity
 // Add after line 41 (after MAX_PRICE_PER_TOKEN_NATIVE)
 uint256 public constant MAX_SLASH_PERCENTAGE = 50;          // 50% maximum per slash
@@ -108,12 +119,15 @@ uint256[36] private __gap;  // Was: uint256[39] private __gap;
 ```
 
 **Files Modified:**
+
 - `src/NodeRegistryWithModelsUpgradeable.sol` (lines 42-44, 70-72, 84)
 
 **Files Created:**
+
 - `test/NodeRegistry/test_slashing.t.sol`
 
 **Tests:**
+
 ```solidity
 // test/NodeRegistry/test_slashing.t.sol
 function test_Constants_MaxSlashPercentage() public { /* ... */ }
@@ -129,6 +143,7 @@ function test_Constants_SlashCooldown() public { /* ... */ }
 **Issue**: Need events for transparency and modifier for access control.
 
 **Tasks:**
+
 - [x] Test: Events are declared (compilation test)
 - [x] Add `event SlashExecuted(address indexed host, uint256 amount, uint256 remainingStake, string evidenceCID, string reason, address indexed executor, uint256 timestamp)`
 - [x] Add `event HostAutoUnregistered(address indexed host, uint256 slashedAmount, uint256 returnedAmount, string reason)`
@@ -137,9 +152,10 @@ function test_Constants_SlashCooldown() public { /* ... */ }
 - [x] Add `modifier onlySlashingAuthority()`
 - [x] Verify all tests pass (647/647)
 
-*Note: Event emission and modifier tests will be done in Sub-phases 1.3 and 2.1 with the functions that use them.*
+_Note: Event emission and modifier tests will be done in Sub-phases 1.3 and 2.1 with the functions that use them._
 
 **Implementation:**
+
 ```solidity
 // Add after existing events (after line 81)
 event SlashExecuted(
@@ -171,9 +187,11 @@ modifier onlySlashingAuthority() {
 ```
 
 **Files Modified:**
+
 - `src/NodeRegistryWithModelsUpgradeable.sol`
 
 **Tests:**
+
 ```solidity
 function test_OnlySlashingAuthority_RevertsForNonAuthority() public { /* ... */ }
 function test_OnlySlashingAuthority_AllowsAuthority() public { /* ... */ }
@@ -187,6 +205,7 @@ function test_OnlySlashingAuthority_AllowsAuthority() public { /* ... */ }
 **Issue**: Need functions to manage slashing authority and treasury.
 
 **Tasks:**
+
 - [x] Test: setSlashingAuthority only callable by owner
 - [x] Test: setSlashingAuthority reverts on zero address
 - [x] Test: setSlashingAuthority updates authority correctly
@@ -200,6 +219,7 @@ function test_OnlySlashingAuthority_AllowsAuthority() public { /* ... */ }
 - [x] Verify all tests pass (655/655)
 
 **Implementation:**
+
 ```solidity
 /**
  * @notice Set the slashing authority address
@@ -225,9 +245,11 @@ function setTreasury(address newTreasury) external onlyOwner {
 ```
 
 **Files Modified:**
+
 - `src/NodeRegistryWithModelsUpgradeable.sol`
 
 **Tests:**
+
 ```solidity
 function test_SetSlashingAuthority_OnlyOwner() public { /* ... */ }
 function test_SetSlashingAuthority_RevertsOnZeroAddress() public { /* ... */ }
@@ -249,6 +271,7 @@ function test_SetTreasury_EmitsEvent() public { /* ... */ }
 **Issue**: Core slashing function with all validations.
 
 **Tasks:**
+
 - [x] Test: slashStake reduces host stake correctly
 - [x] Test: slashStake transfers slashed amount to treasury
 - [x] Test: slashStake emits SlashExecuted event
@@ -267,6 +290,7 @@ function test_SetTreasury_EmitsEvent() public { /* ... */ }
 - [x] Verify all tests pass (669/669)
 
 **Implementation:**
+
 ```solidity
 /**
  * @notice Slash a portion of a host's stake for proven misbehavior
@@ -321,9 +345,11 @@ function slashStake(
 ```
 
 **Files Modified:**
+
 - `src/NodeRegistryWithModelsUpgradeable.sol`
 
 **Tests:**
+
 ```solidity
 function test_SlashStake_ReducesHostStake() public { /* ... */ }
 function test_SlashStake_TransfersToTreasury() public { /* ... */ }
@@ -348,6 +374,7 @@ function test_SlashStake_RevertsIfNotAuthority() public { /* ... */ }
 **Issue**: When stake falls below MIN_STAKE_AFTER_SLASH, host should be automatically unregistered.
 
 **Tasks:**
+
 - [ ] Test: Auto-unregister triggers when stake falls below 100 FAB
 - [ ] Test: Auto-unregister returns remaining stake to host
 - [ ] Test: Auto-unregister removes host from active nodes list
@@ -359,6 +386,7 @@ function test_SlashStake_RevertsIfNotAuthority() public { /* ... */ }
 - [ ] Verify all tests pass
 
 **Implementation:**
+
 ```solidity
 // Add to slashStake() after slashing logic:
 
@@ -389,9 +417,11 @@ if (nodes[host].stakedAmount < MIN_STAKE_AFTER_SLASH) {
 ```
 
 **Files Modified:**
+
 - `src/NodeRegistryWithModelsUpgradeable.sol`
 
 **Tests:**
+
 ```solidity
 function test_SlashStake_AutoUnregistersIfBelowMinimum() public { /* ... */ }
 function test_SlashStake_ReturnsRemainingStakeOnAutoUnregister() public { /* ... */ }
@@ -404,21 +434,23 @@ function test_SlashStake_Boundary_Below100FAB_AutoUnregisters() public { /* ... 
 
 ---
 
-### Sub-phase 2.3: Add _removeFromActiveNodes Helper
+### Sub-phase 2.3: Add \_removeFromActiveNodes Helper
 
 **Severity**: FEATURE
 **Issue**: Need helper function to remove host from activeNodesList (extract from unregisterNode for reuse).
 
 **Tasks:**
-- [ ] Test: _removeFromActiveNodes correctly removes host
-- [ ] Test: _removeFromActiveNodes maintains array integrity (swap-and-pop)
-- [ ] Test: _removeFromActiveNodes updates activeNodesIndex mapping
-- [ ] Extract _removeFromActiveNodes logic from unregisterNode()
-- [ ] Refactor unregisterNode() to use _removeFromActiveNodes()
-- [ ] Use _removeFromActiveNodes() in auto-unregister logic
+
+- [ ] Test: \_removeFromActiveNodes correctly removes host
+- [ ] Test: \_removeFromActiveNodes maintains array integrity (swap-and-pop)
+- [ ] Test: \_removeFromActiveNodes updates activeNodesIndex mapping
+- [ ] Extract \_removeFromActiveNodes logic from unregisterNode()
+- [ ] Refactor unregisterNode() to use \_removeFromActiveNodes()
+- [ ] Use \_removeFromActiveNodes() in auto-unregister logic
 - [ ] Verify all tests pass
 
 **Implementation:**
+
 ```solidity
 /**
  * @notice Remove a node from the active nodes list using swap-and-pop
@@ -448,9 +480,11 @@ function _removeFromActiveNodes(address nodeAddress) private {
 ```
 
 **Files Modified:**
+
 - `src/NodeRegistryWithModelsUpgradeable.sol`
 
 **Tests:**
+
 ```solidity
 function test_RemoveFromActiveNodes_CorrectlyRemoves() public { /* ... */ }
 function test_RemoveFromActiveNodes_SwapAndPopIntegrity() public { /* ... */ }
@@ -468,6 +502,7 @@ function test_UnregisterNode_StillWorks_AfterRefactor() public { /* ... */ }
 **Issue**: Need initialization function for upgrading existing proxies.
 
 **Tasks:**
+
 - [ ] Test: initializeSlashing sets slashingAuthority to owner
 - [ ] Test: initializeSlashing sets treasury correctly
 - [ ] Test: initializeSlashing reverts if already initialized
@@ -476,6 +511,7 @@ function test_UnregisterNode_StillWorks_AfterRefactor() public { /* ... */ }
 - [ ] Verify all tests pass
 
 **Implementation:**
+
 ```solidity
 /**
  * @notice Initialize slashing functionality after upgrade
@@ -491,9 +527,11 @@ function initializeSlashing(address _treasury) external onlyOwner {
 ```
 
 **Files Modified:**
+
 - `src/NodeRegistryWithModelsUpgradeable.sol`
 
 **Tests:**
+
 ```solidity
 function test_InitializeSlashing_SetsSlashingAuthority() public { /* ... */ }
 function test_InitializeSlashing_SetsTreasury() public { /* ... */ }
@@ -508,12 +546,14 @@ function test_InitializeSlashing_OnlyOwner() public { /* ... */ }
 ### Sub-phase 4.1: Full Test Suite
 
 **Tasks:**
+
 - [ ] Run full test suite: `forge test`
 - [ ] Verify all tests pass
 - [ ] Verify no compiler warnings in source files
 - [ ] Run gas snapshot: `forge snapshot`
 
 **Commands:**
+
 ```bash
 forge clean
 forge build
@@ -526,6 +566,7 @@ forge snapshot
 ### Sub-phase 4.2: Deploy to Testnet
 
 **Tasks:**
+
 - [ ] Deploy new NodeRegistryWithModelsUpgradeable implementation
 - [ ] Upgrade proxy to new implementation
 - [ ] Call initializeSlashing(treasuryAddress)
@@ -534,6 +575,7 @@ forge snapshot
 - [ ] Test slashStake on testnet (optional: with test host)
 
 **Commands:**
+
 ```bash
 source /workspace/.env
 
@@ -563,17 +605,17 @@ cast call 0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22 "treasury()" \
 ### Sub-phase 4.3: Update Documentation and ABIs
 
 **Tasks:**
+
 - [ ] Extract updated ABI to `client-abis/NodeRegistry-CLIENT-ABI.json`
 - [ ] Update `client-abis/CHANGELOG.md` with slashing feature
 - [ ] Update `client-abis/README.md` with slashing documentation
-- [ ] Update `CLAUDE.md` with new implementation address
 - [ ] Update `CONTRACT_ADDRESSES.md` with new implementation address
 
 **Files to Update:**
+
 - `client-abis/NodeRegistryWithModelsUpgradeable-CLIENT-ABI.json`
 - `client-abis/CHANGELOG.md`
 - `client-abis/README.md`
-- `CLAUDE.md`
 - `CONTRACT_ADDRESSES.md`
 
 ---
@@ -581,13 +623,16 @@ cast call 0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22 "treasury()" \
 ## Completion Criteria
 
 All phases complete when:
-- [ ] All slashing tests pass
-- [ ] Full test suite passes (no regressions)
-- [ ] No compiler warnings in source files
-- [ ] Storage layout verified (gap reduced from 39 to 36)
-- [ ] Testnet deployment successful
-- [ ] initializeSlashing() called and verified
-- [ ] Documentation and ABIs updated
+
+- [x] All slashing tests pass ✅
+- [x] Full test suite passes (no regressions) ✅
+- [x] No compiler warnings in source files ✅
+- [x] Storage layout verified (gap reduced from 39 to 36) ✅
+- [x] Testnet deployment successful ✅
+- [x] initializeSlashing() called and verified ✅
+- [x] Documentation and ABIs updated ✅
+
+**✅ ALL CRITERIA MET - January 16, 2026**
 
 ---
 
@@ -596,6 +641,7 @@ All phases complete when:
 ### TDD Approach
 
 Each sub-phase follows strict TDD with bounded autonomy:
+
 1. Write tests FIRST (show them failing - RED)
 2. Implement minimal code to pass tests (GREEN)
 3. Refactor if needed while keeping tests green
@@ -603,6 +649,7 @@ Each sub-phase follows strict TDD with bounded autonomy:
 5. Mark sub-phase complete with `x`
 
 ### File Limits (Bounded Autonomy)
+
 - Test files: No limit
 - Modified functions: Keep changes minimal and focused
 - New functions: 40 lines maximum
@@ -641,6 +688,7 @@ uint256[36] private __gap;                                      // slots N+11 to
 ### SDK Integration (Future)
 
 After deployment, SDK should add:
+
 ```typescript
 // In HostManager
 async slashStake(host: string, amount: string, evidenceCID: string, reason: string)
@@ -662,4 +710,4 @@ A: Not required as separate script. Can upgrade proxy and call `initializeSlashi
 
 ---
 
-*End of Implementation Document*
+_End of Implementation Document_

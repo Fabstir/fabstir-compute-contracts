@@ -1,7 +1,7 @@
 # Architecture Documentation
 
 **Version:** 2.1
-**Last Updated:** January 15, 2026
+**Last Updated:** January 16, 2026
 **Network:** Base Sepolia (Testnet)
 
 ---
@@ -11,7 +11,7 @@
 | Contract | Proxy Address | Implementation |
 |----------|---------------|----------------|
 | JobMarketplace | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
-| NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7` |
+| NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xF2D98D38B2dF95f4e8e4A49750823C415E795377` |
 | ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` |
 | ProofSystem | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` | `0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9` |
 | HostEarnings | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x8584AeAC9687613095D13EF7be4dE0A796F84D7a` |
@@ -45,6 +45,7 @@
                           │  • FAB staking        │
                           │  • Dual pricing       │
                           │  • Model support      │
+                          │  • Stake slashing     │
                           └───────────┬───────────┘
                                       │ validates hosts
                                       ▼
@@ -355,8 +356,13 @@ mapping(address => mapping(address => uint256)) public customTokenPricing;   // 
 
 address[] public activeNodesList;                 // Slot 12
 
-// Slot 13-51: Storage gap (39 slots)
-uint256[39] private __gap;
+// Slot 13-15: Slashing state (NEW - Jan 16, 2026)
+address public slashingAuthority;                 // Slot 13
+address public treasury;                          // Slot 14
+mapping(address => uint256) public lastSlashTime; // Slot 15
+
+// Slot 16-51: Storage gap (36 slots)
+uint256[36] private __gap;
 ```
 
 ### 5.4 Storage Gap Strategy
@@ -366,7 +372,7 @@ All upgradeable contracts reserve storage gaps for future additions:
 | Contract | Gap Size | Reserved Slots |
 |----------|----------|----------------|
 | JobMarketplaceWithModelsUpgradeable | 50 | Future payment methods, analytics |
-| NodeRegistryWithModelsUpgradeable | 39 | Reputation, additional pricing |
+| NodeRegistryWithModelsUpgradeable | 36 | Reputation (reduced from 39 for slashing) |
 | ModelRegistryUpgradeable | 49 | Governance extensions |
 | ProofSystemUpgradeable | 49 | ZK proof support |
 | HostEarningsUpgradeable | 48 | Multi-chain earnings |
@@ -470,6 +476,11 @@ Address.sendValue(payable(recipient), amount);
 │  └── updateTreasury()                       │
 │  └── addTrustedModel()                      │
 │  └── setAuthorizedCaller()                  │
+│  └── setSlashingAuthority()                 │
+│  └── initializeSlashing()                   │
+│                                             │
+│  SLASHING_AUTHORITY (Medium-High)           │
+│  └── slashStake() [any active host]         │
 │                                             │
 │  AUTHORIZED_CALLER (Medium)                 │
 │  └── creditEarnings()                       │
