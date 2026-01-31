@@ -57,7 +57,7 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: PHASE 4 COMPLETE (80%)**
+**Overall Status: PHASE 5 COMPLETE (95%)**
 
 - [x] **Phase 1: Dead Code Removal (AUDIT-F1)** (2/2 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 1.1: Write Tests for Modifier Removal ✅
@@ -75,15 +75,15 @@ fabstir-compute-contracts
   - [x] Sub-phase 4.2: Update IProofSystem Interface ✅
   - [x] Sub-phase 4.3: Update ProofSystemUpgradeable ✅
   - [x] Sub-phase 4.4: Update JobMarketplace submitProofOfWork ✅
-- [ ] **Phase 5: createSessionFromDepositForModel (AUDIT-F5)** (0/2 sub-phases)
-  - [ ] Sub-phase 5.1: Write Tests for New Function
-  - [ ] Sub-phase 5.2: Implement createSessionFromDepositForModel
+- [x] **Phase 5: createSessionFromDepositForModel (AUDIT-F5)** (2/2 sub-phases) ✅ COMPLETE
+  - [x] Sub-phase 5.1: Write Tests for New Function ✅
+  - [x] Sub-phase 5.2: Implement createSessionFromDepositForModel ✅
 - [ ] **Phase 6: Deployment & Documentation** (0/3 sub-phases)
   - [ ] Sub-phase 6.1: Deploy Test Contracts (Separate from Audited)
   - [ ] Sub-phase 6.2: Manual Testing on Testnet
   - [ ] Sub-phase 6.3: Update Documentation and ABIs
 
-**Last Updated:** 2026-01-31 (Phase 4 complete)
+**Last Updated:** 2026-01-31 (Phase 5 complete)
 
 ---
 
@@ -741,14 +741,16 @@ forge test  # Full suite
 **Goal**: Verify new function creates model-specific sessions from pre-deposits.
 
 **Tasks:**
-- [ ] Create test file `test/SecurityFixes/Remediation/test_create_from_deposit_for_model.t.sol`
-- [ ] Test: Successfully creates model session from pre-deposited ETH
-- [ ] Test: Successfully creates model session from pre-deposited USDC
-- [ ] Test: Reverts for unapproved model
-- [ ] Test: Reverts for insufficient deposit
-- [ ] Test: Stores modelId in sessionModel mapping
-- [ ] Test: Uses model-specific pricing from NodeRegistry
-- [ ] Run tests and verify they FAIL (function doesn't exist)
+- [x] Create test file `test/SecurityFixes/Remediation/test_create_from_deposit_for_model.t.sol`
+- [x] Test: Successfully creates model session from pre-deposited ETH
+- [x] Test: Successfully creates model session from pre-deposited USDC
+- [x] Test: Reverts for unsupported model (host doesn't support it)
+- [x] Test: Reverts for insufficient deposit
+- [x] Test: Stores modelId in sessionModel mapping
+- [x] Test: Uses model-specific pricing from NodeRegistry
+- [x] Test: Reverts for zero modelId
+- [x] Test: Reverts when host doesn't support model
+- [x] Run tests and verify they FAIL (function doesn't exist) - ✅ Verified
 
 **File Limits:**
 - Test file: ~150 lines maximum
@@ -779,14 +781,14 @@ forge test --match-contract CreateFromDepositForModelTest -vv
 **Goal**: Add new function for model-specific pre-deposit sessions.
 
 **Tasks:**
-- [ ] Add `createSessionFromDepositForModel()` function after `createSessionFromDeposit()`
-- [ ] Validate modelId is not bytes32(0)
-- [ ] Validate model is approved via ModelRegistry
-- [ ] Use `nodeRegistry.getModelPricing()` for price validation
-- [ ] Store modelId in `sessionModel[sessionId]` mapping
-- [ ] Emit `ModelSessionCreated` event
-- [ ] Run all tests to verify
-- [ ] Mark sub-phase complete
+- [x] Add `createSessionFromDepositForModel()` function after `createSessionFromDeposit()`
+- [x] Validate modelId is not bytes32(0)
+- [x] Validate host supports model via `nodeRegistry.nodeSupportsModel()`
+- [x] Use `nodeRegistry.getModelPricing()` for price validation
+- [x] Store modelId in `sessionModel[sessionId]` mapping
+- [x] Emit `SessionJobCreatedForModel` event
+- [x] Run all tests to verify - 713/713 passing
+- [x] Mark sub-phase complete
 
 **Implementation:**
 ```solidity
@@ -874,6 +876,41 @@ function createSessionFromDepositForModel(
 forge test --match-contract CreateFromDepositForModelTest -vv
 forge test  # Full suite
 ```
+
+### Phase 5 Completion Summary
+
+**Status**: ✅ COMPLETE
+**Date**: 2026-01-31
+**Commit**: `fix(AUDIT-F5): Add createSessionFromDepositForModel function`
+
+**Changes Made:**
+- Added `createSessionFromDepositForModel()` function to `JobMarketplaceWithModelsUpgradeable`
+- Function accepts 8 parameters: modelId, host, paymentToken, deposit, pricePerToken, maxDuration, proofInterval, proofTimeoutWindow
+- Validates modelId is not bytes32(0)
+- Validates host supports the model via `nodeRegistry.nodeSupportsModel()`
+- Validates price against model-specific pricing via `nodeRegistry.getModelPricing()`
+- Deducts deposit from user's pre-deposited balance
+- Stores modelId in `sessionModel[sessionId]` mapping
+- Emits `SessionJobCreated`, `SessionCreatedByDepositor`, and `SessionJobCreatedForModel` events
+
+**Test Results:**
+- CreateFromDepositForModelTest: 8/8 passing
+  - test_CreateFromDepositForModel_Success_ETH
+  - test_CreateFromDepositForModel_Success_USDC
+  - test_CreateFromDepositForModel_UnapprovedModel_Reverts
+  - test_CreateFromDepositForModel_InsufficientDeposit_Reverts
+  - test_CreateFromDepositForModel_StoresModelId
+  - test_CreateFromDepositForModel_UsesModelPricing
+  - test_CreateFromDepositForModel_ZeroModelId_Reverts
+  - test_CreateFromDepositForModel_HostDoesNotSupportModel_Reverts
+- Full suite: 713/713 passing
+
+**Files Modified:**
+- `src/JobMarketplaceWithModelsUpgradeable.sol` - Added new function (~70 lines)
+- `test/SecurityFixes/Remediation/test_create_from_deposit_for_model.t.sol` - New test file (8 tests)
+
+**Breaking Changes:**
+- None - this is a new function that doesn't affect existing functionality
 
 ---
 

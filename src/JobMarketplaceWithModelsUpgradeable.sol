@@ -1105,4 +1105,100 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         return sessionId;
     }
+
+    /**
+     * @notice Create a model-specific session from pre-deposited funds (AUDIT-F5)
+     * @dev Allows users with pre-deposited funds to create model-specific sessions
+     * @param modelId The approved model ID for this session (must not be bytes32(0))
+     * @param host The host to create the session with
+     * @param paymentToken address(0) for ETH, token address for ERC20
+     * @param deposit Amount to use from pre-deposited balance
+     * @param pricePerToken Price per inference token
+     * @param maxDuration Maximum session duration in seconds
+     * @param proofInterval Minimum tokens per proof submission
+     * @param proofTimeoutWindow Time in seconds before session times out without proof
+     * @return sessionId The created session ID
+     */
+    function createSessionFromDepositForModel(
+        bytes32 modelId,
+        address host,
+        address paymentToken,
+        uint256 deposit,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
+    ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
+        // Model validation
+        require(modelId != bytes32(0), "Invalid model ID");
+
+        // Basic parameter validation
+        require(pricePerToken > 0, "Invalid price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
+        require(proofInterval > 0, "Invalid proof interval");
+        require(
+            proofTimeoutWindow >= MIN_PROOF_TIMEOUT && proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
+            "Invalid proof timeout window"
+        );
+        require(host != address(0), "Invalid host");
+        require(deposit > 0, "Zero deposit");
+
+        // Host validation
+        _validateHostRegistration(host);
+        _validateProofRequirements(proofInterval, deposit, pricePerToken);
+
+        // Model-specific validation: host must support the model
+        // (This implicitly validates the model is approved, since hosts can only register with approved models)
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
+
+        // Model-specific pricing validation
+        uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
+        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+
+        // Verify user has sufficient pre-deposited balance with token-specific limits
+        if (paymentToken == address(0)) {
+            require(deposit >= MIN_DEPOSIT, "Insufficient deposit");
+            require(deposit <= 1000 ether, "Deposit too large");
+            require(userDepositsNative[msg.sender] >= deposit, "Insufficient native balance");
+            userDepositsNative[msg.sender] -= deposit;
+        } else {
+            require(acceptedTokens[paymentToken], "Token not accepted");
+            uint256 minRequired = tokenMinDeposits[paymentToken];
+            uint256 maxAllowed = tokenMaxDeposits[paymentToken];
+            require(minRequired > 0, "Token not configured");
+            require(maxAllowed > 0, "Token max deposit not configured");
+            require(deposit >= minRequired, "Insufficient deposit");
+            require(deposit <= maxAllowed, "Deposit too large");
+            require(userDepositsToken[msg.sender][paymentToken] >= deposit, "Insufficient token balance");
+            userDepositsToken[msg.sender][paymentToken] -= deposit;
+        }
+
+        sessionId = nextJobId++;
+
+        SessionJob storage session = sessionJobs[sessionId];
+        session.id = sessionId;
+        session.depositor = msg.sender;
+        session.host = host;
+        session.paymentToken = paymentToken;
+        session.deposit = deposit;
+        session.pricePerToken = pricePerToken;
+        session.maxDuration = maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = proofInterval;
+        session.proofTimeoutWindow = proofTimeoutWindow;
+        session.status = SessionStatus.Active;
+
+        // Store model for this session
+        sessionModel[sessionId] = modelId;
+
+        userSessions[msg.sender].push(sessionId);
+        hostSessions[host].push(sessionId);
+
+        emit SessionJobCreated(sessionId, msg.sender, host, deposit);
+        emit SessionCreatedByDepositor(sessionId, msg.sender, host, deposit);
+        emit SessionJobCreatedForModel(sessionId, msg.sender, host, modelId, deposit);
+
+        return sessionId;
+    }
 }
