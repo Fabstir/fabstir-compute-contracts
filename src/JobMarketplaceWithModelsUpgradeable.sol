@@ -592,17 +592,15 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxTokens = (session.deposit * PRICE_PRECISION) / session.pricePerToken;
         require(newTotal <= maxTokens, "Exceeds deposit");
 
-        // Verify proof via ProofSystem
-        bool verified = false;
-        if (address(proofSystem) != address(0)) {
-            // Construct 97-byte proof: proofHash (32) + signature (65)
-            bytes memory proof = abi.encodePacked(proofHash, signature);
-            require(
-                proofSystem.verifyAndMarkComplete(proof, msg.sender, tokensClaimed),
-                "Invalid proof signature"
-            );
-            verified = true;
-        }
+        // Verify proof via ProofSystem (AUDIT-F2: ProofSystem MUST be configured)
+        require(address(proofSystem) != address(0), "ProofSystem not configured");
+        // Construct 97-byte proof: proofHash (32) + signature (65)
+        bytes memory proof = abi.encodePacked(proofHash, signature);
+        require(
+            proofSystem.verifyAndMarkComplete(proof, msg.sender, tokensClaimed),
+            "Invalid proof signature"
+        );
+        bool verified = true;
 
         // S5: Store proof hash and CID instead of full proof
         session.lastProofHash = proofHash;

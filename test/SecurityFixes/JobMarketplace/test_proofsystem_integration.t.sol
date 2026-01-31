@@ -241,9 +241,10 @@ contract ProofSystemIntegrationTest is Test {
     }
 
     /**
-     * @notice Test that ProofSystem not set (address(0)) still works (graceful degradation)
+     * @notice Test that ProofSystem not set (address(0)) reverts (AUDIT-F2 fix)
+     * @dev After AUDIT-F2 fix, proof submission MUST revert when ProofSystem not configured
      */
-    function test_ProofSystemNotSetStillWorks() public {
+    function test_ProofSystemNotSetReverts() public {
         // Deploy a new marketplace without ProofSystem configured
         vm.startPrank(owner);
         JobMarketplaceWithModelsUpgradeable marketplaceImpl = new JobMarketplaceWithModelsUpgradeable();
@@ -278,17 +279,13 @@ contract ProofSystemIntegrationTest is Test {
         bytes32 proofHash = keccak256("test proof");
         uint256 tokensClaimed = 500;
 
-        // Any 65-byte signature should work when ProofSystem not set
         bytes memory dummySignature = new bytes(65);
         dummySignature[64] = 0x1b; // v = 27
 
+        // AUDIT-F2: Should REVERT when ProofSystem not configured
         vm.prank(host);
-        // Should NOT revert - graceful degradation
+        vm.expectRevert("ProofSystem not configured");
         marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, dummySignature, "QmTestCID", "");
-
-        // Verify tokens were credited
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplaceNoProof.sessionJobs(newSessionId);
-        assertEq(tokensUsed, tokensClaimed, "Tokens should be credited even without ProofSystem");
     }
 
     /**
@@ -317,9 +314,11 @@ contract ProofSystemIntegrationTest is Test {
     }
 
     /**
-     * @notice Test that ProofSubmission.verified is false when ProofSystem not configured
+     * @notice Test that proof submission reverts when ProofSystem not configured (AUDIT-F2)
+     * @dev After AUDIT-F2 fix, we can't even get to the point of checking verified status
+     *      because the transaction reverts before any proof is stored
      */
-    function test_ProofSubmissionNotVerifiedWithoutProofSystem() public {
+    function test_ProofSubmissionRevertsWithoutProofSystem() public {
         // Deploy a new marketplace without ProofSystem configured
         vm.startPrank(owner);
         JobMarketplaceWithModelsUpgradeable marketplaceImpl = new JobMarketplaceWithModelsUpgradeable();
@@ -352,12 +351,10 @@ contract ProofSystemIntegrationTest is Test {
         bytes memory dummySignature = new bytes(65);
         dummySignature[64] = 0x1b;
 
+        // AUDIT-F2: Proof submission must revert when ProofSystem not configured
         vm.prank(host);
+        vm.expectRevert("ProofSystem not configured");
         marketplaceNoProof.submitProofOfWork(newSessionId, 500, proofHash, dummySignature, "QmTestCID", "");
-
-        // Get proof and check verified is false
-        (,,, bool verified, ) = marketplaceNoProof.getProofSubmission(newSessionId, 0);
-        assertFalse(verified, "Proof should NOT be verified when ProofSystem not configured");
     }
 
     // ============================================================

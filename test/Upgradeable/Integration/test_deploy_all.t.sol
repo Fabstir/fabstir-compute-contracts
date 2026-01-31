@@ -25,8 +25,8 @@ contract DeployAllUpgradeableTest is Test {
     uint256 constant feeBasisPoints = 1000;
     uint256 constant disputeWindow = 30;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+    // Host private key for signature generation
+    uint256 public hostPrivateKey = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
 
     function setUp() public {
         // Deploy mock FAB token
@@ -183,6 +183,7 @@ contract DeployAllUpgradeableTest is Test {
         NodeRegistryWithModelsUpgradeable nodeRegistry = NodeRegistryWithModelsUpgradeable(result.nodeRegistryProxy);
         JobMarketplaceWithModelsUpgradeable marketplace = JobMarketplaceWithModelsUpgradeable(payable(result.jobMarketplaceProxy));
         HostEarningsUpgradeable hostEarnings = HostEarningsUpgradeable(payable(result.hostEarningsProxy));
+        ProofSystemUpgradeable proofSystem = ProofSystemUpgradeable(result.proofSystemProxy);
 
         // Step 1: Add a model (as owner)
         address owner = modelRegistry.owner();
@@ -190,8 +191,8 @@ contract DeployAllUpgradeableTest is Test {
         modelRegistry.addTrustedModel("TestModel/Repo", "model.gguf", bytes32(uint256(1)));
         bytes32 modelId = modelRegistry.getModelId("TestModel/Repo", "model.gguf");
 
-        // Step 2: Register a host
-        address host = address(0x100);
+        // Step 2: Register a host (derive from private key for signature)
+        address host = vm.addr(hostPrivateKey);
         fabToken.mint(host, 10000 * 10**18);
 
         vm.startPrank(host);
@@ -204,6 +205,10 @@ contract DeployAllUpgradeableTest is Test {
 
         assertTrue(nodeRegistry.isActiveNode(host), "Host registered");
 
+        // Step 2.5: Configure ProofSystem (AUDIT-F2: now required)
+        vm.prank(owner);
+        marketplace.setProofSystem(address(proofSystem));
+
         // Step 3: Create a session
         address user = address(0x200);
         vm.deal(user, 10 ether);
@@ -212,10 +217,12 @@ contract DeployAllUpgradeableTest is Test {
         uint256 sessionId = marketplace.createSessionJob{value: 0.1 ether}(host, 227_273, 1 days, 1000);
         assertEq(sessionId, 1, "Session created");
 
-        // Step 4: Submit proof
+        // Step 4: Submit proof with valid signature
         vm.warp(100);
+        bytes32 proofHash = bytes32(uint256(1));
+        bytes memory signature = _generateSignature(proofHash, host, 500);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 500, proofHash, signature, "QmProof", "");
 
         // Step 5: Complete session
         vm.prank(user);
@@ -223,5 +230,20 @@ contract DeployAllUpgradeableTest is Test {
 
         // Step 6: Verify host earnings
         assertTrue(hostEarnings.getBalance(host, address(0)) > 0, "Host earned");
+    }
+
+    // ============================================================
+    // Helper Functions
+    // ============================================================
+
+    function _generateSignature(bytes32 proofHash, address host, uint256 tokensClaimed)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
+        return abi.encodePacked(r, s, v);
     }
 }
