@@ -182,9 +182,10 @@ contract ProofVerificationE2ETest is Test {
         vm.warp(block.timestamp + 10);
 
         // Step 3: Host generates proof and signs it
+        // AUDIT-F4: Use modelId in signature for model sessions
         bytes32 proofHash = keccak256("AI inference output batch 1");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensClaimed);
+        bytes memory signature = _generateSignatureWithModel(host1PrivateKey, proofHash, host1, tokensClaimed, modelId);
 
         // Step 4: Host submits signed proof
         vm.prank(host1);
@@ -234,8 +235,9 @@ contract ProofVerificationE2ETest is Test {
         // 2. Host determines tokens claimed
         uint256 tokensClaimed = 500;
 
-        // 3. Host signs: keccak256(proofHash, hostAddress, tokensClaimed)
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host1, tokensClaimed));
+        // 3. Host signs: keccak256(proofHash, hostAddress, tokensClaimed, modelId)
+        // AUDIT-F4: Include modelId (bytes32(0) for non-model sessions)
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host1, tokensClaimed, bytes32(0)));
         bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(host1PrivateKey, ethSignedHash);
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -271,10 +273,11 @@ contract ProofVerificationE2ETest is Test {
         // Submit 5 proofs with different proof hashes
         // Rate limiting: tokensClaimable = timeSinceLastProof * 1000, and allows up to 2x
         // Using 100 tokens with 1 second gap is well within limits (100 <= 2000)
+        // AUDIT-F4: Use modelId in signature for model sessions
         uint256 tokensPerProof = 100;
         for (uint256 i = 0; i < 5; i++) {
             bytes32 proofHash = keccak256(abi.encodePacked("proof batch ", i));
-            bytes memory signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensPerProof);
+            bytes memory signature = _generateSignatureWithModel(host1PrivateKey, proofHash, host1, tokensPerProof, modelId);
 
             vm.prank(host1);
             marketplace.submitProofOfWork(sessionId, tokensPerProof, proofHash, signature, "QmProofCID", "");
@@ -324,9 +327,10 @@ contract ProofVerificationE2ETest is Test {
         vm.warp(block.timestamp + 10);
 
         // Host1 creates a valid signature for their proof
+        // AUDIT-F4: Use modelId in signature for model sessions
         bytes32 proofHash = keccak256("work done by host1");
         uint256 tokensClaimed = 500;
-        bytes memory host1Signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensClaimed);
+        bytes memory host1Signature = _generateSignatureWithModel(host1PrivateKey, proofHash, host1, tokensClaimed, modelId);
 
         // Host1 can use their own signature - should succeed
         vm.prank(host1);
@@ -341,7 +345,7 @@ contract ProofVerificationE2ETest is Test {
 
         // Host2 tries to use host1's signature format but for host2's session
         // This should fail because the signature was made for host1's address
-        bytes memory host1SignatureForHost2 = _generateSignature(host1PrivateKey, proofHash2, host1, tokensClaimed);
+        bytes memory host1SignatureForHost2 = _generateSignatureWithModel(host1PrivateKey, proofHash2, host1, tokensClaimed, modelId);
 
         vm.prank(host2);
         vm.expectRevert("Invalid proof signature");
@@ -485,9 +489,10 @@ contract ProofVerificationE2ETest is Test {
         vm.warp(block.timestamp + 10);
 
         // Submit signed proof
+        // AUDIT-F4: Use modelId in signature for model sessions
         bytes32 proofHash = keccak256("USDC payment work");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensClaimed);
+        bytes memory signature = _generateSignatureWithModel(host1PrivateKey, proofHash, host1, tokensClaimed, modelId);
 
         vm.prank(host1);
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID", "");
@@ -502,7 +507,34 @@ contract ProofVerificationE2ETest is Test {
     // ============================================================
 
     /**
-     * @dev Generate a valid ECDSA signature for the given proof
+     * @dev Generate a valid ECDSA signature for the given proof with specific modelId
+     * @param sigModelId The modelId to include in signature (use modelId for model sessions, bytes32(0) for non-model)
+     */
+    function _generateSignatureWithModel(
+        uint256 privateKey,
+        bytes32 proofHash,
+        address signer,
+        uint256 tokensClaimed,
+        bytes32 sigModelId
+    ) internal view returns (bytes memory) {
+        // AUDIT-F4: Include modelId in signature
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed, sigModelId));
+
+        // Create Ethereum signed message hash (EIP-191)
+        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked(
+            "\x19Ethereum Signed Message:\n32",
+            dataHash
+        ));
+
+        // Sign with private key using Foundry's vm.sign cheatcode
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, ethSignedMessageHash);
+
+        // Return 65-byte signature (r, s, v)
+        return abi.encodePacked(r, s, v);
+    }
+
+    /**
+     * @dev Generate a valid ECDSA signature for the given proof (non-model sessions use bytes32(0))
      */
     function _generateSignature(
         uint256 privateKey,
@@ -510,9 +542,10 @@ contract ProofVerificationE2ETest is Test {
         address signer,
         uint256 tokensClaimed
     ) internal view returns (bytes memory) {
-        // Create the message hash that will be signed
-        // Must match ProofSystem._verifyHostSignature: keccak256(proofHash, prover, claimedTokens)
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed));
+        // AUDIT-F4: Include modelId in signature
+        // For non-model sessions, use bytes32(0)
+        bytes32 modelIdForSig = bytes32(0);
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed, modelIdForSig));
 
         // Create Ethereum signed message hash (EIP-191)
         bytes32 ethSignedMessageHash = keccak256(abi.encodePacked(

@@ -118,10 +118,11 @@ contract ProofSystemProductionReadyTest is Test {
 
     function test_ViewFunctionsArePermissionless() public view {
         // These functions are intentionally permissionless
+        bytes32 modelId = bytes32(0); // AUDIT-F4: Non-model session
 
-        // 1. verifyHostSignature - read-only verification
+        // 1. verifyHostSignature - read-only verification (AUDIT-F4: includes modelId)
         bytes memory proof = new bytes(97);
-        proofSystem.verifyHostSignature(proof, prover, 100);
+        proofSystem.verifyHostSignature(proof, prover, 100, modelId);
 
         // 2. verifiedProofs - public mapping
         proofSystem.verifiedProofs(bytes32(uint256(1)));
@@ -141,12 +142,12 @@ contract ProofSystemProductionReadyTest is Test {
         // 7. getModelCircuit - view function
         proofSystem.getModelCircuit(address(0x100));
 
-        // 8. verifyBatchView - view function
+        // 8. verifyBatchView - view function (AUDIT-F4: includes modelId)
         bytes[] memory proofs = new bytes[](1);
         proofs[0] = new bytes(97);
         uint256[] memory tokenCounts = new uint256[](1);
         tokenCounts[0] = 100;
-        proofSystem.verifyBatchView(proofs, prover, tokenCounts);
+        proofSystem.verifyBatchView(proofs, prover, tokenCounts, modelId);
 
         // 9. estimateBatchGas - pure function
         proofSystem.estimateBatchGas(1);

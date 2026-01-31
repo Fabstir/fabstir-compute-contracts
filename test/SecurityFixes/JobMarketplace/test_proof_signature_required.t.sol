@@ -277,11 +277,13 @@ contract ProofSignatureRequiredTest is Test {
 
     /**
      * @dev Generate a valid ECDSA signature from the host for the given proof
+     * AUDIT-F4: Now includes modelId - uses session's modelId since this test uses createSessionJobForModel
      */
     function _generateHostSignature(bytes32 proofHash, uint256 tokensClaimed) internal view returns (bytes memory) {
-        // Create the message hash that will be signed
-        // Format: keccak256(proofHash, host, tokensClaimed)
-        bytes32 messageHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed));
+        // AUDIT-F4: Create the message hash that will be signed - now includes modelId
+        // Format: keccak256(proofHash, host, tokensClaimed, modelId)
+        // This test uses createSessionJobForModel, so we use the actual modelId
+        bytes32 messageHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed, modelId));
 
         // Create Ethereum signed message hash (EIP-191)
         bytes32 ethSignedMessageHash = keccak256(abi.encodePacked(

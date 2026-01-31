@@ -22,11 +22,15 @@ contract ProofSystemDeploymentScriptTest is Test {
         deployScript = new DeployProofSystemUpgradeable();
     }
 
+    // AUDIT-F4: Use bytes32(0) for non-model sessions
+    bytes32 constant MODEL_ID = bytes32(0);
+
     function createSignedProof(
         bytes32 proofHash,
         uint256 claimedTokens
     ) internal view returns (bytes memory) {
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        // AUDIT-F4: Include modelId in signature
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens, MODEL_ID));
         bytes32 messageHash = keccak256(abi.encodePacked(
             "\x19Ethereum Signed Message:\n32",
             dataHash
@@ -91,12 +95,12 @@ contract ProofSystemDeploymentScriptTest is Test {
 
         ProofSystemUpgradeable proofSystem = ProofSystemUpgradeable(proxy);
 
-        // Verify a signed proof
+        // Verify a signed proof (AUDIT-F4: includes modelId)
         bytes32 proofHash = bytes32(uint256(0x1234));
         uint256 claimedTokens = 100;
         bytes memory proof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystem.verifyHostSignature(proof, prover, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, prover, claimedTokens, MODEL_ID);
         assertTrue(result);
     }
 

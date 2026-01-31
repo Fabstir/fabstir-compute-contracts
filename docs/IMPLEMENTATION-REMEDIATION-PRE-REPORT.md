@@ -57,7 +57,7 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: PHASE 3 COMPLETE (60%)**
+**Overall Status: PHASE 4 COMPLETE (80%)**
 
 - [x] **Phase 1: Dead Code Removal (AUDIT-F1)** (2/2 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 1.1: Write Tests for Modifier Removal ✅
@@ -70,11 +70,11 @@ fabstir-compute-contracts
   - [x] Sub-phase 3.2: Add proofTimeoutWindow to SessionJob Struct ✅
   - [x] Sub-phase 3.3: Update Session Creation Functions ✅
   - [x] Sub-phase 3.4: Fix triggerSessionTimeout Logic ✅
-- [ ] **Phase 4: Model ID in Signature Scheme (AUDIT-F4)** (0/4 sub-phases)
-  - [ ] Sub-phase 4.1: Write Tests for Model Signature
-  - [ ] Sub-phase 4.2: Update IProofSystem Interface
-  - [ ] Sub-phase 4.3: Update ProofSystemUpgradeable
-  - [ ] Sub-phase 4.4: Update JobMarketplace submitProofOfWork
+- [x] **Phase 4: Model ID in Signature Scheme (AUDIT-F4)** (4/4 sub-phases) ✅ COMPLETE
+  - [x] Sub-phase 4.1: Write Tests for Model Signature ✅
+  - [x] Sub-phase 4.2: Update IProofSystem Interface ✅
+  - [x] Sub-phase 4.3: Update ProofSystemUpgradeable ✅
+  - [x] Sub-phase 4.4: Update JobMarketplace submitProofOfWork ✅
 - [ ] **Phase 5: createSessionFromDepositForModel (AUDIT-F5)** (0/2 sub-phases)
   - [ ] Sub-phase 5.1: Write Tests for New Function
   - [ ] Sub-phase 5.2: Implement createSessionFromDepositForModel
@@ -83,7 +83,7 @@ fabstir-compute-contracts
   - [ ] Sub-phase 6.2: Manual Testing on Testnet
   - [ ] Sub-phase 6.3: Update Documentation and ABIs
 
-**Last Updated:** 2026-01-31 (Phase 3 complete)
+**Last Updated:** 2026-01-31 (Phase 4 complete)
 
 ---
 
@@ -505,13 +505,13 @@ forge test  # Full suite
 **Goal**: Verify signature verification includes modelId.
 
 **Tasks:**
-- [ ] Create test file `test/SecurityFixes/Remediation/test_model_signature.t.sol`
-- [ ] Test: Valid signature with correct modelId passes verification
-- [ ] Test: Valid signature with `bytes32(0)` for non-model session passes
-- [ ] Test: Signature with wrong modelId fails
-- [ ] Test: Replay attack with same proofHash fails
-- [ ] Test: `submitProofOfWork` passes sessionModel to ProofSystem
-- [ ] Run tests and verify they FAIL (modelId not in signature yet)
+- [x] Create test file `test/SecurityFixes/Remediation/test_model_signature.t.sol`
+- [x] Test: Valid signature with correct modelId passes verification
+- [x] Test: Valid signature with `bytes32(0)` for non-model session passes
+- [x] Test: Signature with wrong modelId fails
+- [x] Test: Replay attack with same proofHash fails
+- [x] Test: `submitProofOfWork` passes sessionModel to ProofSystem
+- [x] Run tests and verify they FAIL (modelId not in signature yet)
 
 **File Limits:**
 - Test file: ~200 lines maximum
@@ -542,9 +542,9 @@ forge test --match-contract ModelSignatureTest -vv
 **Goal**: Add modelId parameter to interface functions.
 
 **Tasks:**
-- [ ] Update `verifyHostSignature()` to include `bytes32 modelId` parameter
-- [ ] Update `verifyAndMarkComplete()` to include `bytes32 modelId` parameter
-- [ ] Verify interface compiles
+- [x] Update `verifyHostSignature()` to include `bytes32 modelId` parameter
+- [x] Update `verifyAndMarkComplete()` to include `bytes32 modelId` parameter
+- [x] Verify interface compiles
 
 **Implementation:**
 ```solidity
@@ -581,11 +581,12 @@ forge build  # Will fail until ProofSystem updated
 **Goal**: Include modelId in signed message hash.
 
 **Tasks:**
-- [ ] Update `_verifyHostSignature()` to accept and use modelId
-- [ ] Update `verifyHostSignature()` public function signature
-- [ ] Update `verifyAndMarkComplete()` public function signature
-- [ ] Update signed message: `keccak256(proofHash, prover, claimedTokens, modelId)`
-- [ ] Update all tests that call these functions
+- [x] Update `_verifyHostSignature()` to accept and use modelId
+- [x] Update `verifyHostSignature()` public function signature
+- [x] Update `verifyAndMarkComplete()` public function signature
+- [x] Update signed message: `keccak256(proofHash, prover, claimedTokens, modelId)`
+- [x] Update `verifyBatch()` and `verifyBatchView()` to include modelId parameter
+- [x] Update all tests that call these functions
 
 **Implementation:**
 ```solidity
@@ -645,10 +646,12 @@ forge test --match-path "test/SecurityFixes/ProofSystem/**" -vv
 **Goal**: Pass sessionModel to ProofSystem verification.
 
 **Tasks:**
-- [ ] Get `modelId` from `sessionModel[jobId]` mapping
-- [ ] Pass `modelId` to `proofSystem.verifyAndMarkComplete()`
-- [ ] Update all existing test files that call `submitProofOfWork`
-- [ ] Mark sub-phase complete
+- [x] Get `modelId` from `sessionModel[jobId]` mapping
+- [x] Pass `modelId` to `proofSystem.verifyAndMarkComplete()`
+- [x] Update JobMarketplace's local IProofSystemUpgradeable interface
+- [x] Update all existing test files that call `submitProofOfWork`
+- [x] Update test helpers to use correct modelId for model/non-model sessions
+- [x] Mark sub-phase complete - 705/705 tests passing
 
 **Implementation:**
 ```solidity
@@ -673,6 +676,55 @@ require(
 forge test --match-contract ModelSignatureTest -vv
 forge test  # Full suite
 ```
+
+### Phase 4 Completion Summary
+
+**Status**: ✅ COMPLETE
+**Date**: 2026-01-31
+**Commit**: `fix(AUDIT-F4): Include modelId in signature verification`
+
+**Changes Made:**
+- Updated `IProofSystem` interface to include `bytes32 modelId` parameter in:
+  - `verifyHostSignature()`
+  - `verifyAndMarkComplete()`
+- Updated `ProofSystemUpgradeable` to include modelId in signed message hash:
+  - `_verifyHostSignature()` - internal function
+  - `verifyHostSignature()` - public view function
+  - `verifyAndMarkComplete()` - public function
+  - `verifyBatch()` - batch verification
+  - `verifyBatchView()` - batch view function
+- Updated `JobMarketplaceWithModelsUpgradeable`:
+  - Updated local `IProofSystemUpgradeable` interface with modelId
+  - `submitProofOfWork()` now passes `sessionModel[jobId]` to ProofSystem
+- Updated 14+ test files to generate signatures with correct modelId:
+  - Model sessions (createSessionJobForModel): use actual modelId
+  - Non-model sessions (createSessionJob): use bytes32(0)
+
+**Test Results:**
+- ModelSignatureTest: 6/6 passing
+- ProofSignatureRequiredTest: 6/6 passing
+- ProofSystemIntegrationTest: 7/7 passing
+- ProofVerificationE2ETest: 8/8 passing
+- DeltaCIDTest: 5/5 passing
+- Full suite: 705/705 passing
+
+**Breaking Changes:**
+- `IProofSystem` interface now requires `modelId` parameter in verification functions
+- Hosts MUST include modelId in signed message: `keccak256(proofHash, host, tokensClaimed, modelId)`
+- Use `bytes32(0)` for non-model sessions, actual modelId for model sessions
+- All host signing software must be updated
+
+**Files Modified:**
+- `src/interfaces/IProofSystem.sol` - Interface update
+- `src/ProofSystemUpgradeable.sol` - Implementation update
+- `src/JobMarketplaceWithModelsUpgradeable.sol` - Local interface + submitProofOfWork
+- `test/SecurityFixes/Remediation/test_model_signature.t.sol` - New test file
+- `test/SecurityFixes/JobMarketplace/test_proof_signature_required.t.sol` - Updated signatures
+- `test/SecurityFixes/JobMarketplace/test_proofsystem_integration.t.sol` - Updated signatures
+- `test/Integration/test_proof_verification_e2e.t.sol` - Updated signatures
+- `test/JobMarketplace/test_deltaCID.t.sol` - Updated signatures
+- `test/Upgradeable/ProofSystem/test_initialization.t.sol` - Updated signatures
+- Plus 9 other test files with signature updates
 
 ---
 

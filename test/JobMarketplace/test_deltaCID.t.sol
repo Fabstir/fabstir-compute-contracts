@@ -384,6 +384,7 @@ contract DeltaCIDTest is Test {
 
     /**
      * @dev Generate a valid ECDSA signature for the given proof
+     * AUDIT-F4: Uses session's modelId since this test uses createSessionJobForModel
      */
     function _generateSignature(
         uint256 privateKey,
@@ -391,8 +392,9 @@ contract DeltaCIDTest is Test {
         address signer,
         uint256 tokensClaimed
     ) internal view returns (bytes memory) {
-        // Create the message hash that will be signed
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed));
+        // AUDIT-F4: Include modelId in signature
+        // This test uses createSessionJobForModel, so we use the actual modelId
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed, modelId));
 
         // Create Ethereum signed message hash (EIP-191)
         bytes32 ethSignedMessageHash = keccak256(abi.encodePacked(

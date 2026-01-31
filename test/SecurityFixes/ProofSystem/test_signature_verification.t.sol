@@ -49,21 +49,23 @@ contract ProofSystemSignatureVerificationTest is Test {
     // ============================================================
 
     /**
-     * @dev Create a signed proof that the contract can verify
+     * @dev Create a signed proof that the contract can verify (AUDIT-F4: includes modelId)
      * @param privateKey The private key to sign with
      * @param proofHash The proof hash (first 32 bytes of proof)
      * @param prover The address that should be recovered (host)
      * @param claimedTokens Number of tokens being claimed
+     * @param modelId Model ID for the session (bytes32(0) for non-model sessions)
      * @return proof The complete proof bytes: [proofHash][r][s][v]
      */
     function createSignedProof(
         uint256 privateKey,
         bytes32 proofHash,
         address prover,
-        uint256 claimedTokens
+        uint256 claimedTokens,
+        bytes32 modelId
     ) internal pure returns (bytes memory) {
-        // Create the message hash that was signed
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        // AUDIT-F4: Create the message hash that was signed (now includes modelId)
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens, modelId));
         bytes32 messageHash = keccak256(abi.encodePacked(
             "\x19Ethereum Signed Message:\n32",
             dataHash
@@ -83,19 +85,23 @@ contract ProofSystemSignatureVerificationTest is Test {
     function test_ValidSignaturePassesVerification() public view {
         bytes32 proofHash = bytes32(uint256(0x1234));
         uint256 claimedTokens = 100;
+        bytes32 modelId = bytes32(0); // Non-model session
 
         bytes memory proof = createSignedProof(
             HOST_PRIVATE_KEY,
             proofHash,
             host,
-            claimedTokens
+            claimedTokens,
+            modelId
         );
 
-        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens, modelId);
         assertTrue(result, "Valid signature should pass verification");
     }
 
     function test_ValidSignatureWithDifferentTokenCounts() public view {
+        bytes32 modelId = bytes32(0); // Non-model session
+
         // Test with various token counts
         uint256[] memory tokenCounts = new uint256[](4);
         tokenCounts[0] = 1;
@@ -108,10 +114,11 @@ contract ProofSystemSignatureVerificationTest is Test {
                 HOST_PRIVATE_KEY,
                 bytes32(uint256(0x5678 + i)), // Different proof hash each time
                 host,
-                tokenCounts[i]
+                tokenCounts[i],
+                modelId
             );
 
-            bool result = proofSystem.verifyHostSignature(proof, host, tokenCounts[i]);
+            bool result = proofSystem.verifyHostSignature(proof, host, tokenCounts[i], modelId);
             assertTrue(result, "Valid signature should pass for any token count");
         }
     }
@@ -123,6 +130,7 @@ contract ProofSystemSignatureVerificationTest is Test {
     function test_InvalidSignatureFails() public view {
         bytes32 proofHash = bytes32(uint256(0xABCD));
         uint256 claimedTokens = 100;
+        bytes32 modelId = bytes32(0);
 
         // Create proof with garbage signature data
         bytes memory invalidProof = abi.encodePacked(
@@ -132,24 +140,26 @@ contract ProofSystemSignatureVerificationTest is Test {
             uint8(27)                  // v
         );
 
-        bool result = proofSystem.verifyHostSignature(invalidProof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(invalidProof, host, claimedTokens, modelId);
         assertFalse(result, "Invalid signature should fail verification");
     }
 
     function test_WrongSignerFails() public view {
         bytes32 proofHash = bytes32(uint256(0xDEAD));
         uint256 claimedTokens = 100;
+        bytes32 modelId = bytes32(0);
 
         // Sign with attacker's key but try to verify for host
         bytes memory proof = createSignedProof(
             ATTACKER_PRIVATE_KEY,
             proofHash,
             host,  // Claiming this is from host
-            claimedTokens
+            claimedTokens,
+            modelId
         );
 
         // Should fail because signature is from attacker, not host
-        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens, modelId);
         assertFalse(result, "Signature from wrong address should fail");
     }
 
@@ -157,13 +167,15 @@ contract ProofSystemSignatureVerificationTest is Test {
         bytes32 originalProofHash = bytes32(uint256(0xBEEF));
         bytes32 tamperedProofHash = bytes32(uint256(0xDEAD));
         uint256 claimedTokens = 100;
+        bytes32 modelId = bytes32(0);
 
         // Create valid signature for original proof hash
         bytes memory proof = createSignedProof(
             HOST_PRIVATE_KEY,
             originalProofHash,
             host,
-            claimedTokens
+            claimedTokens,
+            modelId
         );
 
         // Tamper with the proof hash in the proof bytes
@@ -173,7 +185,7 @@ contract ProofSystemSignatureVerificationTest is Test {
         }
 
         // Should fail because proof hash doesn't match signature
-        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens, modelId);
         assertFalse(result, "Tampered proof hash should fail verification");
     }
 
@@ -181,17 +193,19 @@ contract ProofSystemSignatureVerificationTest is Test {
         bytes32 proofHash = bytes32(uint256(0xCAFE));
         uint256 originalTokens = 100;
         uint256 tamperedTokens = 1000; // Attacker tries to claim more
+        bytes32 modelId = bytes32(0);
 
         // Create valid signature for original token count
         bytes memory proof = createSignedProof(
             HOST_PRIVATE_KEY,
             proofHash,
             host,
-            originalTokens
+            originalTokens,
+            modelId
         );
 
         // Try to verify with different token count
-        bool result = proofSystem.verifyHostSignature(proof, host, tamperedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, tamperedTokens, modelId);
         assertFalse(result, "Tampered token count should fail verification");
     }
 
@@ -202,38 +216,42 @@ contract ProofSystemSignatureVerificationTest is Test {
     function test_ReplayAttackFails() public {
         bytes32 proofHash = bytes32(uint256(0xF00D));
         uint256 claimedTokens = 100;
+        bytes32 modelId = bytes32(0);
 
         bytes memory proof = createSignedProof(
             HOST_PRIVATE_KEY,
             proofHash,
             host,
-            claimedTokens
+            claimedTokens,
+            modelId
         );
 
         // First verification should pass
-        bool firstResult = proofSystem.verifyAndMarkComplete(proof, host, claimedTokens);
+        bool firstResult = proofSystem.verifyAndMarkComplete(proof, host, claimedTokens, modelId);
         assertTrue(firstResult, "First verification should pass");
 
         // Second verification (replay) should fail
-        bool replayResult = proofSystem.verifyHostSignature(proof, host, claimedTokens);
+        bool replayResult = proofSystem.verifyHostSignature(proof, host, claimedTokens, modelId);
         assertFalse(replayResult, "Replay attack should fail");
     }
 
     function test_SameSignatureDifferentSessionFails() public view {
         bytes32 proofHash = bytes32(uint256(0xBABE));
         uint256 claimedTokens = 100;
+        bytes32 modelId = bytes32(0);
 
         // Create signature for host address
         bytes memory proof = createSignedProof(
             HOST_PRIVATE_KEY,
             proofHash,
             host,
-            claimedTokens
+            claimedTokens,
+            modelId
         );
 
         // Try to use the same signature for a different prover address
         address differentProver = address(0x9999);
-        bool result = proofSystem.verifyHostSignature(proof, differentProver, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, differentProver, claimedTokens, modelId);
         assertFalse(result, "Signature for different prover should fail");
     }
 
@@ -242,50 +260,57 @@ contract ProofSystemSignatureVerificationTest is Test {
     // ============================================================
 
     function test_TooShortProofFails() public view {
+        bytes32 modelId = bytes32(0);
+
         // Proof needs to be at least 97 bytes: 32 (hash) + 32 (r) + 32 (s) + 1 (v)
         bytes memory shortProof = abi.encodePacked(
             bytes32(uint256(0x1234)),
             bytes32(uint256(0x5678))
         ); // Only 64 bytes
 
-        bool result = proofSystem.verifyHostSignature(shortProof, host, 100);
+        bool result = proofSystem.verifyHostSignature(shortProof, host, 100, modelId);
         assertFalse(result, "Too short proof should fail");
     }
 
     function test_ZeroTokensFails() public view {
         bytes32 proofHash = bytes32(uint256(0x1111));
+        bytes32 modelId = bytes32(0);
 
         bytes memory proof = createSignedProof(
             HOST_PRIVATE_KEY,
             proofHash,
             host,
-            0  // Zero tokens
+            0,  // Zero tokens
+            modelId
         );
 
-        bool result = proofSystem.verifyHostSignature(proof, host, 0);
+        bool result = proofSystem.verifyHostSignature(proof, host, 0, modelId);
         assertFalse(result, "Zero tokens should fail");
     }
 
     function test_ZeroProverFails() public view {
         bytes32 proofHash = bytes32(uint256(0x2222));
+        bytes32 modelId = bytes32(0);
 
         bytes memory proof = createSignedProof(
             HOST_PRIVATE_KEY,
             proofHash,
             address(0),
-            100
+            100,
+            modelId
         );
 
-        bool result = proofSystem.verifyHostSignature(proof, address(0), 100);
+        bool result = proofSystem.verifyHostSignature(proof, address(0), 100, modelId);
         assertFalse(result, "Zero prover address should fail");
     }
 
     function test_InvalidVValueHandled() public view {
         bytes32 proofHash = bytes32(uint256(0x3333));
         uint256 claimedTokens = 100;
+        bytes32 modelId = bytes32(0);
 
-        // Create proof with invalid v value (not 27 or 28)
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, claimedTokens));
+        // AUDIT-F4: Create proof with invalid v value (not 27 or 28) - now includes modelId
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, claimedTokens, modelId));
         bytes32 messageHash = keccak256(abi.encodePacked(
             "\x19Ethereum Signed Message:\n32",
             dataHash
@@ -297,7 +322,7 @@ contract ProofSystemSignatureVerificationTest is Test {
         uint8 invalidV = 99;
         bytes memory invalidProof = abi.encodePacked(proofHash, r, s, invalidV);
 
-        bool result = proofSystem.verifyHostSignature(invalidProof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(invalidProof, host, claimedTokens, modelId);
         assertFalse(result, "Invalid v value should fail or return zero address");
     }
 
@@ -307,7 +332,8 @@ contract ProofSystemSignatureVerificationTest is Test {
 
     function testFuzz_ValidSignatureAlwaysPasses(
         bytes32 proofHash,
-        uint256 claimedTokens
+        uint256 claimedTokens,
+        bytes32 modelId
     ) public view {
         // Bound inputs to valid ranges
         vm.assume(claimedTokens > 0);
@@ -317,16 +343,18 @@ contract ProofSystemSignatureVerificationTest is Test {
             HOST_PRIVATE_KEY,
             proofHash,
             host,
-            claimedTokens
+            claimedTokens,
+            modelId
         );
 
-        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens, modelId);
         assertTrue(result, "Valid signature should always pass");
     }
 
     function testFuzz_WrongSignerAlwaysFails(
         bytes32 proofHash,
-        uint256 claimedTokens
+        uint256 claimedTokens,
+        bytes32 modelId
     ) public view {
         vm.assume(claimedTokens > 0);
         vm.assume(proofHash != bytes32(0));
@@ -336,11 +364,12 @@ contract ProofSystemSignatureVerificationTest is Test {
             ATTACKER_PRIVATE_KEY,
             proofHash,
             host,
-            claimedTokens
+            claimedTokens,
+            modelId
         );
 
         // Verify for host - should fail
-        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, host, claimedTokens, modelId);
         assertFalse(result, "Wrong signer should always fail");
     }
 }

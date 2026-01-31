@@ -13,13 +13,21 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-// Proof system interface
+// Proof system interface (AUDIT-F4: updated to include modelId parameter)
 interface IProofSystemUpgradeable {
-    function verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens) external view returns (bool);
+    function verifyHostSignature(
+        bytes calldata proof,
+        address prover,
+        uint256 claimedTokens,
+        bytes32 modelId
+    ) external view returns (bool);
 
-    function verifyAndMarkComplete(bytes calldata proof, address prover, uint256 claimedTokens)
-        external
-        returns (bool);
+    function verifyAndMarkComplete(
+        bytes calldata proof,
+        address prover,
+        uint256 claimedTokens,
+        bytes32 modelId
+    ) external returns (bool);
 }
 
 /**
@@ -615,8 +623,10 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(address(proofSystem) != address(0), "ProofSystem not configured");
         // Construct 97-byte proof: proofHash (32) + signature (65)
         bytes memory proof = abi.encodePacked(proofHash, signature);
+        // AUDIT-F4: Get model ID for this session (bytes32(0) for non-model sessions)
+        bytes32 modelId = sessionModel[jobId];
         require(
-            proofSystem.verifyAndMarkComplete(proof, msg.sender, tokensClaimed),
+            proofSystem.verifyAndMarkComplete(proof, msg.sender, tokensClaimed, modelId),
             "Invalid proof signature"
         );
         bool verified = true;

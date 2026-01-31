@@ -66,30 +66,32 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Verify host signature on proof of work
-     * @dev The host must sign keccak256(proofHash, prover, claimedTokens) using eth_sign.
+     * @notice Verify host signature on proof of work (AUDIT-F4: includes modelId)
+     * @dev The host must sign keccak256(proofHash, prover, claimedTokens, modelId) using eth_sign.
      *      This provides cryptographic attestation that the host claims to have processed
-     *      the specified number of tokens. Economic security comes from host staking.
+     *      the specified number of tokens for a specific model. Economic security comes from host staking.
      * @param proof Proof bytes: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v]
      * @param prover Address that should have signed the proof (host)
      * @param claimedTokens Number of tokens being claimed
+     * @param modelId Model ID for the session (bytes32(0) for non-model sessions)
      * @return True if signature is valid and proof not replayed
      */
-    function verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens)
+    function verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens, bytes32 modelId)
         external
         view
         override
         returns (bool)
     {
-        return _verifyHostSignature(proof, prover, claimedTokens);
+        return _verifyHostSignature(proof, prover, claimedTokens, modelId);
     }
 
     /**
-     * @notice Internal host signature verification logic
+     * @notice Internal host signature verification logic (AUDIT-F4: includes modelId)
      * @dev Proof format: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v] = 97 bytes minimum
-     *      The host must sign: keccak256(proofHash, prover, claimedTokens)
+     *      The host must sign: keccak256(proofHash, prover, claimedTokens, modelId)
+     *      For non-model sessions, modelId should be bytes32(0)
      */
-    function _verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens) internal view returns (bool) {
+    function _verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens, bytes32 modelId) internal view returns (bool) {
         // Proof must contain: proofHash (32) + r (32) + s (32) + v (1) = 97 bytes
         if (proof.length < 97) return false;
         if (claimedTokens == 0) return false;
@@ -111,10 +113,10 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
         // Check not already verified (prevent replay)
         if (verifiedProofs[proofHash]) return false;
 
-        // Reconstruct the message that was signed
-        // The prover signs: keccak256(proofHash, prover, claimedTokens)
+        // AUDIT-F4: Reconstruct the message that was signed (now includes modelId)
+        // The prover signs: keccak256(proofHash, prover, claimedTokens, modelId)
         // Using eth_sign which prefixes with "\x19Ethereum Signed Message:\n32"
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens, modelId));
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
 
         // Recover signer and verify it matches the prover (host)
@@ -138,14 +140,20 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Verify and mark proof as complete (prevents replay)
+     * @notice Verify and mark proof as complete (prevents replay) (AUDIT-F4: includes modelId)
+     * @param proof Proof bytes: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v]
+     * @param prover Address that should have signed the proof (host)
+     * @param claimedTokens Number of tokens being claimed
+     * @param modelId Model ID for the session (bytes32(0) for non-model sessions)
+     * @return True if verification succeeded
      */
-    function verifyAndMarkComplete(bytes calldata proof, address prover, uint256 claimedTokens)
+    function verifyAndMarkComplete(bytes calldata proof, address prover, uint256 claimedTokens, bytes32 modelId)
         external
+        override
         returns (bool)
     {
-        // First verify using internal function
-        if (!_verifyHostSignature(proof, prover, claimedTokens)) {
+        // First verify using internal function (AUDIT-F4: passes modelId)
+        if (!_verifyHostSignature(proof, prover, claimedTokens, modelId)) {
             return false;
         }
 
@@ -189,9 +197,13 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Batch verification of multiple proofs
+     * @notice Batch verification of multiple proofs (AUDIT-F4: includes modelId)
+     * @param proofs Array of proof bytes
+     * @param prover Address that should have signed all proofs (host)
+     * @param tokenCounts Array of token counts for each proof
+     * @param modelId Model ID for all proofs in batch (bytes32(0) for non-model sessions)
      */
-    function verifyBatch(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts)
+    function verifyBatch(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts, bytes32 modelId)
         external
         returns (bool)
     {
@@ -203,8 +215,8 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
         uint256 totalTokens = 0;
 
         for (uint256 i = 0; i < proofs.length; i++) {
-            // Verify each proof using internal function
-            require(_verifyHostSignatureInternal(proofs[i], prover, tokenCounts[i]), "Invalid proof at index");
+            // Verify each proof using internal function (AUDIT-F4: passes modelId)
+            require(_verifyHostSignatureInternal(proofs[i], prover, tokenCounts[i], modelId), "Invalid proof at index");
 
             // Extract and record proof hash (first 32 bytes of proof)
             bytes32 proofHash;
@@ -223,9 +235,13 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice View function for batch verification (doesn't modify state)
+     * @notice View function for batch verification (doesn't modify state) (AUDIT-F4: includes modelId)
+     * @param proofs Array of proof bytes
+     * @param prover Address that should have signed all proofs (host)
+     * @param tokenCounts Array of token counts for each proof
+     * @param modelId Model ID for all proofs in batch (bytes32(0) for non-model sessions)
      */
-    function verifyBatchView(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts)
+    function verifyBatchView(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts, bytes32 modelId)
         external
         view
         returns (bool[] memory results)
@@ -234,7 +250,7 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
 
         results = new bool[](proofs.length);
         for (uint256 i = 0; i < proofs.length; i++) {
-            results[i] = this.verifyHostSignature(proofs[i], prover, tokenCounts[i]);
+            results[i] = this.verifyHostSignature(proofs[i], prover, tokenCounts[i], modelId);
         }
     }
 
@@ -256,13 +272,14 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Internal helper for batch signature verification
+     * @notice Internal helper for batch signature verification (AUDIT-F4: includes modelId)
+     * @dev Used by verifyBatch for batch verification
      */
-    function _verifyHostSignatureInternal(bytes calldata proof, address prover, uint256 claimedTokens)
+    function _verifyHostSignatureInternal(bytes calldata proof, address prover, uint256 claimedTokens, bytes32 modelId)
         internal
         view
         returns (bool)
     {
-        return _verifyHostSignature(proof, prover, claimedTokens);
+        return _verifyHostSignature(proof, prover, claimedTokens, modelId);
     }
 }

@@ -362,10 +362,10 @@ contract FullFlowIntegrationTest is Test {
         // Verify model is tracked
         assertEq(jobMarketplace.sessionModel(sessionId), modelId1, "Session model should be tracked");
 
-        // Complete flow (with valid signature)
+        // Complete flow (with valid signature) - AUDIT-F4: use model-specific signature
         vm.warp(block.timestamp + 1);
         bytes32 modelProofHash = bytes32(uint256(1));
-        bytes memory modelProofSig = _generateSignature(host1PrivateKey, host1, modelProofHash, 500);
+        bytes memory modelProofSig = _generateSignatureWithModel(host1PrivateKey, host1, modelProofHash, 500, modelId1);
         vm.prank(host1);
         jobMarketplace.submitProofOfWork(sessionId, 500, modelProofHash, modelProofSig, "QmProof", "");
 
@@ -495,7 +495,21 @@ contract FullFlowIntegrationTest is Test {
         bytes32 proofHash,
         uint256 tokensClaimed
     ) internal pure returns (bytes memory) {
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, hostAddr, tokensClaimed));
+        return _generateSignatureWithModel(hostPrivateKey, hostAddr, proofHash, tokensClaimed, bytes32(0));
+    }
+
+    /**
+     * @dev Generate signature with specific modelId (AUDIT-F4)
+     */
+    function _generateSignatureWithModel(
+        uint256 hostPrivateKey,
+        address hostAddr,
+        bytes32 proofHash,
+        uint256 tokensClaimed,
+        bytes32 modelIdForSig
+    ) internal pure returns (bytes memory) {
+        // AUDIT-F4: Include modelId in signature
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, hostAddr, tokensClaimed, modelIdForSig));
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
         return abi.encodePacked(r, s, v);

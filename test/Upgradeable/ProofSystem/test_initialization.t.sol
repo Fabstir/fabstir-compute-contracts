@@ -39,8 +39,11 @@ contract ProofSystemInitializationTest is Test {
     // Helper Functions
     // ============================================================
 
+    // AUDIT-F4: Use bytes32(0) for non-model sessions in initialization tests
+    bytes32 constant MODEL_ID = bytes32(0);
+
     /**
-     * @dev Create a signed proof for testing
+     * @dev Create a signed proof for testing (AUDIT-F4: includes modelId)
      * @param proofHash The proof hash (first 32 bytes)
      * @param claimedTokens Number of tokens being claimed
      * @return proof The complete signed proof bytes
@@ -49,7 +52,8 @@ contract ProofSystemInitializationTest is Test {
         bytes32 proofHash,
         uint256 claimedTokens
     ) internal view returns (bytes memory) {
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        // AUDIT-F4: Include modelId in signature
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens, MODEL_ID));
         bytes32 messageHash = keccak256(abi.encodePacked(
             "\x19Ethereum Signed Message:\n32",
             dataHash
@@ -88,14 +92,14 @@ contract ProofSystemInitializationTest is Test {
 
         bytes memory proof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystem.verifyHostSignature(proof, prover, claimedTokens);
+        bool result = proofSystem.verifyHostSignature(proof, prover, claimedTokens, MODEL_ID);
         assertTrue(result);
     }
 
     function test_VerifyEKZLRejectsShortProof() public view {
         bytes memory shortProof = abi.encodePacked(bytes32(uint256(1))); // Only 32 bytes
 
-        bool result = proofSystem.verifyHostSignature(shortProof, prover, 100);
+        bool result = proofSystem.verifyHostSignature(shortProof, prover, 100, MODEL_ID);
         assertFalse(result);
     }
 
@@ -105,7 +109,7 @@ contract ProofSystemInitializationTest is Test {
             bytes32(uint256(2))
         );
 
-        bool result = proofSystem.verifyHostSignature(proof, prover, 0);
+        bool result = proofSystem.verifyHostSignature(proof, prover, 0, MODEL_ID);
         assertFalse(result);
     }
 
@@ -115,7 +119,7 @@ contract ProofSystemInitializationTest is Test {
             bytes32(uint256(2))
         );
 
-        bool result = proofSystem.verifyHostSignature(proof, address(0), 100);
+        bool result = proofSystem.verifyHostSignature(proof, address(0), 100, MODEL_ID);
         assertFalse(result);
     }
 
@@ -125,11 +129,11 @@ contract ProofSystemInitializationTest is Test {
 
         bytes memory proof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystem.verifyAndMarkComplete(proof, prover, claimedTokens);
+        bool result = proofSystem.verifyAndMarkComplete(proof, prover, claimedTokens, MODEL_ID);
         assertTrue(result);
 
         // Verify proof is now marked as verified (replay should fail)
-        bool replayResult = proofSystem.verifyHostSignature(proof, prover, claimedTokens);
+        bool replayResult = proofSystem.verifyHostSignature(proof, prover, claimedTokens, MODEL_ID);
         assertFalse(replayResult);
     }
 
@@ -182,7 +186,7 @@ contract ProofSystemInitializationTest is Test {
         proofs[0] = createSignedProof(bytes32(uint256(1)), tokenCounts[0]);
         proofs[1] = createSignedProof(bytes32(uint256(3)), tokenCounts[1]);
 
-        bool result = proofSystem.verifyBatch(proofs, prover, tokenCounts);
+        bool result = proofSystem.verifyBatch(proofs, prover, tokenCounts, MODEL_ID);
         assertTrue(result);
     }
 
@@ -195,7 +199,7 @@ contract ProofSystemInitializationTest is Test {
         tokenCounts[0] = 100;
 
         vm.expectRevert("Length mismatch");
-        proofSystem.verifyBatch(proofs, prover, tokenCounts);
+        proofSystem.verifyBatch(proofs, prover, tokenCounts, MODEL_ID);
     }
 
     function test_BatchVerificationEmptyBatch() public {
@@ -203,7 +207,7 @@ contract ProofSystemInitializationTest is Test {
         uint256[] memory tokenCounts = new uint256[](0);
 
         vm.expectRevert("Empty batch");
-        proofSystem.verifyBatch(proofs, prover, tokenCounts);
+        proofSystem.verifyBatch(proofs, prover, tokenCounts, MODEL_ID);
     }
 
     function test_BatchVerificationTooLarge() public {
@@ -216,7 +220,7 @@ contract ProofSystemInitializationTest is Test {
         }
 
         vm.expectRevert("Batch too large");
-        proofSystem.verifyBatch(proofs, prover, tokenCounts);
+        proofSystem.verifyBatch(proofs, prover, tokenCounts, MODEL_ID);
     }
 
     function test_VerifyBatchViewWorks() public view {
@@ -228,7 +232,7 @@ contract ProofSystemInitializationTest is Test {
         proofs[0] = createSignedProof(bytes32(uint256(0x100)), tokenCounts[0]);
         proofs[1] = createSignedProof(bytes32(uint256(0x200)), tokenCounts[1]);
 
-        bool[] memory results = proofSystem.verifyBatchView(proofs, prover, tokenCounts);
+        bool[] memory results = proofSystem.verifyBatchView(proofs, prover, tokenCounts, MODEL_ID);
         assertEq(results.length, 2);
         assertTrue(results[0]);
         assertTrue(results[1]);

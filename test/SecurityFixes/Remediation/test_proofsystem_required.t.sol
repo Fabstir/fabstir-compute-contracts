@@ -188,8 +188,10 @@ contract ProofSystemRequiredTest is Test {
         // Generate valid signature
         bytes32 proofHash = keccak256("valid proof");
 
-        // The host signs: keccak256(proofHash, prover, claimedTokens)
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, MIN_PROVEN_TOKENS));
+        // AUDIT-F4: Include modelId in signature
+        // The host signs: keccak256(proofHash, prover, claimedTokens, modelId)
+        bytes32 modelIdForSig = bytes32(0); // Non-model session
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, MIN_PROVEN_TOKENS, modelIdForSig));
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);

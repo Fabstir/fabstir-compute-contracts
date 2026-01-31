@@ -41,11 +41,15 @@ contract ProofSystemGasEstimationTest is Test {
     // Helper Functions
     // ============================================================
 
+    // AUDIT-F4: Use bytes32(0) for non-model sessions in gas estimation tests
+    bytes32 constant MODEL_ID = bytes32(0);
+
     function createSignedProof(
         bytes32 proofHash,
         uint256 claimedTokens
     ) internal view returns (bytes memory) {
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        // AUDIT-F4: Include modelId in signature
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens, MODEL_ID));
         bytes32 messageHash = keccak256(abi.encodePacked(
             "\x19Ethereum Signed Message:\n32",
             dataHash
@@ -75,7 +79,7 @@ contract ProofSystemGasEstimationTest is Test {
         (bytes[] memory proofs, uint256[] memory tokenCounts) = createBatchProofs(1);
 
         uint256 gasBefore = gasleft();
-        proofSystem.verifyBatch(proofs, prover, tokenCounts);
+        proofSystem.verifyBatch(proofs, prover, tokenCounts, MODEL_ID);
         uint256 gasUsed = gasBefore - gasleft();
 
         console.log("Actual gas for batch of 1:", gasUsed);
@@ -90,7 +94,7 @@ contract ProofSystemGasEstimationTest is Test {
         (bytes[] memory proofs, uint256[] memory tokenCounts) = createBatchProofs(5);
 
         uint256 gasBefore = gasleft();
-        proofSystem.verifyBatch(proofs, prover, tokenCounts);
+        proofSystem.verifyBatch(proofs, prover, tokenCounts, MODEL_ID);
         uint256 gasUsed = gasBefore - gasleft();
 
         console.log("Actual gas for batch of 5:", gasUsed);
@@ -103,7 +107,7 @@ contract ProofSystemGasEstimationTest is Test {
         (bytes[] memory proofs, uint256[] memory tokenCounts) = createBatchProofs(10);
 
         uint256 gasBefore = gasleft();
-        proofSystem.verifyBatch(proofs, prover, tokenCounts);
+        proofSystem.verifyBatch(proofs, prover, tokenCounts, MODEL_ID);
         uint256 gasUsed = gasBefore - gasleft();
 
         console.log("Actual gas for batch of 10:", gasUsed);
@@ -200,7 +204,7 @@ contract ProofSystemGasEstimationTest is Test {
             }
 
             uint256 gasBefore = gasleft();
-            proofSystem.verifyBatch(proofs, prover, tokenCounts);
+            proofSystem.verifyBatch(proofs, prover, tokenCounts, MODEL_ID);
             actualGas[i - 1] = gasBefore - gasleft();
             estimates[i - 1] = proofSystem.estimateBatchGas(i);
         }

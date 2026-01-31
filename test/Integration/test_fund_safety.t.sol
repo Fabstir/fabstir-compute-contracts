@@ -144,7 +144,9 @@ contract FundSafetyTest is Test {
         view
         returns (bytes memory)
     {
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, hostAddr, tokensClaimed));
+        // AUDIT-F4: Include modelId in signature
+        bytes32 modelIdForSig = bytes32(0); // Non-model session
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, hostAddr, tokensClaimed, modelIdForSig));
         bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, messageHash);
         return abi.encodePacked(r, s, v);

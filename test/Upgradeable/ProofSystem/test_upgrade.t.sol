@@ -71,6 +71,9 @@ contract ProofSystemUpgradeTest is Test {
         vm.stopPrank();
     }
 
+    // AUDIT-F4: Use bytes32(0) for non-model sessions in upgrade tests
+    bytes32 constant MODEL_ID = bytes32(0);
+
     // ============================================================
     // Helper Functions
     // ============================================================
@@ -79,7 +82,8 @@ contract ProofSystemUpgradeTest is Test {
         bytes32 proofHash,
         uint256 claimedTokens
     ) internal view returns (bytes memory) {
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens));
+        // AUDIT-F4: Include modelId in signature
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens, MODEL_ID));
         bytes32 messageHash = keccak256(abi.encodePacked(
             "\x19Ethereum Signed Message:\n32",
             dataHash
@@ -238,12 +242,12 @@ contract ProofSystemUpgradeTest is Test {
 
         ProofSystemUpgradeableV2 proofSystemV2 = ProofSystemUpgradeableV2(address(proofSystem));
 
-        // Verify new proofs work (using signed proof)
+        // Verify new proofs work (using signed proof) AUDIT-F4: includes modelId
         bytes32 proofHash = bytes32(uint256(0x9999));
         uint256 claimedTokens = 100;
         bytes memory newProof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystemV2.verifyHostSignature(newProof, prover, claimedTokens);
+        bool result = proofSystemV2.verifyHostSignature(newProof, prover, claimedTokens, MODEL_ID);
         assertTrue(result);
     }
 

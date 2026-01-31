@@ -381,9 +381,10 @@ contract ProofSystemIntegrationTest is Test {
             revert("Unknown signer");
         }
 
-        // Create the message hash that will be signed
-        // Must match ProofSystem._verifyHostSignature: keccak256(proofHash, prover, claimedTokens)
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed));
+        // AUDIT-F4: Create the message hash that will be signed - now includes modelId
+        // Must match ProofSystem._verifyHostSignature: keccak256(proofHash, prover, claimedTokens, modelId)
+        // This test uses createSessionJobForModel, so we use the actual modelId
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed, modelId));
 
         // Create Ethereum signed message hash (EIP-191)
         bytes32 ethSignedMessageHash = keccak256(abi.encodePacked(
