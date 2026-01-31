@@ -189,12 +189,6 @@ contract JobMarketplaceWithModelsUpgradeable is
     event ContractPaused(address indexed by);
     event ContractUnpaused(address indexed by);
 
-    modifier onlyRegisteredHost(address host) {
-        // Just check if host is registered by looking at operator
-        // NodeRegistryWithModels has different return signature
-        _;
-    }
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
