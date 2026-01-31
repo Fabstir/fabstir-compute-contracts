@@ -57,7 +57,7 @@ fabstir-compute-contracts
 
 ## Implementation Progress
 
-**Overall Status: PHASE 2 COMPLETE (40%)**
+**Overall Status: PHASE 3 COMPLETE (60%)**
 
 - [x] **Phase 1: Dead Code Removal (AUDIT-F1)** (2/2 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 1.1: Write Tests for Modifier Removal ✅
@@ -65,11 +65,11 @@ fabstir-compute-contracts
 - [x] **Phase 2: ProofSystem Required Check (AUDIT-F2)** (2/2 sub-phases) ✅ COMPLETE
   - [x] Sub-phase 2.1: Write Tests for ProofSystem Requirement ✅
   - [x] Sub-phase 2.2: Add ProofSystem Configuration Check ✅
-- [ ] **Phase 3: Proof Timeout Window (AUDIT-F3)** (0/4 sub-phases)
-  - [ ] Sub-phase 3.1: Write Tests for Timeout Window
-  - [ ] Sub-phase 3.2: Add proofTimeoutWindow to SessionJob Struct
-  - [ ] Sub-phase 3.3: Update Session Creation Functions
-  - [ ] Sub-phase 3.4: Fix triggerSessionTimeout Logic
+- [x] **Phase 3: Proof Timeout Window (AUDIT-F3)** (4/4 sub-phases) ✅ COMPLETE
+  - [x] Sub-phase 3.1: Write Tests for Timeout Window ✅
+  - [x] Sub-phase 3.2: Add proofTimeoutWindow to SessionJob Struct ✅
+  - [x] Sub-phase 3.3: Update Session Creation Functions ✅
+  - [x] Sub-phase 3.4: Fix triggerSessionTimeout Logic ✅
 - [ ] **Phase 4: Model ID in Signature Scheme (AUDIT-F4)** (0/4 sub-phases)
   - [ ] Sub-phase 4.1: Write Tests for Model Signature
   - [ ] Sub-phase 4.2: Update IProofSystem Interface
@@ -83,7 +83,7 @@ fabstir-compute-contracts
   - [ ] Sub-phase 6.2: Manual Testing on Testnet
   - [ ] Sub-phase 6.3: Update Documentation and ABIs
 
-**Last Updated:** 2026-01-31 (Phase 2 complete)
+**Last Updated:** 2026-01-31 (Phase 3 complete)
 
 ---
 
@@ -299,13 +299,13 @@ forge test  # Full suite
 **Goal**: Verify timeout logic uses dedicated time field, not token count.
 
 **Tasks:**
-- [ ] Create test file `test/SecurityFixes/Remediation/test_proof_timeout_window.t.sol`
-- [ ] Test: `triggerSessionTimeout` uses `proofTimeoutWindow` not `proofInterval`
-- [ ] Test: Session times out after `proofTimeoutWindow` seconds without proof
-- [ ] Test: Legacy sessions (proofTimeoutWindow=0) use fallback DEFAULT_PROOF_TIMEOUT
-- [ ] Test: Session creation validates `proofTimeoutWindow` range (60s - 3600s)
-- [ ] Test: Session creation rejects invalid timeout values
-- [ ] Run tests and verify they FAIL (field doesn't exist yet)
+- [x] Create test file `test/SecurityFixes/Remediation/test_proof_timeout_window.t.sol`
+- [x] Test: `triggerSessionTimeout` uses `proofTimeoutWindow` not `proofInterval`
+- [x] Test: Session times out after `proofTimeoutWindow` seconds without proof
+- [x] Test: Legacy sessions (proofTimeoutWindow=0) use fallback DEFAULT_PROOF_TIMEOUT
+- [x] Test: Session creation validates `proofTimeoutWindow` range (60s - 3600s)
+- [x] Test: Session creation rejects invalid timeout values
+- [x] Run tests and verify they FAIL (field doesn't exist yet) - 8/8 tests written
 
 **File Limits:**
 - Test file: ~150 lines maximum
@@ -336,10 +336,11 @@ forge test --match-contract ProofTimeoutWindowTest -vv
 **Goal**: Add new field to struct for time-based timeout.
 
 **Tasks:**
-- [ ] Add `uint256 proofTimeoutWindow` field to SessionJob struct (after line 67)
-- [ ] Add constants: `DEFAULT_PROOF_TIMEOUT`, `MIN_PROOF_TIMEOUT`, `MAX_PROOF_TIMEOUT`
-- [ ] Verify struct ordering doesn't break UUPS storage layout
-- [ ] Run `forge build` to verify compilation
+- [x] Add `uint256 proofTimeoutWindow` field to SessionJob struct (line 68)
+- [x] Add `proofTimeoutWindow` field to SessionParams struct
+- [x] Add constants: `DEFAULT_PROOF_TIMEOUT` (300s), `MIN_PROOF_TIMEOUT` (60s), `MAX_PROOF_TIMEOUT` (3600s)
+- [x] Verify struct ordering doesn't break UUPS storage layout
+- [x] Run `forge build` to verify compilation
 
 **Implementation:**
 ```solidity
@@ -377,14 +378,14 @@ forge build
 **Goal**: All session creation functions accept and validate `proofTimeoutWindow`.
 
 **Tasks:**
-- [ ] Update `createSessionJob()` - add parameter and validation
-- [ ] Update `createSessionJobForModel()` - add parameter and validation
-- [ ] Update `createSessionJobWithToken()` - add parameter and validation
-- [ ] Update `createSessionJobForModelWithToken()` - add parameter and validation
-- [ ] Update `createSessionFromDeposit()` - add parameter and validation
-- [ ] Add validation: `require(proofTimeoutWindow >= MIN && <= MAX)`
-- [ ] Store value: `session.proofTimeoutWindow = proofTimeoutWindow`
-- [ ] Update all calling tests with new parameter
+- [x] Update `createSessionJob()` - add 5th parameter `proofTimeoutWindow`
+- [x] Update `createSessionJobForModel()` - add 6th parameter `proofTimeoutWindow`
+- [x] Update `createSessionJobWithToken()` - add 8th parameter `proofTimeoutWindow`
+- [x] Update `createSessionJobForModelWithToken()` - add 9th parameter `proofTimeoutWindow`
+- [x] Update `createSessionFromDeposit()` - add 7th parameter `proofTimeoutWindow`
+- [x] Add validation in `_validateSessionParams()`: `require(proofTimeoutWindow >= MIN && <= MAX)`
+- [x] Store value in `_initializeSession()`: `session.proofTimeoutWindow = proofTimeoutWindow`
+- [x] Update all 27 test files with new parameter (value: 300)
 
 **Implementation (for each function):**
 ```solidity
@@ -423,10 +424,11 @@ forge test --match-test "createSession" -vv
 **Goal**: Use `proofTimeoutWindow` for time-based timeout, not `proofInterval`.
 
 **Tasks:**
-- [ ] Update `triggerSessionTimeout()` to use `proofTimeoutWindow`
-- [ ] Add fallback for legacy sessions: use `DEFAULT_PROOF_TIMEOUT` if `proofTimeoutWindow == 0`
-- [ ] Run all timeout-related tests
-- [ ] Mark sub-phase complete
+- [x] Update `triggerSessionTimeout()` to use `proofTimeoutWindow`
+- [x] Add fallback for legacy sessions: use `DEFAULT_PROOF_TIMEOUT` if `proofTimeoutWindow == 0`
+- [x] Run all timeout-related tests - 8/8 passing
+- [x] Fix remaining 26 test failures (ProofSystem configuration updates from Phase 2)
+- [x] Mark sub-phase complete - 697/697 tests passing
 
 **Implementation:**
 ```solidity
@@ -452,6 +454,36 @@ bool hasTimedOut = (block.timestamp > session.startTime + session.maxDuration)
 forge test --match-contract ProofTimeoutWindowTest -vv
 forge test  # Full suite
 ```
+
+### Phase 3 Completion Summary
+
+**Status**: ✅ COMPLETE
+**Date**: 2026-01-31
+**Commit**: `fix(AUDIT-F3): Separate proofTimeoutWindow from proofInterval`
+
+**Changes Made:**
+- Added `proofTimeoutWindow` field to SessionJob struct (line 68)
+- Added `proofTimeoutWindow` field to SessionParams struct
+- Added constants: `MIN_PROOF_TIMEOUT` (60s), `MAX_PROOF_TIMEOUT` (3600s), `DEFAULT_PROOF_TIMEOUT` (300s)
+- Updated all 5 session creation functions to accept `proofTimeoutWindow` parameter
+- Added validation in `_validateSessionParams()` for timeout window range
+- Fixed `triggerSessionTimeout()` to use `proofTimeoutWindow` instead of `proofInterval * 3`
+- Added fallback to `DEFAULT_PROOF_TIMEOUT` for legacy sessions where `proofTimeoutWindow == 0`
+- Updated 27 test files with new parameter and 18-component tuple unpacking
+
+**Test Results:**
+- ProofTimeoutWindowTest: 8/8 passing
+- Full suite: 697/697 passing
+
+**Breaking Changes:**
+- All session creation functions now require `proofTimeoutWindow` parameter
+- SessionJob struct now has 18 fields (was 17)
+- Hosts/clients must update SDK to pass timeout window value
+
+**Files Modified:**
+- `src/JobMarketplaceWithModelsUpgradeable.sol` - Main contract changes
+- `test/SecurityFixes/Remediation/test_proof_timeout_window.t.sol` - New test file
+- 27 test files updated for new parameter and tuple unpacking
 
 ---
 

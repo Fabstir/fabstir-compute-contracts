@@ -7,6 +7,7 @@ import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWi
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
 import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol";
+import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
@@ -24,11 +25,13 @@ contract HostValidationTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
     ERC20Mock public fabToken;
     ERC20Mock public usdcToken;
 
     address public owner = address(0x1);
-    address public registeredHost = address(0x2);
+    uint256 public hostPrivateKey = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
+    address public registeredHost;
     address public unregisteredHost = address(0x3);
     address public user = address(0x4);
 
@@ -41,6 +44,9 @@ contract HostValidationTest is Test {
     uint256 constant MIN_PRICE_STABLE = 1;
 
     function setUp() public {
+        // Derive registeredHost from private key
+        registeredHost = vm.addr(hostPrivateKey);
+
         // Deploy mock tokens
         fabToken = new ERC20Mock("FAB Token", "FAB");
         usdcToken = new ERC20Mock("USDC", "USDC");
@@ -74,6 +80,14 @@ contract HostValidationTest is Test {
         ));
         hostEarnings = HostEarningsUpgradeable(payable(hostEarningsProxy));
 
+        // Deploy ProofSystem as proxy
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        address proofSystemProxy = address(new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        ));
+        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
+
         // Deploy JobMarketplace as proxy
         JobMarketplaceWithModelsUpgradeable marketplaceImpl = new JobMarketplaceWithModelsUpgradeable();
         address marketplaceProxy = address(new ERC1967Proxy(
@@ -86,6 +100,9 @@ contract HostValidationTest is Test {
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
+
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
 
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
@@ -132,7 +149,8 @@ contract HostValidationTest is Test {
             address(0),
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -145,7 +163,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -161,7 +180,8 @@ contract HostValidationTest is Test {
             unregisteredHost,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -174,7 +194,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -186,7 +207,8 @@ contract HostValidationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -200,7 +222,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -236,7 +259,8 @@ contract HostValidationTest is Test {
             registeredHost,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -258,7 +282,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -276,7 +301,8 @@ contract HostValidationTest is Test {
             registeredHost,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -290,7 +316,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -303,7 +330,8 @@ contract HostValidationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -318,7 +346,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -365,7 +394,8 @@ contract HostValidationTest is Test {
             tempHost,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 

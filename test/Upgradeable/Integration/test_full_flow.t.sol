@@ -244,7 +244,8 @@ contract FullFlowIntegrationTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
         assertEq(sessionId, 1, "Session ID should be 1");
 
@@ -301,11 +302,11 @@ contract FullFlowIntegrationTest is Test {
 
         // User1 creates session with host1
         vm.prank(user1);
-        uint256 session1 = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 session1 = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // User2 creates session with host2
         vm.prank(user2);
-        uint256 session2 = jobMarketplace.createSessionJob{value: 0.5 ether}(host2, MIN_PRICE_NATIVE * 2, 1 days, 1000);
+        uint256 session2 = jobMarketplace.createSessionJob{value: 0.5 ether}(host2, MIN_PRICE_NATIVE * 2, 1 days, 1000, 300);
 
         assertEq(session1, 1, "Session 1 ID");
         assertEq(session2, 2, "Session 2 ID");
@@ -354,7 +355,8 @@ contract FullFlowIntegrationTest is Test {
             modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Verify model is tracked
@@ -387,7 +389,7 @@ contract FullFlowIntegrationTest is Test {
 
         // Create and complete session
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.warp(block.timestamp + 1);
         bytes32 treasuryProofHash = bytes32(uint256(1));
@@ -426,7 +428,7 @@ contract FullFlowIntegrationTest is Test {
 
         // Create session before pause
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Pause the marketplace
         vm.prank(deployer);
@@ -435,7 +437,7 @@ contract FullFlowIntegrationTest is Test {
         // New sessions should be blocked
         vm.prank(user2);
         vm.expectRevert();
-        jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // But existing sessions can still be completed (critical for user safety)
         vm.prank(user1);
@@ -447,7 +449,7 @@ contract FullFlowIntegrationTest is Test {
 
         // New sessions work again
         vm.prank(user2);
-        uint256 newSession = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 newSession = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         assertEq(newSession, 2, "New session created after unpause");
     }
 

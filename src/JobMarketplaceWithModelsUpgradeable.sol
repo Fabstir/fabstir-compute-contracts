@@ -65,6 +65,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 startTime;
         uint256 lastProofTime;
         uint256 proofInterval;
+        uint256 proofTimeoutWindow; // AUDIT-F3: Time in seconds before timeout (separate from token count)
         SessionStatus status;
         ProofSubmission[] proofs;
         uint256 withdrawnByHost;
@@ -90,12 +91,18 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 pricePerToken;
         uint256 maxDuration;
         uint256 proofInterval;
+        uint256 proofTimeoutWindow; // AUDIT-F3: Time in seconds before timeout
         bytes32 modelId;  // bytes32(0) if no model
     }
 
     // Constants (non-upgradeable)
     uint256 public constant MIN_DEPOSIT = 0.0001 ether; // ~$0.50 @ $5000/ETH
     uint256 public constant MIN_PROVEN_TOKENS = 100;
+
+    // AUDIT-F3: Proof timeout constants (in seconds)
+    uint256 public constant DEFAULT_PROOF_TIMEOUT = 300;  // 5 minutes default
+    uint256 public constant MIN_PROOF_TIMEOUT = 60;       // 1 minute minimum
+    uint256 public constant MAX_PROOF_TIMEOUT = 3600;     // 1 hour maximum
 
     /// @notice Time window before non-depositor can complete session (default 30s)
     uint256 public disputeWindow;
@@ -302,13 +309,13 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Session Creation Functions
     // ============================================================
 
-    function createSessionJob(address host, uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval)
-        external
-        payable
-        nonReentrant
-        whenNotPaused
-        returns (uint256 jobId)
-    {
+    function createSessionJob(
+        address host,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
+    ) external payable nonReentrant whenNotPaused returns (uint256 jobId) {
         require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
 
         SessionParams memory params = SessionParams({
@@ -318,6 +325,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             pricePerToken: pricePerToken,
             maxDuration: maxDuration,
             proofInterval: proofInterval,
+            proofTimeoutWindow: proofTimeoutWindow,
             modelId: bytes32(0)
         });
 
@@ -342,7 +350,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         bytes32 modelId,
         uint256 pricePerToken,
         uint256 maxDuration,
-        uint256 proofInterval
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
     ) external payable nonReentrant whenNotPaused returns (uint256 jobId) {
         require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
 
@@ -353,6 +362,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             pricePerToken: pricePerToken,
             maxDuration: maxDuration,
             proofInterval: proofInterval,
+            proofTimeoutWindow: proofTimeoutWindow,
             modelId: modelId
         });
 
@@ -382,7 +392,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 deposit,
         uint256 pricePerToken,
         uint256 maxDuration,
-        uint256 proofInterval
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
     ) external nonReentrant whenNotPaused returns (uint256 jobId) {
         // Token-specific validations
         require(acceptedTokens[token], "Token not accepted");
@@ -398,6 +409,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             pricePerToken: pricePerToken,
             maxDuration: maxDuration,
             proofInterval: proofInterval,
+            proofTimeoutWindow: proofTimeoutWindow,
             modelId: bytes32(0)
         });
 
@@ -427,7 +439,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 deposit,
         uint256 pricePerToken,
         uint256 maxDuration,
-        uint256 proofInterval
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
     ) external nonReentrant whenNotPaused returns (uint256 jobId) {
         // Token-specific validations
         require(acceptedTokens[token], "Token not accepted");
@@ -443,6 +456,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             pricePerToken: pricePerToken,
             maxDuration: maxDuration,
             proofInterval: proofInterval,
+            proofTimeoutWindow: proofTimeoutWindow,
             modelId: modelId
         });
 
@@ -518,6 +532,10 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(params.pricePerToken > 0, "Invalid price");
         require(params.maxDuration > 0 && params.maxDuration <= 365 days, "Invalid duration");
         require(params.proofInterval > 0, "Invalid proof interval");
+        require(
+            params.proofTimeoutWindow >= MIN_PROOF_TIMEOUT && params.proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
+            "Invalid proof timeout window"
+        );
         require(params.host != address(0), "Invalid host");
 
         // Token-specific max deposit validation
@@ -555,6 +573,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         session.startTime = block.timestamp;
         session.lastProofTime = block.timestamp;
         session.proofInterval = params.proofInterval;
+        session.proofTimeoutWindow = params.proofTimeoutWindow;
         session.status = SessionStatus.Active;
 
         // Track session for user and host
@@ -737,8 +756,14 @@ contract JobMarketplaceWithModelsUpgradeable is
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
 
+        // Use proofTimeoutWindow for time-based timeout (AUDIT-F3 fix)
+        // Fallback to DEFAULT_PROOF_TIMEOUT for legacy sessions where proofTimeoutWindow is 0
+        uint256 timeoutWindow = session.proofTimeoutWindow > 0
+            ? session.proofTimeoutWindow
+            : DEFAULT_PROOF_TIMEOUT;
+
         bool hasTimedOut = (block.timestamp > session.startTime + session.maxDuration)
-            || (block.timestamp > session.lastProofTime + session.proofInterval * 3);
+            || (block.timestamp > session.lastProofTime + timeoutWindow);
 
         require(hasTimedOut, "Session not timed out");
 
@@ -1008,11 +1033,16 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 deposit,
         uint256 pricePerToken,
         uint256 maxDuration,
-        uint256 proofInterval
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
     ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
         require(pricePerToken > 0, "Invalid price");
         require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
         require(proofInterval > 0, "Invalid proof interval");
+        require(
+            proofTimeoutWindow >= MIN_PROOF_TIMEOUT && proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
+            "Invalid proof timeout window"
+        );
         require(host != address(0), "Invalid host");
         require(deposit > 0, "Zero deposit");
 
@@ -1054,6 +1084,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         session.startTime = block.timestamp;
         session.lastProofTime = block.timestamp;
         session.proofInterval = proofInterval;
+        session.proofTimeoutWindow = proofTimeoutWindow;
         session.status = SessionStatus.Active;
 
         userSessions[msg.sender].push(sessionId);

@@ -109,6 +109,9 @@ contract ProofSignatureRequiredTest is Test {
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
+
         // Authorize marketplace in ProofSystem
         proofSystem.setAuthorizedCaller(address(marketplace), true);
 
@@ -142,7 +145,8 @@ contract ProofSignatureRequiredTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days, // maxDuration
-            1000 // proof interval
+            1000, // proof interval
+            300 // proofTimeoutWindow
         );
 
         // Advance time so rate limiting passes
@@ -173,7 +177,7 @@ contract ProofSignatureRequiredTest is Test {
         // SessionJob: id, depositor, host, paymentToken, deposit, pricePerToken, tokensUsed,
         //             maxDuration, startTime, lastProofTime, proofInterval, status, withdrawnByHost,
         //             refundedToUser, conversationCID, lastProofHash, lastProofCID
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokensClaimed);
     }
 
@@ -263,7 +267,7 @@ contract ProofSignatureRequiredTest is Test {
         marketplace.submitProofOfWork(sessionId, tokens2, proofHash2, sig2, "QmCID2", "");
 
         // Verify total tokens
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokens1 + tokens2);
     }
 

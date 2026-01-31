@@ -156,7 +156,8 @@ contract JobMarketplaceDeploymentScriptTest is Test {
             host,
             227_273,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1, "Session should be created");

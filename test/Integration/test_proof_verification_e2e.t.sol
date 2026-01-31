@@ -174,7 +174,8 @@ contract ProofVerificationE2ETest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Step 2: Advance time for rate limiting
@@ -196,7 +197,7 @@ contract ProofVerificationE2ETest is Test {
         assertTrue(verified, "Proof should be verified");
 
         // Step 6: Verify tokens were credited to session
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokensClaimed, "Tokens should be credited");
 
         // Step 7: Complete the session
@@ -219,7 +220,8 @@ contract ProofVerificationE2ETest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.warp(block.timestamp + 5);
@@ -258,7 +260,8 @@ contract ProofVerificationE2ETest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             2 days,
-            1000
+            1000,
+            300
         );
 
         // Use explicit base timestamp to avoid vm.warp issues in loops
@@ -288,7 +291,7 @@ contract ProofVerificationE2ETest is Test {
         }
 
         // Verify total tokens credited
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokensPerProof * 5, "All tokens should be credited");
     }
 
@@ -303,7 +306,8 @@ contract ProofVerificationE2ETest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Create session with host2
@@ -313,7 +317,8 @@ contract ProofVerificationE2ETest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.warp(block.timestamp + 10);
@@ -354,7 +359,8 @@ contract ProofVerificationE2ETest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.prank(user);
@@ -362,7 +368,8 @@ contract ProofVerificationE2ETest is Test {
             host2,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.warp(block.timestamp + 10);
@@ -401,7 +408,8 @@ contract ProofVerificationE2ETest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.warp(block.timestamp + 10);
@@ -428,7 +436,8 @@ contract ProofVerificationE2ETest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.warp(block.timestamp + 10);
@@ -469,7 +478,8 @@ contract ProofVerificationE2ETest is Test {
             100 * 10**6, // 100 USDC deposit
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.warp(block.timestamp + 10);

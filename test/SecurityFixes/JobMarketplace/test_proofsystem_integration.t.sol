@@ -152,7 +152,8 @@ contract ProofSystemIntegrationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days, // maxDuration
-            1000 // proof interval
+            1000, // proof interval
+            300 // proofTimeoutWindow
         );
 
         // Advance time so rate limiting passes
@@ -177,7 +178,7 @@ contract ProofSystemIntegrationTest is Test {
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
 
         // Verify tokens were credited (proof was accepted)
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokensClaimed, "Tokens should be credited");
 
         // Verify proof was marked as verified in ProofSystem
@@ -270,7 +271,8 @@ contract ProofSystemIntegrationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Advance time
@@ -342,7 +344,8 @@ contract ProofSystemIntegrationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.warp(block.timestamp + 10);

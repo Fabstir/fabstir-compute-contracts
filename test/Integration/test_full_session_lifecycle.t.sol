@@ -6,6 +6,7 @@ import "../../src/JobMarketplaceWithModelsUpgradeable.sol";
 import "../../src/NodeRegistryWithModelsUpgradeable.sol";
 import "../../src/ModelRegistryUpgradeable.sol";
 import "../../src/HostEarningsUpgradeable.sol";
+import "../../src/ProofSystemUpgradeable.sol";
 import "../mocks/ERC20Mock.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -23,11 +24,12 @@ contract FullSessionLifecycleTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
 
     ERC20Mock public fabToken;
 
     address public owner = address(this);
-    uint256 public hostPrivateKey = 0x1234;
+    uint256 public hostPrivateKey = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
     address public host;
     address public depositor = address(0x2222);
 
@@ -41,7 +43,6 @@ contract FullSessionLifecycleTest is Test {
 
     // Dummy proof data for tests
     bytes32 constant DUMMY_PROOF_HASH = keccak256("test_proof");
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
     string constant DUMMY_CID = "QmTest123";
 
     function setUp() public {
@@ -90,8 +91,19 @@ contract FullSessionLifecycleTest is Test {
         );
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(address(marketplaceProxy)));
 
+        // Deploy ProofSystem
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        ERC1967Proxy proofSystemProxy = new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        );
+        proofSystem = ProofSystemUpgradeable(address(proofSystemProxy));
+
         // Configure authorizations
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
+
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
 
         // Add trusted model
         modelRegistry.addTrustedModel("test/repo", "model.gguf", bytes32(uint256(1)));
@@ -103,6 +115,17 @@ contract FullSessionLifecycleTest is Test {
 
         // Register host
         _registerHost();
+    }
+
+    function _generateSignature(bytes32 proofHash, uint256 tokensClaimed)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
+        return abi.encodePacked(r, s, v);
     }
 
     // ============ Complete Session Lifecycle (ETH) ============
@@ -122,7 +145,8 @@ contract FullSessionLifecycleTest is Test {
             host,
             pricePerToken,
             3600, // maxDuration
-            100   // proofInterval
+            100,  // proofInterval
+            300   // proofTimeoutWindow
         );
 
         assertGt(jobId, 0, "Job should be created");
@@ -143,12 +167,14 @@ contract FullSessionLifecycleTest is Test {
             uint256 tokensClaimed = 100 + i * 50; // 100, 150, 200
             totalTokensClaimed += tokensClaimed;
 
+            bytes32 proofHash = keccak256(abi.encodePacked("proof", i));
+            bytes memory signature = _generateSignature(proofHash, tokensClaimed);
             vm.prank(host);
-            marketplace.submitProofOfWork(jobId, tokensClaimed, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
+            marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, signature, DUMMY_CID, "");
         }
 
-        // Verify tokens were tracked (tokensUsed is 7th field, 17 total excluding array)
-        (,,,,,, uint256 tokensUsed,,,,,,,,,,) = marketplace.sessionJobs(jobId);
+        // Verify tokens were tracked (tokensUsed is 7th field, 18 total excluding array)
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,,) = marketplace.sessionJobs(jobId);
         assertEq(tokensUsed, totalTokensClaimed, "Tokens should match");
 
         // Step 3: Host must wait dispute window before completing
@@ -186,14 +212,17 @@ contract FullSessionLifecycleTest is Test {
             host,
             MIN_PRICE_NATIVE,
             3600,
-            100   // proofInterval
+            100,  // proofInterval
+            300   // proofTimeoutWindow
         );
 
         // Step 2: Host submits one proof (warp time first to allow tokens)
         vm.warp(block.timestamp + 1); // Allow enough tokens
 
+        bytes32 proofHash = keccak256("timeout_proof");
+        bytes memory signature = _generateSignature(proofHash, 100);
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, 100, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
+        marketplace.submitProofOfWork(jobId, 100, proofHash, signature, DUMMY_CID, "");
 
         // Step 3: Host goes offline (time passes beyond 3x proofInterval)
         vm.warp(block.timestamp + 400); // 4x proofInterval
@@ -227,17 +256,17 @@ contract FullSessionLifecycleTest is Test {
 
         vm.prank(depositor);
         jobIds[0] = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100
+            host, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         vm.prank(depositor2);
         jobIds[1] = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100
+            host, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         vm.prank(depositor3);
         jobIds[2] = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100
+            host, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         // Host serves all sessions with different token amounts
@@ -248,8 +277,10 @@ contract FullSessionLifecycleTest is Test {
 
         for (uint256 i = 0; i < 3; i++) {
             vm.warp(block.timestamp + 1); // Allow enough tokens
+            bytes32 proofHash = keccak256(abi.encodePacked("multi", i));
+            bytes memory signature = _generateSignature(proofHash, tokens[i]);
             vm.prank(host);
-            marketplace.submitProofOfWork(jobIds[i], tokens[i], DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
+            marketplace.submitProofOfWork(jobIds[i], tokens[i], proofHash, signature, DUMMY_CID, "");
         }
 
         // Wait for dispute window
@@ -278,15 +309,17 @@ contract FullSessionLifecycleTest is Test {
         // Create session
         vm.prank(depositor);
         uint256 jobId = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100
+            host, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         // Warp time to allow token claims
         vm.warp(block.timestamp + 1);
 
         // Host submits some proofs (MIN_PROVEN_TOKENS = 100)
+        bytes32 proofHash = keccak256("early_exit_proof");
+        bytes memory signature = _generateSignature(proofHash, 100);
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, 100, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
+        marketplace.submitProofOfWork(jobId, 100, proofHash, signature, DUMMY_CID, "");
 
         // Depositor decides to end early - NO dispute window needed for depositor
         uint256 depositorBalanceBefore = depositor.balance;
@@ -308,7 +341,8 @@ contract FullSessionLifecycleTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             3600,
-            100
+            100,
+            300
         );
 
         // Verify model is tracked
@@ -322,8 +356,8 @@ contract FullSessionLifecycleTest is Test {
         vm.prank(host);
         marketplace.completeSessionJob(jobId, "QmModelCID");
 
-        // Verify completion worked - check status is not Active (proofInterval is 11th field, 17 total excluding array)
-        (,,,,,,,,,,uint256 proofInterval,,,,,,) = marketplace.sessionJobs(jobId);
+        // Verify completion worked - check status is not Active (proofInterval is 11th field, 18 total excluding array)
+        (,,,,,,,,,,uint256 proofInterval,,,,,,,) = marketplace.sessionJobs(jobId);
         assertEq(proofInterval, 100, "Session should exist");
     }
 

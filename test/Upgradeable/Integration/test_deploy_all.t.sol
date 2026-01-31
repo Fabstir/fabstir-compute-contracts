@@ -214,7 +214,7 @@ contract DeployAllUpgradeableTest is Test {
         vm.deal(user, 10 ether);
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.1 ether}(host, 227_273, 1 days, 1000);
+        uint256 sessionId = marketplace.createSessionJob{value: 0.1 ether}(host, 227_273, 1 days, 1000, 300);
         assertEq(sessionId, 1, "Session created");
 
         // Step 4: Submit proof with valid signature

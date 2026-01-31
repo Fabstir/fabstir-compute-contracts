@@ -137,7 +137,8 @@ contract DeadCodeRemovalTest is Test {
             registeredHost,
             MIN_PRICE_NATIVE,
             1 hours,
-            100 // proofInterval
+            100, // proofInterval
+            300  // proofTimeoutWindow
         );
 
         assertGt(sessionId, 0, "Session should be created");
@@ -150,7 +151,7 @@ contract DeadCodeRemovalTest is Test {
     function test_UnregisteredHostRejected() public {
         vm.prank(user);
         vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.01 ether}(unregisteredHost, MIN_PRICE_NATIVE, 1 hours, 100);
+        marketplace.createSessionJob{value: 0.01 ether}(unregisteredHost, MIN_PRICE_NATIVE, 1 hours, 100, 300);
     }
 
     /**
@@ -160,7 +161,7 @@ contract DeadCodeRemovalTest is Test {
     function test_ZeroAddressHostRejected() public {
         vm.prank(user);
         vm.expectRevert("Invalid host");
-        marketplace.createSessionJob{value: 0.01 ether}(address(0), MIN_PRICE_NATIVE, 1 hours, 100);
+        marketplace.createSessionJob{value: 0.01 ether}(address(0), MIN_PRICE_NATIVE, 1 hours, 100, 300);
     }
 
     // ============================================================
@@ -188,7 +189,7 @@ contract DeadCodeRemovalTest is Test {
         // Valid host should work
         vm.prank(user);
         uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
-            registeredHost, modelId, MIN_PRICE_NATIVE, 1 hours, 100
+            registeredHost, modelId, MIN_PRICE_NATIVE, 1 hours, 100, 300
         );
         assertGt(sessionId, 0, "Model session created");
 
@@ -196,7 +197,7 @@ contract DeadCodeRemovalTest is Test {
         vm.prank(user);
         vm.expectRevert("Host not registered");
         marketplace.createSessionJobForModel{value: 0.01 ether}(
-            unregisteredHost, modelId, MIN_PRICE_NATIVE, 1 hours, 100
+            unregisteredHost, modelId, MIN_PRICE_NATIVE, 1 hours, 100, 300
         );
     }
 }

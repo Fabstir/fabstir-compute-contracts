@@ -7,6 +7,7 @@ import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWi
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
 import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol";
+import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
@@ -30,11 +31,13 @@ contract DoubleSpendPreventionTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
     ERC20Mock public fabToken;
     ERC20Mock public usdcToken;
 
     address public owner = address(0x1);
-    address public host = address(0x2);
+    uint256 public hostPrivateKey = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
+    address public host;
     address public user = address(0x3);
     address public attacker = address(0x666);
 
@@ -46,10 +49,10 @@ contract DoubleSpendPreventionTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
-
     function setUp() public {
+        // Derive host from private key
+        host = vm.addr(hostPrivateKey);
+
         // Deploy mock tokens
         fabToken = new ERC20Mock("FAB Token", "FAB");
         usdcToken = new ERC20Mock("USDC", "USDC");
@@ -84,6 +87,14 @@ contract DoubleSpendPreventionTest is Test {
         ));
         hostEarnings = HostEarningsUpgradeable(payable(hostEarningsProxy));
 
+        // Deploy ProofSystem
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        address proofSystemProxy = address(new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        ));
+        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
+
         // Deploy JobMarketplace
         JobMarketplaceWithModelsUpgradeable marketplaceImpl = new JobMarketplaceWithModelsUpgradeable();
         address marketplaceProxy = address(new ERC1967Proxy(
@@ -96,6 +107,9 @@ contract DoubleSpendPreventionTest is Test {
             ))
         ));
         marketplace = JobMarketplaceWithModelsUpgradeable(payable(marketplaceProxy));
+
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
 
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
@@ -137,6 +151,17 @@ contract DoubleSpendPreventionTest is Test {
         );
     }
 
+    function _generateSignature(bytes32 proofHash, uint256 tokensClaimed)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
+        return abi.encodePacked(r, s, v);
+    }
+
     // ============================================================
     // ETH Double-Spend Prevention Tests
     // ============================================================
@@ -150,7 +175,8 @@ contract DoubleSpendPreventionTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // User's pre-deposit balance should be ZERO (not credited)
@@ -172,7 +198,8 @@ contract DoubleSpendPreventionTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // User's pre-deposit balance should be ZERO
@@ -199,7 +226,8 @@ contract DoubleSpendPreventionTest is Test {
             depositAmount,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // User's pre-deposit balance should be ZERO
@@ -223,7 +251,8 @@ contract DoubleSpendPreventionTest is Test {
             depositAmount,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // User's pre-deposit balance should be ZERO
@@ -258,7 +287,8 @@ contract DoubleSpendPreventionTest is Test {
             sessionAmount,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pre-deposit balance should be reduced
@@ -291,7 +321,8 @@ contract DoubleSpendPreventionTest is Test {
             sessionAmount,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pre-deposit balance should be reduced
@@ -320,7 +351,8 @@ contract DoubleSpendPreventionTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Contract should have received the ETH
@@ -353,7 +385,8 @@ contract DoubleSpendPreventionTest is Test {
             attackAmount,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Attacker's USDC balance should be reduced
@@ -376,9 +409,9 @@ contract DoubleSpendPreventionTest is Test {
         // Create multiple sessions
         vm.startPrank(user);
 
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.stopPrank();
 
@@ -399,17 +432,20 @@ contract DoubleSpendPreventionTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Host submits proof
         vm.warp(block.timestamp + 1);
+        bytes32 proofHash = bytes32(uint256(0x1234));
+        bytes memory signature = _generateSignature(proofHash, 1000);
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             1000,
-            bytes32(uint256(0x1234)),
-            DUMMY_SIG,
+            proofHash,
+            signature,
             "QmProof",
             ""
         );
