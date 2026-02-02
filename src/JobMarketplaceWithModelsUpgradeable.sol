@@ -154,11 +154,15 @@ contract JobMarketplaceWithModelsUpgradeable is
     mapping(address => uint256) public userDepositsNative;
     mapping(address => mapping(address => uint256)) public userDepositsToken;
 
+    // V2 Delegation: Coinbase Smart Wallet sub-account support (USDC only)
+    // Mapping: depositor => delegate => authorized
+    mapping(address => mapping(address => bool)) public isAuthorizedDelegate;
+
     // Chain configuration storage
     ChainConfig public chainConfig;
 
-    // Storage gap for future upgrades
-    uint256[35] private __gap;
+    // Storage gap for future upgrades (reduced by 1 for new mapping)
+    uint256[34] private __gap;
 
     // Events
     event SessionJobCreated(uint256 indexed jobId, address indexed depositor, address indexed host, uint256 deposit);
@@ -203,6 +207,17 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Pause events
     event ContractPaused(address indexed by);
     event ContractUnpaused(address indexed by);
+
+    // V2 Delegation events (Coinbase Smart Wallet sub-account support)
+    event DelegateAuthorized(address indexed depositor, address indexed delegate, bool authorized);
+    event SessionCreatedByDelegate(
+        uint256 indexed sessionId,
+        address indexed payer,
+        address indexed delegate,
+        address host,
+        bytes32 modelId,
+        uint256 amount
+    );
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -928,6 +943,34 @@ contract JobMarketplaceWithModelsUpgradeable is
     }
 
     // ============================================================
+    // V2 Delegation: Coinbase Smart Wallet Sub-Account Support
+    // ============================================================
+
+    /**
+     * @notice Authorize or revoke a delegate to create sessions on behalf of caller
+     * @dev For Coinbase Smart Wallet: primary account authorizes sub-accounts
+     * @param delegate Address to authorize (e.g., Smart Wallet sub-account)
+     * @param authorized True to authorize, false to revoke
+     */
+    function authorizeDelegate(address delegate, bool authorized) external {
+        require(delegate != address(0), "Invalid delegate address");
+        require(delegate != msg.sender, "Cannot delegate to self");
+
+        isAuthorizedDelegate[msg.sender][delegate] = authorized;
+        emit DelegateAuthorized(msg.sender, delegate, authorized);
+    }
+
+    /**
+     * @notice Check if a delegate is authorized to create sessions for a depositor
+     * @param depositor The depositor address (primary account)
+     * @param delegate The delegate address (sub-account)
+     * @return True if delegate is authorized for depositor
+     */
+    function isDelegateAuthorized(address depositor, address delegate) external view returns (bool) {
+        return isAuthorizedDelegate[depositor][delegate];
+    }
+
+    // ============================================================
     // Balance Query Functions
     // ============================================================
 
@@ -1198,6 +1241,198 @@ contract JobMarketplaceWithModelsUpgradeable is
         emit SessionJobCreated(sessionId, msg.sender, host, deposit);
         emit SessionCreatedByDepositor(sessionId, msg.sender, host, deposit);
         emit SessionJobCreatedForModel(sessionId, msg.sender, host, modelId, deposit);
+
+        return sessionId;
+    }
+
+    // ============================================================
+    // V2 Direct Payment Delegation (Coinbase Smart Wallet Support)
+    // ============================================================
+
+    /**
+     * @notice Create a session as an authorized delegate using ERC-20 transferFrom
+     * @dev For Coinbase Smart Wallet: sub-account creates session, pulls USDC from primary
+     * @param payer The address whose USDC will be pulled (must have approved this contract)
+     * @param host The host to create the session with
+     * @param paymentToken ERC-20 token address (cannot be address(0) - no ETH for delegation)
+     * @param amount Amount to pull from payer's wallet
+     * @param pricePerToken Agreed price per token (must meet host's minimum)
+     * @param maxDuration Maximum session duration in seconds
+     * @param proofInterval Minimum tokens between proofs (>=100)
+     * @param proofTimeoutWindow Timeout window for proofs (60-3600 seconds)
+     * @return sessionId The created session ID
+     */
+    function createSessionAsDelegate(
+        address payer,
+        address host,
+        address paymentToken,
+        uint256 amount,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
+    ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
+        // Authorization check FIRST
+        require(payer != address(0), "Invalid payer");
+        require(
+            msg.sender == payer || isAuthorizedDelegate[payer][msg.sender],
+            "Not authorized delegate"
+        );
+
+        // Must be ERC-20 (can't do transferFrom for ETH)
+        require(paymentToken != address(0), "Direct delegation requires ERC-20 token");
+        require(acceptedTokens[paymentToken], "Token not accepted");
+
+        // Standard validations
+        require(pricePerToken > 0, "Invalid price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
+        require(proofInterval > 0, "Invalid proof interval");
+        require(
+            proofTimeoutWindow >= MIN_PROOF_TIMEOUT && proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
+            "Invalid proof timeout window"
+        );
+        require(host != address(0), "Invalid host");
+        require(amount > 0, "Zero amount");
+
+        _validateHostRegistration(host);
+        _validateProofRequirements(proofInterval, amount, pricePerToken);
+
+        // Validate amount limits
+        uint256 minRequired = tokenMinDeposits[paymentToken];
+        uint256 maxAllowed = tokenMaxDeposits[paymentToken];
+        require(minRequired > 0 && maxAllowed > 0, "Token not configured");
+        require(amount >= minRequired, "Amount below minimum");
+        require(amount <= maxAllowed, "Amount above maximum");
+
+        // Validate price meets host's minimum for stablecoin
+        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, paymentToken);
+        require(pricePerToken >= hostMinPrice, "Price below host minimum");
+
+        // Pull payment directly from payer's wallet
+        IERC20(paymentToken).safeTransferFrom(payer, address(this), amount);
+
+        // Create session owned by PAYER (not delegate)
+        sessionId = nextJobId++;
+
+        SessionJob storage session = sessionJobs[sessionId];
+        session.id = sessionId;
+        session.depositor = payer;  // Payer owns the session
+        session.host = host;
+        session.paymentToken = paymentToken;
+        session.deposit = amount;
+        session.pricePerToken = pricePerToken;
+        session.maxDuration = maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = proofInterval;
+        session.proofTimeoutWindow = proofTimeoutWindow;
+        session.status = SessionStatus.Active;
+
+        userSessions[payer].push(sessionId);
+        hostSessions[host].push(sessionId);
+
+        emit SessionJobCreated(sessionId, payer, host, amount);
+        emit SessionCreatedByDelegate(sessionId, payer, msg.sender, host, bytes32(0), amount);
+
+        return sessionId;
+    }
+
+    /**
+     * @notice Create a model-specific session as an authorized delegate using ERC-20 transferFrom
+     * @dev For Coinbase Smart Wallet: sub-account creates model session, pulls USDC from primary
+     * @param payer The address whose USDC will be pulled (must have approved this contract)
+     * @param modelId The model ID (must be approved in ModelRegistry)
+     * @param host The host to create the session with
+     * @param paymentToken ERC-20 token address (cannot be address(0) - no ETH for delegation)
+     * @param amount Amount to pull from payer's wallet
+     * @param pricePerToken Agreed price per token (must meet host's minimum for model)
+     * @param maxDuration Maximum session duration in seconds
+     * @param proofInterval Minimum tokens between proofs (>=100)
+     * @param proofTimeoutWindow Timeout window for proofs (60-3600 seconds)
+     * @return sessionId The created session ID
+     */
+    function createSessionForModelAsDelegate(
+        address payer,
+        bytes32 modelId,
+        address host,
+        address paymentToken,
+        uint256 amount,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
+    ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
+        // Authorization check FIRST
+        require(payer != address(0), "Invalid payer");
+        require(
+            msg.sender == payer || isAuthorizedDelegate[payer][msg.sender],
+            "Not authorized delegate"
+        );
+
+        // Model validation
+        require(modelId != bytes32(0), "Invalid model ID");
+
+        // Must be ERC-20 (can't do transferFrom for ETH)
+        require(paymentToken != address(0), "Direct delegation requires ERC-20 token");
+        require(acceptedTokens[paymentToken], "Token not accepted");
+
+        // Standard validations
+        require(pricePerToken > 0, "Invalid price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
+        require(proofInterval > 0, "Invalid proof interval");
+        require(
+            proofTimeoutWindow >= MIN_PROOF_TIMEOUT && proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
+            "Invalid proof timeout window"
+        );
+        require(host != address(0), "Invalid host");
+        require(amount > 0, "Zero amount");
+
+        _validateHostRegistration(host);
+        _validateProofRequirements(proofInterval, amount, pricePerToken);
+
+        // Validate amount limits
+        uint256 minRequired = tokenMinDeposits[paymentToken];
+        uint256 maxAllowed = tokenMaxDeposits[paymentToken];
+        require(minRequired > 0 && maxAllowed > 0, "Token not configured");
+        require(amount >= minRequired, "Amount below minimum");
+        require(amount <= maxAllowed, "Amount above maximum");
+
+        // Model-specific validation: host must support the model
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
+
+        // Model-specific pricing validation
+        uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
+        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+
+        // Pull payment directly from payer's wallet
+        IERC20(paymentToken).safeTransferFrom(payer, address(this), amount);
+
+        // Create session owned by PAYER (not delegate)
+        sessionId = nextJobId++;
+
+        SessionJob storage session = sessionJobs[sessionId];
+        session.id = sessionId;
+        session.depositor = payer;  // Payer owns the session
+        session.host = host;
+        session.paymentToken = paymentToken;
+        session.deposit = amount;
+        session.pricePerToken = pricePerToken;
+        session.maxDuration = maxDuration;
+        session.startTime = block.timestamp;
+        session.lastProofTime = block.timestamp;
+        session.proofInterval = proofInterval;
+        session.proofTimeoutWindow = proofTimeoutWindow;
+        session.status = SessionStatus.Active;
+
+        // Store model for this session
+        sessionModel[sessionId] = modelId;
+
+        userSessions[payer].push(sessionId);
+        hostSessions[host].push(sessionId);
+
+        emit SessionJobCreated(sessionId, payer, host, amount);
+        emit SessionJobCreatedForModel(sessionId, payer, host, modelId, amount);
+        emit SessionCreatedByDelegate(sessionId, payer, msg.sender, host, modelId, amount);
 
         return sessionId;
     }
