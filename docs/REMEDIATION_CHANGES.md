@@ -15,6 +15,53 @@
 | `c91c2cb` | AUDIT-F3 | `slack-C0A61FZC8SH-p1769545156133729` | Separate `proofTimeoutWindow` from `proofInterval` |
 | `0bc0194` | AUDIT-F4 | `slack-C0A61FZC8SH-p1769619714508749` | Include `modelId` in signature verification |
 | `483682c` | AUDIT-F5 | `slack-C0A61FZC8SH-p1769608000786449` | Add `createSessionFromDepositForModel` function |
+| (pending) | V2-DELEG | SDK Request | V2 Direct Payment Delegation for Smart Wallet |
+
+## V2 Direct Payment Delegation (February 2, 2026)
+
+**Branch**: `fix/v2-direct-payment-delegation`
+**Purpose**: Enable Coinbase Smart Wallet sub-accounts to create sessions using primary account's USDC
+
+### Deployment
+
+| Component | Address | Transaction |
+|-----------|---------|-------------|
+| **Implementation** | `0xf5441bda610AbCDe71B96fe6051E738d2702f071` | `0xe6658f9b...` |
+| **Proxy (upgraded)** | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0x4b97890a...` |
+
+### Functions Added
+
+```solidity
+// Authorization
+function authorizeDelegate(address delegate, bool authorized) external;
+function isDelegateAuthorized(address payer, address delegate) external view returns (bool);
+
+// V2 Direct Payment (USDC only)
+function createSessionForModelAsDelegate(...) external returns (uint256);
+function createSessionAsDelegate(...) external returns (uint256);
+```
+
+### Custom Errors (Bytecode Optimization)
+
+```solidity
+error NotDelegate();
+error ERC20Only();
+error BadDelegateParams();
+```
+
+### Test Coverage
+
+- **41 delegation tests** passing (authorization + security + direct payment)
+- **754 total tests** passing
+
+### Security Properties Verified
+
+1. ✅ Unauthorized addresses cannot pull from payer
+2. ✅ Revoked delegates fail after revocation
+3. ✅ Delegate cannot exceed payer's ERC-20 approval
+4. ✅ Session refunds go to payer (not delegate)
+5. ✅ Pause mechanism blocks delegated functions
+6. ✅ Cross-user authorization isolation
 
 ## Finding Summary
 

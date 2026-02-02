@@ -202,7 +202,7 @@ contract DirectPaymentDelegationTest is Test {
         address unauthorizedDelegate = makeAddr("unauthorized");
 
         vm.prank(unauthorizedDelegate);
-        vm.expectRevert("Not authorized delegate");
+        vm.expectRevert(JobMarketplaceWithModelsUpgradeable.NotDelegate.selector);
         marketplace.createSessionForModelAsDelegate(
             payer, modelId, host, address(usdcToken),
             SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
@@ -215,7 +215,7 @@ contract DirectPaymentDelegationTest is Test {
         marketplace.authorizeDelegate(delegate, false);
 
         vm.prank(delegate);
-        vm.expectRevert("Not authorized delegate");
+        vm.expectRevert(JobMarketplaceWithModelsUpgradeable.NotDelegate.selector);
         marketplace.createSessionForModelAsDelegate(
             payer, modelId, host, address(usdcToken),
             SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
@@ -224,7 +224,7 @@ contract DirectPaymentDelegationTest is Test {
 
     function test_CreateSessionForModelAsDelegate_ETH_Reverts() public {
         vm.prank(delegate);
-        vm.expectRevert("Direct delegation requires ERC-20 token");
+        vm.expectRevert(JobMarketplaceWithModelsUpgradeable.ERC20Only.selector);
         marketplace.createSessionForModelAsDelegate(
             payer, modelId, host, address(0),  // ETH
             SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
@@ -265,7 +265,7 @@ contract DirectPaymentDelegationTest is Test {
 
     function test_CreateSessionForModelAsDelegate_ZeroPayer_Reverts() public {
         vm.prank(delegate);
-        vm.expectRevert("Invalid payer");
+        vm.expectRevert(JobMarketplaceWithModelsUpgradeable.BadDelegateParams.selector);
         marketplace.createSessionForModelAsDelegate(
             address(0), modelId, host, address(usdcToken),
             SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
@@ -274,7 +274,7 @@ contract DirectPaymentDelegationTest is Test {
 
     function test_CreateSessionForModelAsDelegate_InvalidModel_Reverts() public {
         vm.prank(delegate);
-        vm.expectRevert("Invalid model ID");
+        vm.expectRevert(JobMarketplaceWithModelsUpgradeable.BadDelegateParams.selector);
         marketplace.createSessionForModelAsDelegate(
             payer, bytes32(0), host, address(usdcToken),
             SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
@@ -327,7 +327,7 @@ contract DirectPaymentDelegationTest is Test {
         address unauthorizedDelegate = makeAddr("unauthorized");
 
         vm.prank(unauthorizedDelegate);
-        vm.expectRevert("Not authorized delegate");
+        vm.expectRevert(JobMarketplaceWithModelsUpgradeable.NotDelegate.selector);
         marketplace.createSessionAsDelegate(
             payer, host, address(usdcToken),
             SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
@@ -336,7 +336,7 @@ contract DirectPaymentDelegationTest is Test {
 
     function test_CreateSessionAsDelegate_ETH_Reverts() public {
         vm.prank(delegate);
-        vm.expectRevert("Direct delegation requires ERC-20 token");
+        vm.expectRevert(JobMarketplaceWithModelsUpgradeable.ERC20Only.selector);
         marketplace.createSessionAsDelegate(
             payer, host, address(0),  // ETH
             SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300

@@ -4,6 +4,78 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ---
 
+## REMEDIATION CONTRACTS (February 2, 2026 - V2 Direct Payment Delegation)
+
+> **🚀 FOR SDK DEVELOPMENT:** Use these contracts for testing new features including V2 Direct Payment Delegation for Smart Wallet support.
+
+### JobMarketplaceWithModelsUpgradeable (Remediation)
+- **Proxy Address**: `0x95132177F964FF053C1E874b53CF74d819618E06`
+- **Implementation**: `0xf5441bda610AbCDe71B96fe6051E738d2702f071` ✅ V2 Delegation (Feb 2, 2026)
+- **Network**: Base Sepolia
+- **Status**: ✅ ACTIVE - Development/Testing
+- **ABI File**: `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json`
+
+**V2 Direct Payment Delegation (NEW):**
+```solidity
+// Authorization
+function authorizeDelegate(address delegate, bool authorized) external;
+function isDelegateAuthorized(address payer, address delegate) external view returns (bool);
+
+// Create session as delegate (USDC only - uses transferFrom)
+function createSessionForModelAsDelegate(
+    address payer, bytes32 modelId, address host, address paymentToken,
+    uint256 amount, uint256 pricePerToken, uint256 maxDuration,
+    uint256 proofInterval, uint256 proofTimeoutWindow
+) external returns (uint256 sessionId);
+
+function createSessionAsDelegate(
+    address payer, address host, address paymentToken,
+    uint256 amount, uint256 pricePerToken, uint256 maxDuration,
+    uint256 proofInterval, uint256 proofTimeoutWindow
+) external returns (uint256 sessionId);
+```
+
+**Custom Errors:**
+```solidity
+error NotDelegate();        // Caller not authorized
+error ERC20Only();          // Must use ERC-20 token (no ETH)
+error BadDelegateParams();  // Invalid parameters
+```
+
+**Events:**
+```solidity
+event DelegateAuthorized(address indexed payer, address indexed delegate, bool authorized);
+event SessionCreatedByDelegate(uint256 indexed sessionId, address indexed payer, address indexed delegate, address host, bytes32 modelId, uint256 amount);
+```
+
+### SDK Integration Example
+
+```javascript
+import { parseUnits } from "ethers";
+
+// Remediation proxy address
+const MARKETPLACE = "0x95132177F964FF053C1E874b53CF74d819618E06";
+
+// One-time setup (primary wallet - 2 popups)
+await usdc.approve(MARKETPLACE, parseUnits("1000", 6)); // $1,000 USDC
+await marketplace.authorizeDelegate(subAccount.address, true);
+
+// Per-session (sub-account - NO popup!)
+const sessionId = await marketplace.connect(subAccount).createSessionForModelAsDelegate(
+    primaryWallet.address,  // payer
+    modelId,                // model
+    hostAddress,            // host
+    usdcAddress,            // USDC (no ETH for delegation)
+    parseUnits("10", 6),    // amount
+    5000,                   // pricePerToken
+    3600,                   // maxDuration
+    1000,                   // proofInterval
+    300                     // proofTimeoutWindow
+);
+```
+
+---
+
 ## UPGRADEABLE CONTRACTS (January 9, 2026 - Clean Slate Deployment)
 
 > **🔒 SECURITY UPDATE**: All CRITICAL vulnerabilities from January 2025 audit have been fixed.

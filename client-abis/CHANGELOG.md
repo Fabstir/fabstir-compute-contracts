@@ -1,5 +1,92 @@
 # Client ABIs Changelog
 
+## February 2, 2026 - V2 Direct Payment Delegation
+
+### New Feature: Smart Wallet Sub-Account Support
+
+Enables Coinbase Smart Wallet sub-accounts to create sessions using primary account's USDC via `transferFrom` pattern.
+
+**New Functions:**
+```solidity
+// Authorize a delegate
+function authorizeDelegate(address delegate, bool authorized) external;
+
+// Check authorization
+function isDelegateAuthorized(address payer, address delegate) external view returns (bool);
+
+// Create model session as delegate (USDC only)
+function createSessionForModelAsDelegate(
+    address payer,
+    bytes32 modelId,
+    address host,
+    address paymentToken,
+    uint256 amount,
+    uint256 pricePerToken,
+    uint256 maxDuration,
+    uint256 proofInterval,
+    uint256 proofTimeoutWindow
+) external returns (uint256 sessionId);
+
+// Create non-model session as delegate (USDC only)
+function createSessionAsDelegate(
+    address payer,
+    address host,
+    address paymentToken,
+    uint256 amount,
+    uint256 pricePerToken,
+    uint256 maxDuration,
+    uint256 proofInterval,
+    uint256 proofTimeoutWindow
+) external returns (uint256 sessionId);
+```
+
+**New Custom Errors:**
+```solidity
+error NotDelegate();        // Caller not authorized as delegate
+error ERC20Only();          // Direct delegation requires ERC-20 token
+error BadDelegateParams();  // Invalid parameters
+```
+
+**New Events:**
+```solidity
+event DelegateAuthorized(address indexed payer, address indexed delegate, bool authorized);
+event SessionCreatedByDelegate(uint256 indexed sessionId, address indexed payer, address indexed delegate, address host, bytes32 modelId, uint256 amount);
+```
+
+**New Storage:**
+```solidity
+mapping(address => mapping(address => bool)) public isAuthorizedDelegate;
+```
+
+### Implementation Upgrade (Remediation Proxy)
+| Contract | Proxy | New Implementation |
+|----------|-------|-------------------|
+| JobMarketplace | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0xf5441bda610AbCDe71B96fe6051E738d2702f071` |
+
+### Bytecode Optimization
+- Custom errors reduced bytecode from 25,453 to 24,516 bytes
+- Contract now fits within EVM 24,576 byte limit
+
+### SDK Integration
+```typescript
+// One-time setup (primary wallet)
+await usdc.approve(marketplace.address, parseUnits("1000", 6));
+await marketplace.authorizeDelegate(subAccount.address, true);
+
+// Per-session (sub-account - NO popup!)
+await marketplace.connect(subAccount).createSessionForModelAsDelegate(
+    primaryWallet.address, modelId, host, usdcAddress,
+    amount, pricePerToken, maxDuration, proofInterval, proofTimeoutWindow
+);
+```
+
+### No Breaking Changes
+- All existing functions work as before
+- V2 delegation is additive (new functions only)
+- Escrow/deposit functions retained for general wallet support
+
+---
+
 ## January 31, 2026 - Security Audit Remediation (AUDIT-F1 to F5)
 
 ### ⚠️ BREAKING CHANGES

@@ -1,7 +1,7 @@
 # Architecture Documentation
 
-**Version:** 2.1
-**Last Updated:** January 16, 2026
+**Version:** 2.2
+**Last Updated:** February 2, 2026
 **Network:** Base Sepolia (Testnet)
 
 ---
@@ -170,6 +170,44 @@
      │ <──────────────────────────────│                                  │
      │                                │                                  │
 ```
+
+### 4.1b V2 Direct Payment Delegation Flow (NEW - Feb 2026)
+
+For Coinbase Smart Wallet sub-accounts creating sessions using primary account's USDC:
+
+```
+┌─────────┐   ┌───────────┐                  ┌─────────────────┐
+│ Primary │   │Sub-Account│                  │  JobMarketplace │
+│ Wallet  │   │(Delegate) │                  │                 │
+└────┬────┘   └─────┬─────┘                  └────────┬────────┘
+     │              │                                 │
+     │  1. approve(marketplace, $1000)               │
+     │ ─────────────────────────────────────────────>│  (USDC contract)
+     │              │                                 │
+     │  2. authorizeDelegate(subAccount, true)       │
+     │ ─────────────────────────────────────────────>│
+     │              │                                 │
+     │              │  3. createSessionForModelAsDelegate()
+     │              │     (payer=primary, USDC)       │
+     │              │ ───────────────────────────────>│
+     │              │                                 │
+     │              │     4. Check authorization      │
+     │              │     isAuthorizedDelegate[payer][msg.sender]?
+     │              │                                 │
+     │              │     5. transferFrom(payer, contract, amount)
+     │              │        (pulls USDC from primary's wallet)
+     │              │                                 │
+     │              │  6. Session created             │
+     │              │     (depositor = primary)       │
+     │              │ <───────────────────────────────│
+     │              │                                 │
+```
+
+**Key Points:**
+- Steps 1-2 are one-time setup (2 popups)
+- Step 3 is per-session (NO popup - sub-account signs)
+- Refunds go to primary (depositor), not delegate
+- USDC only (ETH not supported for delegation)
 
 ### 4.2 Proof Submission Flow
 

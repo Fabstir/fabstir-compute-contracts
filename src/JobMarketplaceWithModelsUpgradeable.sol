@@ -219,6 +219,11 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 amount
     );
 
+    // V2 Delegation custom errors (bytecode optimization)
+    error NotDelegate();
+    error ERC20Only();
+    error BadDelegateParams();
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -1273,26 +1278,20 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 proofTimeoutWindow
     ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
         // Authorization check FIRST
-        require(payer != address(0), "Invalid payer");
-        require(
-            msg.sender == payer || isAuthorizedDelegate[payer][msg.sender],
-            "Not authorized delegate"
-        );
+        if (payer == address(0)) revert BadDelegateParams();
+        if (msg.sender != payer && !isAuthorizedDelegate[payer][msg.sender]) revert NotDelegate();
 
         // Must be ERC-20 (can't do transferFrom for ETH)
-        require(paymentToken != address(0), "Direct delegation requires ERC-20 token");
-        require(acceptedTokens[paymentToken], "Token not accepted");
+        if (paymentToken == address(0)) revert ERC20Only();
+        if (!acceptedTokens[paymentToken]) revert BadDelegateParams();
 
         // Standard validations
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(
-            proofTimeoutWindow >= MIN_PROOF_TIMEOUT && proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
-            "Invalid proof timeout window"
-        );
-        require(host != address(0), "Invalid host");
-        require(amount > 0, "Zero amount");
+        if (pricePerToken == 0) revert BadDelegateParams();
+        if (maxDuration == 0 || maxDuration > 365 days) revert BadDelegateParams();
+        if (proofInterval == 0) revert BadDelegateParams();
+        if (proofTimeoutWindow < MIN_PROOF_TIMEOUT || proofTimeoutWindow > MAX_PROOF_TIMEOUT) revert BadDelegateParams();
+        if (host == address(0)) revert BadDelegateParams();
+        if (amount == 0) revert BadDelegateParams();
 
         _validateHostRegistration(host);
         _validateProofRequirements(proofInterval, amount, pricePerToken);
@@ -1300,13 +1299,12 @@ contract JobMarketplaceWithModelsUpgradeable is
         // Validate amount limits
         uint256 minRequired = tokenMinDeposits[paymentToken];
         uint256 maxAllowed = tokenMaxDeposits[paymentToken];
-        require(minRequired > 0 && maxAllowed > 0, "Token not configured");
-        require(amount >= minRequired, "Amount below minimum");
-        require(amount <= maxAllowed, "Amount above maximum");
+        if (minRequired == 0 || maxAllowed == 0) revert BadDelegateParams();
+        if (amount < minRequired || amount > maxAllowed) revert BadDelegateParams();
 
         // Validate price meets host's minimum for stablecoin
         uint256 hostMinPrice = nodeRegistry.getNodePricing(host, paymentToken);
-        require(pricePerToken >= hostMinPrice, "Price below host minimum");
+        if (pricePerToken < hostMinPrice) revert BadDelegateParams();
 
         // Pull payment directly from payer's wallet
         IERC20(paymentToken).safeTransferFrom(payer, address(this), amount);
@@ -1363,29 +1361,23 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 proofTimeoutWindow
     ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
         // Authorization check FIRST
-        require(payer != address(0), "Invalid payer");
-        require(
-            msg.sender == payer || isAuthorizedDelegate[payer][msg.sender],
-            "Not authorized delegate"
-        );
+        if (payer == address(0)) revert BadDelegateParams();
+        if (msg.sender != payer && !isAuthorizedDelegate[payer][msg.sender]) revert NotDelegate();
 
         // Model validation
-        require(modelId != bytes32(0), "Invalid model ID");
+        if (modelId == bytes32(0)) revert BadDelegateParams();
 
         // Must be ERC-20 (can't do transferFrom for ETH)
-        require(paymentToken != address(0), "Direct delegation requires ERC-20 token");
-        require(acceptedTokens[paymentToken], "Token not accepted");
+        if (paymentToken == address(0)) revert ERC20Only();
+        if (!acceptedTokens[paymentToken]) revert BadDelegateParams();
 
         // Standard validations
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
-        require(
-            proofTimeoutWindow >= MIN_PROOF_TIMEOUT && proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
-            "Invalid proof timeout window"
-        );
-        require(host != address(0), "Invalid host");
-        require(amount > 0, "Zero amount");
+        if (pricePerToken == 0) revert BadDelegateParams();
+        if (maxDuration == 0 || maxDuration > 365 days) revert BadDelegateParams();
+        if (proofInterval == 0) revert BadDelegateParams();
+        if (proofTimeoutWindow < MIN_PROOF_TIMEOUT || proofTimeoutWindow > MAX_PROOF_TIMEOUT) revert BadDelegateParams();
+        if (host == address(0)) revert BadDelegateParams();
+        if (amount == 0) revert BadDelegateParams();
 
         _validateHostRegistration(host);
         _validateProofRequirements(proofInterval, amount, pricePerToken);
@@ -1393,16 +1385,15 @@ contract JobMarketplaceWithModelsUpgradeable is
         // Validate amount limits
         uint256 minRequired = tokenMinDeposits[paymentToken];
         uint256 maxAllowed = tokenMaxDeposits[paymentToken];
-        require(minRequired > 0 && maxAllowed > 0, "Token not configured");
-        require(amount >= minRequired, "Amount below minimum");
-        require(amount <= maxAllowed, "Amount above maximum");
+        if (minRequired == 0 || maxAllowed == 0) revert BadDelegateParams();
+        if (amount < minRequired || amount > maxAllowed) revert BadDelegateParams();
 
         // Model-specific validation: host must support the model
-        require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
+        if (!nodeRegistry.nodeSupportsModel(host, modelId)) revert BadDelegateParams();
 
         // Model-specific pricing validation
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
-        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+        if (pricePerToken < hostMinPrice) revert BadDelegateParams();
 
         // Pull payment directly from payer's wallet
         IERC20(paymentToken).safeTransferFrom(payer, address(this), amount);

@@ -1,6 +1,6 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** January 16, 2026
+**Last Updated:** February 2, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 **PRICE_PRECISION:** 1000 (all prices multiplied by 1000 for sub-$1/million support)
 
@@ -959,6 +959,132 @@ function getDepositBalance(address account, address token) external view returns
 ```
 
 Use `address(0)` for native ETH balance.
+
+### V2 Direct Payment Delegation (NEW - February 2, 2026)
+
+Enables Coinbase Smart Wallet sub-accounts to create sessions using primary account's funds via ERC-20 `transferFrom`.
+
+#### `authorizeDelegate`
+
+Authorize or revoke a delegate address.
+
+```solidity
+function authorizeDelegate(address delegate, bool authorized) external
+```
+
+**Requirements:**
+- `delegate != address(0)`
+- `delegate != msg.sender` (cannot self-delegate)
+
+**Example:**
+```javascript
+// Primary account authorizes sub-account
+await marketplace.authorizeDelegate(subAccountAddress, true);
+
+// Revoke authorization
+await marketplace.authorizeDelegate(subAccountAddress, false);
+```
+
+**Events:**
+```solidity
+event DelegateAuthorized(
+    address indexed payer,
+    address indexed delegate,
+    bool authorized
+);
+```
+
+#### `isDelegateAuthorized`
+
+Check if a delegate is authorized for a payer.
+
+```solidity
+function isDelegateAuthorized(address payer, address delegate) external view returns (bool)
+```
+
+#### `createSessionForModelAsDelegate`
+
+Create a model-specific session as an authorized delegate (USDC only).
+
+```solidity
+function createSessionForModelAsDelegate(
+    address payer,              // Account whose USDC is used
+    bytes32 modelId,            // Model to use
+    address host,               // Host address
+    address paymentToken,       // Must be ERC-20 (not address(0))
+    uint256 amount,             // Amount to pull from payer
+    uint256 pricePerToken,      // Agreed price
+    uint256 maxDuration,        // Max session duration
+    uint256 proofInterval,      // Tokens between proofs
+    uint256 proofTimeoutWindow  // Proof timeout (60-3600 seconds)
+) external returns (uint256 sessionId)
+```
+
+**Requirements:**
+- `payer != address(0)`
+- `msg.sender == payer` OR `isAuthorizedDelegate[payer][msg.sender]`
+- `paymentToken != address(0)` (USDC only, no ETH)
+- Payer must have approved contract for `amount`
+- Payer must have sufficient token balance
+
+**Example:**
+```javascript
+// One-time setup (primary account)
+await usdc.approve(marketplace.address, parseUnits("1000", 6)); // $1,000 approval
+await marketplace.authorizeDelegate(subAccount.address, true);
+
+// Per-session (sub-account, NO popup!)
+const sessionId = await marketplace.connect(subAccount).createSessionForModelAsDelegate(
+    primaryWallet.address,  // payer
+    TINY_VICUNA,            // modelId
+    hostAddress,            // host
+    usdcAddress,            // paymentToken (must be ERC-20)
+    parseUnits("10", 6),    // amount
+    5000,                   // pricePerToken
+    3600,                   // maxDuration (1 hour)
+    1000,                   // proofInterval
+    300                     // proofTimeoutWindow
+);
+```
+
+**Events:**
+```solidity
+event SessionCreatedByDelegate(
+    uint256 indexed sessionId,
+    address indexed payer,
+    address indexed delegate,
+    address host,
+    bytes32 modelId,
+    uint256 amount
+);
+```
+
+#### `createSessionAsDelegate`
+
+Create a non-model session as an authorized delegate (USDC only).
+
+```solidity
+function createSessionAsDelegate(
+    address payer,
+    address host,
+    address paymentToken,
+    uint256 amount,
+    uint256 pricePerToken,
+    uint256 maxDuration,
+    uint256 proofInterval,
+    uint256 proofTimeoutWindow
+) external returns (uint256 sessionId)
+```
+
+Same requirements as `createSessionForModelAsDelegate` but without model validation.
+
+#### Custom Errors (V2 Delegation)
+
+```solidity
+error NotDelegate();        // Caller not authorized as delegate
+error ERC20Only();          // Cannot use ETH for delegation (must be ERC-20)
+error BadDelegateParams();  // Invalid parameters (zero address, bad duration, etc.)
+```
 
 #### `createSessionFromDeposit`
 

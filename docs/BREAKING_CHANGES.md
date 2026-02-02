@@ -2,6 +2,144 @@
 
 ---
 
+## February 2, 2026: V2 Direct Payment Delegation + Custom Errors
+
+**Contracts Affected**: JobMarketplaceWithModelsUpgradeable (Remediation Proxy)
+**Impact Level**: MEDIUM - New functions added, custom errors introduced
+
+### Summary
+
+Added V2 Direct Payment Delegation for Coinbase Smart Wallet sub-account support. Delegates can create sessions using the payer's USDC via `transferFrom` pattern.
+
+| Change | Impact | Action Required |
+|--------|--------|-----------------|
+| New delegation functions | LOW | Adopt for Smart Wallet integration |
+| Custom errors introduced | LOW | Update error handling in tests/SDK |
+| Bytecode optimization | NONE | Internal change |
+
+### 1. New V2 Delegation Functions
+
+```solidity
+// Authorize a delegate
+function authorizeDelegate(address delegate, bool authorized) external;
+
+// Check authorization
+function isDelegateAuthorized(address payer, address delegate) external view returns (bool);
+
+// Create model session as delegate (USDC only)
+function createSessionForModelAsDelegate(
+    address payer,
+    bytes32 modelId,
+    address host,
+    address paymentToken,
+    uint256 amount,
+    uint256 pricePerToken,
+    uint256 maxDuration,
+    uint256 proofInterval,
+    uint256 proofTimeoutWindow
+) external returns (uint256 sessionId);
+
+// Create non-model session as delegate (USDC only)
+function createSessionAsDelegate(
+    address payer,
+    address host,
+    address paymentToken,
+    uint256 amount,
+    uint256 pricePerToken,
+    uint256 maxDuration,
+    uint256 proofInterval,
+    uint256 proofTimeoutWindow
+) external returns (uint256 sessionId);
+```
+
+### 2. New Custom Errors (BREAKING for Test Code)
+
+V2 delegation functions use custom errors instead of string reverts for gas optimization:
+
+```solidity
+error NotDelegate();        // Caller not authorized as delegate for payer
+error ERC20Only();          // Direct delegation requires ERC-20 token (no ETH)
+error BadDelegateParams();  // Invalid parameters (zero address, bad duration, etc.)
+```
+
+**Migration for tests:**
+```javascript
+// Before (string revert)
+vm.expectRevert("Not authorized delegate");
+
+// After (custom error selector)
+vm.expectRevert(JobMarketplaceWithModelsUpgradeable.NotDelegate.selector);
+```
+
+### 3. New Events
+
+```solidity
+event DelegateAuthorized(
+    address indexed payer,
+    address indexed delegate,
+    bool authorized
+);
+
+event SessionCreatedByDelegate(
+    uint256 indexed sessionId,
+    address indexed payer,
+    address indexed delegate,
+    address host,
+    bytes32 modelId,
+    uint256 amount
+);
+```
+
+### 4. Updated Implementation Address
+
+| Contract | Proxy | New Implementation |
+|----------|-------|-------------------|
+| JobMarketplace (Remediation) | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0xf5441bda610AbCDe71B96fe6051E738d2702f071` |
+
+### SDK Integration Example
+
+```typescript
+import { parseUnits } from "ethers";
+
+// One-time setup (2 popups)
+const APPROVAL_AMOUNT = parseUnits("1000", 6); // $1,000 USDC
+
+// 1. Approve USDC to contract
+await usdc.connect(primaryWallet).approve(marketplace.address, APPROVAL_AMOUNT);
+
+// 2. Authorize sub-account
+await marketplace.connect(primaryWallet).authorizeDelegate(subAccount.address, true);
+
+// Per-session (NO popup!)
+const sessionId = await marketplace.connect(subAccount).createSessionForModelAsDelegate(
+    primaryWallet.address,  // payer
+    modelId,                // model
+    hostAddress,            // host
+    usdcAddress,            // USDC token (no ETH!)
+    parseUnits("10", 6),    // amount
+    5000,                   // pricePerToken
+    3600,                   // maxDuration
+    1000,                   // proofInterval
+    300                     // proofTimeoutWindow
+);
+```
+
+### Migration Checklist
+
+#### For SDK Developers
+
+- [ ] Add V2 delegation functions to SDK (optional but recommended for Smart Wallet)
+- [ ] Update cached ABIs from `client-abis/`
+- [ ] Handle custom errors if catching delegation reverts
+
+#### For Smart Wallet Integrators
+
+- [ ] Implement one-time setup flow (approve USDC + authorize delegate)
+- [ ] Use `createSessionForModelAsDelegate()` for popup-free session creation
+- [ ] Track allowance and prompt re-approval when low
+
+---
+
 ## January 14, 2026: deltaCID Proof Tracking & conversationCID
 
 **Contracts Affected**: JobMarketplaceWithModelsUpgradeable
