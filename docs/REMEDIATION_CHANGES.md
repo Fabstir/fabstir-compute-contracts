@@ -15,6 +15,7 @@
 | `c91c2cb` | AUDIT-F3 | `slack-C0A61FZC8SH-p1769545156133729` | Separate `proofTimeoutWindow` from `proofInterval` |
 | `0bc0194` | AUDIT-F4 | `slack-C0A61FZC8SH-p1769619714508749` | Include `modelId` in signature verification |
 | `483682c` | AUDIT-F5 | `slack-C0A61FZC8SH-p1769608000786449` | Add `createSessionFromDepositForModel` function |
+| TBD | DELEGATION | N/A | Add delegated session creation for Smart Wallet sub-accounts |
 
 ## Finding Summary
 
@@ -26,25 +27,40 @@
 | AUDIT-F4 | MEDIUM | Model validation missing in signature scheme | ✅ FIXED |
 | AUDIT-F5 | LOW | Missing `createSessionFromDepositForModel()` | ✅ FIXED |
 
+## Feature Additions
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Delegated Sessions | Smart Wallet sub-account support via `isAuthorizedDelegate` mapping | ✅ IMPLEMENTED |
+
 ## Test Coverage
 
 All fixes verified with comprehensive test suite:
-- **Total Tests**: 713 passing
+- **Total Tests**: 741+ passing (713 original + 28 delegation tests)
 - **Test Files Added**:
   - `test/SecurityFixes/Remediation/test_dead_code_removal.t.sol`
   - `test/SecurityFixes/Remediation/test_proofsystem_required.t.sol`
   - `test/SecurityFixes/JobMarketplace/test_proof_timeout_window.t.sol`
   - `test/SecurityFixes/Remediation/test_model_signature.t.sol`
   - `test/SecurityFixes/Remediation/test_create_from_deposit_for_model.t.sol`
+  - `test/SecurityFixes/DelegatedSessions/test_storage_layout.t.sol`
+  - `test/SecurityFixes/DelegatedSessions/test_delegation_authorization.t.sol`
+  - `test/SecurityFixes/DelegatedSessions/test_delegated_session_creation.t.sol`
+  - `test/SecurityFixes/DelegatedSessions/test_delegation_security.t.sol`
 
 ## Test Contract Deployments (Base Sepolia)
 
 Deployed for testing WITHOUT upgrading audited proxies:
 
-| Contract | Test Proxy | Test Implementation |
-|----------|------------|---------------------|
-| ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0x56657bCBAE50AB656A9452f7B52e317650f90267` |
-| JobMarketplace | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0x06dB705BcBdda50A1712635fdC64A28d75de5603` |
+| Contract | Test Proxy | Test Implementation | Notes |
+|----------|------------|---------------------|-------|
+| ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0x56657bCBAE50AB656A9452f7B52e317650f90267` | AUDIT fixes |
+| JobMarketplace | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0x305EC43ae2D6D110c2db8DD9F5420FFd2b551F57` | **UPDATED** - With delegation (Feb 2, 2026) |
+
+### Previous Implementations (for reference)
+| Contract | Previous Implementation | Replaced On |
+|----------|------------------------|-------------|
+| JobMarketplace | `0x06dB705BcBdda50A1712635fdC64A28d75de5603` | Feb 2, 2026 (replaced with delegation support) |
 
 ## Audited Contracts (FROZEN - DO NOT UPGRADE)
 
@@ -65,6 +81,16 @@ Deployed for testing WITHOUT upgrading audited proxies:
 | `modelId` in signature | Hosts MUST include modelId in signed message | Host software update required |
 | IProofSystem interface | Functions now require modelId parameter | Update all callers to pass modelId |
 
+## New Features (Non-Breaking)
+
+| Feature | Description | Usage |
+|---------|-------------|-------|
+| Delegation mapping | `isAuthorizedDelegate[depositor][delegate]` | Enable sub-account session creation |
+| `authorizeDelegate()` | Primary authorizes delegate | One-time setup per sub-account |
+| `isDelegateAuthorized()` | Check delegate status | Query authorization |
+| `createSessionFromDepositAsDelegate()` | Delegate creates session | Sub-account session creation |
+| `createSessionFromDepositForModelAsDelegate()` | Delegate creates model session | Sub-account model session |
+
 ## Verification Commands
 
 ```bash
@@ -80,6 +106,12 @@ forge test --match-contract ProofSystemRequiredTest  # F2
 forge test --match-contract ProofTimeoutWindowTest   # F3
 forge test --match-contract ModelSignatureTest       # F4
 forge test --match-contract CreateFromDepositForModelTest  # F5
+
+# Verify delegation feature
+forge test --match-path "test/SecurityFixes/DelegatedSessions/**" -vv
+forge test --match-contract DelegationAuthorizationTest
+forge test --match-contract DelegatedSessionCreationTest
+forge test --match-contract DelegationSecurityTest
 ```
 
 ## Retest Date

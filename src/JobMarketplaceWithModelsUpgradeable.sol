@@ -157,8 +157,12 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Chain configuration storage
     ChainConfig public chainConfig;
 
-    // Storage gap for future upgrades
-    uint256[35] private __gap;
+    // Delegation mapping for Smart Wallet sub-account support
+    // depositor => delegate => authorized
+    mapping(address => mapping(address => bool)) public isAuthorizedDelegate;
+
+    // Storage gap for future upgrades (reduced from 35 to 34)
+    uint256[34] private __gap;
 
     // Events
     event SessionJobCreated(uint256 indexed jobId, address indexed depositor, address indexed host, uint256 deposit);
@@ -198,6 +202,17 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Model-aware session event
     event SessionJobCreatedForModel(
         uint256 indexed jobId, address indexed depositor, address indexed host, bytes32 modelId, uint256 deposit
+    );
+
+    // Delegation events for Smart Wallet sub-account support
+    event DelegateAuthorized(address indexed depositor, address indexed delegate, bool authorized);
+    event SessionCreatedByDelegate(
+        uint256 indexed sessionId,
+        address indexed depositor,
+        address indexed delegate,
+        address host,
+        bytes32 modelId,
+        uint256 deposit
     );
 
     // Pause events
@@ -344,7 +359,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(pricePerToken >= hostMinPrice, "Price below host minimum");
 
         jobId = nextJobId++;
-        _initializeSession(jobId, params);
+        _initializeSession(jobId, msg.sender, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
         emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value);
@@ -386,7 +401,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         jobId = nextJobId++;
         sessionModel[jobId] = modelId;
-        _initializeSession(jobId, params);
+        _initializeSession(jobId, msg.sender, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
         emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, msg.value);
@@ -431,7 +446,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
 
         jobId = nextJobId++;
-        _initializeSession(jobId, params);
+        _initializeSession(jobId, msg.sender, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, deposit);
         emit SessionCreatedByDepositor(jobId, msg.sender, host, deposit);
@@ -483,7 +498,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         jobId = nextJobId++;
         sessionModel[jobId] = modelId;
-        _initializeSession(jobId, params);
+        _initializeSession(jobId, msg.sender, params);
 
         emit SessionJobCreated(jobId, msg.sender, host, deposit);
         emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, deposit);
@@ -563,16 +578,18 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @notice Initialize session storage with common fields
      * @dev Sets all session fields and updates tracking mappings
      * @param jobId The job ID for the session
+     * @param depositor The address that owns this session (receives refunds)
      * @param params Session parameters
      * @return session Storage pointer to the initialized session
      */
     function _initializeSession(
         uint256 jobId,
+        address depositor,
         SessionParams memory params
     ) internal returns (SessionJob storage session) {
         session = sessionJobs[jobId];
         session.id = jobId;
-        session.depositor = msg.sender;
+        session.depositor = depositor;
         session.host = params.host;
         session.paymentToken = params.paymentToken;
         session.deposit = params.deposit;
@@ -585,10 +602,35 @@ contract JobMarketplaceWithModelsUpgradeable is
         session.status = SessionStatus.Active;
 
         // Track session for user and host
-        userSessions[msg.sender].push(jobId);
+        userSessions[depositor].push(jobId);
         hostSessions[params.host].push(jobId);
 
         return session;
+    }
+
+    /**
+     * @notice Deduct deposit from user's pre-deposited balance
+     * @param depositor The address to deduct from
+     * @param paymentToken address(0) for ETH, token address for ERC20
+     * @param deposit Amount to deduct
+     */
+    function _deductFromDeposit(address depositor, address paymentToken, uint256 deposit) internal {
+        if (paymentToken == address(0)) {
+            require(deposit >= MIN_DEPOSIT, "Insufficient deposit");
+            require(deposit <= 1000 ether, "Deposit too large");
+            require(userDepositsNative[depositor] >= deposit, "Insufficient native balance");
+            userDepositsNative[depositor] -= deposit;
+        } else {
+            require(acceptedTokens[paymentToken], "Token not accepted");
+            uint256 minRequired = tokenMinDeposits[paymentToken];
+            uint256 maxAllowed = tokenMaxDeposits[paymentToken];
+            require(minRequired > 0, "Token not configured");
+            require(maxAllowed > 0, "Token max deposit not configured");
+            require(deposit >= minRequired, "Insufficient deposit");
+            require(deposit <= maxAllowed, "Deposit too large");
+            require(userDepositsToken[depositor][paymentToken] >= deposit, "Insufficient token balance");
+            userDepositsToken[depositor][paymentToken] -= deposit;
+        }
     }
 
     // ============================================================
@@ -928,6 +970,33 @@ contract JobMarketplaceWithModelsUpgradeable is
     }
 
     // ============================================================
+    // Delegation Functions (Smart Wallet Sub-Account Support)
+    // ============================================================
+
+    /**
+     * @notice Authorize or revoke a delegate to create sessions on behalf of caller
+     * @param delegate The address to authorize (e.g., Smart Wallet sub-account)
+     * @param authorized True to authorize, false to revoke
+     */
+    function authorizeDelegate(address delegate, bool authorized) external {
+        require(delegate != address(0), "Invalid delegate address");
+        require(delegate != msg.sender, "Cannot delegate to self");
+
+        isAuthorizedDelegate[msg.sender][delegate] = authorized;
+        emit DelegateAuthorized(msg.sender, delegate, authorized);
+    }
+
+    /**
+     * @notice Check if a delegate is authorized for a depositor
+     * @param depositor The primary account address
+     * @param delegate The delegate address to check
+     * @return True if delegate is authorized for depositor
+     */
+    function isDelegateAuthorized(address depositor, address delegate) external view returns (bool) {
+        return isAuthorizedDelegate[depositor][delegate];
+    }
+
+    // ============================================================
     // Balance Query Functions
     // ============================================================
 
@@ -1200,5 +1269,126 @@ contract JobMarketplaceWithModelsUpgradeable is
         emit SessionJobCreatedForModel(sessionId, msg.sender, host, modelId, deposit);
 
         return sessionId;
+    }
+
+    // ============================================================
+    // Delegated Session Creation (Smart Wallet Sub-Account Support)
+    // ============================================================
+
+    /**
+     * @notice Create a session from pre-deposited funds on behalf of a depositor
+     * @dev Caller must be depositor OR authorized delegate for the depositor
+     * @param depositor The primary account whose deposits to use
+     * @param host The host to create the session with
+     * @param paymentToken address(0) for ETH, token address for ERC20
+     * @param deposit Amount to use from depositor's pre-deposited balance
+     * @param pricePerToken Price per inference token
+     * @param maxDuration Maximum session duration in seconds
+     * @param proofInterval Minimum tokens per proof submission
+     * @param proofTimeoutWindow Time in seconds before session times out without proof
+     * @return sessionId The created session ID
+     */
+    function createSessionFromDepositAsDelegate(
+        address depositor,
+        address host,
+        address paymentToken,
+        uint256 deposit,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
+    ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
+        // Delegation validation - MUST be first before any state changes
+        require(depositor != address(0), "Invalid depositor");
+        require(
+            msg.sender == depositor || isAuthorizedDelegate[depositor][msg.sender],
+            "Not authorized delegate"
+        );
+        require(deposit > 0, "Zero deposit");
+
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: paymentToken,
+            deposit: deposit,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            proofTimeoutWindow: proofTimeoutWindow,
+            modelId: bytes32(0)
+        });
+
+        _validateSessionParams(params);
+
+        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, paymentToken);
+        require(pricePerToken >= hostMinPrice, "Price below host minimum");
+
+        _deductFromDeposit(depositor, paymentToken, deposit);
+
+        sessionId = nextJobId++;
+        _initializeSession(sessionId, depositor, params);
+
+        emit SessionJobCreated(sessionId, depositor, host, deposit);
+        emit SessionCreatedByDepositor(sessionId, depositor, host, deposit);
+
+        if (msg.sender != depositor) {
+            emit SessionCreatedByDelegate(sessionId, depositor, msg.sender, host, bytes32(0), deposit);
+        }
+    }
+
+    /**
+     * @notice Create a model-specific session from pre-deposited funds on behalf of a depositor
+     * @dev Caller must be depositor OR authorized delegate for the depositor
+     */
+    function createSessionFromDepositForModelAsDelegate(
+        address depositor,
+        bytes32 modelId,
+        address host,
+        address paymentToken,
+        uint256 deposit,
+        uint256 pricePerToken,
+        uint256 maxDuration,
+        uint256 proofInterval,
+        uint256 proofTimeoutWindow
+    ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
+        // Delegation validation - MUST be first before any state changes
+        require(depositor != address(0), "Invalid depositor");
+        require(
+            msg.sender == depositor || isAuthorizedDelegate[depositor][msg.sender],
+            "Not authorized delegate"
+        );
+        require(modelId != bytes32(0), "Invalid model ID");
+        require(deposit > 0, "Zero deposit");
+
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: paymentToken,
+            deposit: deposit,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            proofTimeoutWindow: proofTimeoutWindow,
+            modelId: modelId
+        });
+
+        _validateSessionParams(params);
+
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
+
+        uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
+        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+
+        _deductFromDeposit(depositor, paymentToken, deposit);
+
+        sessionId = nextJobId++;
+        sessionModel[sessionId] = modelId;
+        _initializeSession(sessionId, depositor, params);
+
+        emit SessionJobCreated(sessionId, depositor, host, deposit);
+        emit SessionCreatedByDepositor(sessionId, depositor, host, deposit);
+        emit SessionJobCreatedForModel(sessionId, depositor, host, modelId, deposit);
+
+        if (msg.sender != depositor) {
+            emit SessionCreatedByDelegate(sessionId, depositor, msg.sender, host, modelId, deposit);
+        }
     }
 }
