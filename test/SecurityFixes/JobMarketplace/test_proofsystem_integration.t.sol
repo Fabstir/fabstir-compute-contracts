@@ -286,7 +286,7 @@ contract ProofSystemIntegrationTest is Test {
 
         // AUDIT-F2: Should REVERT when ProofSystem not configured
         vm.prank(host);
-        vm.expectRevert("ProofSystem not configured");
+        vm.expectRevert("ProofSystem not set");
         marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, dummySignature, "QmTestCID", "");
     }
 
@@ -356,7 +356,7 @@ contract ProofSystemIntegrationTest is Test {
 
         // AUDIT-F2: Proof submission must revert when ProofSystem not configured
         vm.prank(host);
-        vm.expectRevert("ProofSystem not configured");
+        vm.expectRevert("ProofSystem not set");
         marketplaceNoProof.submitProofOfWork(newSessionId, 500, proofHash, dummySignature, "QmTestCID", "");
     }
 

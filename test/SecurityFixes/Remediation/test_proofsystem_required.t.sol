@@ -150,7 +150,7 @@ contract ProofSystemRequiredTest is Test {
 
         // Host tries to submit proof - should revert when ProofSystem not configured
         vm.prank(host);
-        vm.expectRevert("ProofSystem not configured");
+        vm.expectRevert("ProofSystem not set");
         marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, proofHash, signature, "QmProofCID", "QmDeltaCID");
     }
 

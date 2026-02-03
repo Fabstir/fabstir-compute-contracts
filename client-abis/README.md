@@ -4,18 +4,33 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ---
 
-## REMEDIATION CONTRACTS (February 2, 2026 - V2 Direct Payment Delegation)
+## REMEDIATION CONTRACTS (February 3, 2026 - Early Cancellation Fee)
 
-> **🚀 FOR SDK DEVELOPMENT:** Use these contracts for testing new features including V2 Direct Payment Delegation for Smart Wallet support.
+> **🚀 FOR SDK DEVELOPMENT:** Use these contracts for testing new features including V2 Direct Payment Delegation and Early Cancellation Fee protection.
 
 ### JobMarketplaceWithModelsUpgradeable (Remediation)
 - **Proxy Address**: `0x95132177F964FF053C1E874b53CF74d819618E06`
-- **Implementation**: `0xf5441bda610AbCDe71B96fe6051E738d2702f071` ✅ V2 Delegation (Feb 2, 2026)
+- **Implementation**: `0x40df542b58A54B9F077289442944fbA562c94E67` ✅ Early Cancellation Fee + Per-Model Rate Limits (Feb 3, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - Development/Testing
 - **ABI File**: `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json`
 
-**V2 Direct Payment Delegation (NEW):**
+**Early Cancellation Fee (NEW - Feb 3, 2026):**
+```solidity
+// Query minimum token fee for early cancellation
+function minTokensFee() external view returns (uint256);
+
+// Admin function to set minimum token fee
+function setMinTokensFee(uint256 _fee) external; // onlyOwner
+```
+
+When a depositor completes a session before any proofs are submitted, they are charged an early cancellation fee:
+- Fee = `minTokensFee * pricePerToken / PRICE_PRECISION`
+- Fee goes to host as compensation for wasted resources
+- Protects against bot abuse (free inference before proof submission)
+- Default: 1000 tokens
+
+**V2 Direct Payment Delegation:**
 ```solidity
 // Authorization
 function authorizeDelegate(address delegate, bool authorized) external;
@@ -940,9 +955,10 @@ const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
 - **Replacement**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6
 
 ## Last Updated
-January 16, 2026 - Stake slashing feature for NodeRegistry
+February 3, 2026 - Early Cancellation Fee for Remediation JobMarketplace
 
 ### Recent Changes
+- **Feb 3, 2026**: Early Cancellation Fee - `minTokensFee()`, `setMinTokensFee()` - Protects hosts from instant cancellation abuse
 - **Jan 16, 2026**: Stake slashing - `slashStake()`, `initializeSlashing()`, `setSlashingAuthority()`, `setTreasury()`, `lastSlashTime()`
 - **Jan 14, 2026**: deltaCID support - `submitProofOfWork` now 6 params, `getProofSubmission` returns 5 values
 - **Jan 10, 2026**: NodeRegistry - Added `repairCorruptNode()` admin function and safety check in `unregisterNode()`

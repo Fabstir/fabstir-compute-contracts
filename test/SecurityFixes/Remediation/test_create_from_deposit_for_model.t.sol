@@ -254,7 +254,7 @@ contract CreateFromDepositForModelTest is Test {
      */
     function test_CreateFromDepositForModel_UnapprovedModel_Reverts() public {
         vm.prank(user);
-        vm.expectRevert("Host does not support model");
+        vm.expectRevert("Model not supported");
         marketplace.createSessionFromDepositForModel(
             unapprovedModelId, // Not supported by host
             host,
@@ -279,7 +279,7 @@ contract CreateFromDepositForModelTest is Test {
         uint256 excessiveAmount = 2 ether; // User only deposited 1 ETH
 
         vm.prank(user);
-        vm.expectRevert("Insufficient native balance");
+        vm.expectRevert("Insufficient balance");
         marketplace.createSessionFromDepositForModel(
             modelId,
             host,
@@ -396,7 +396,7 @@ contract CreateFromDepositForModelTest is Test {
         bytes32 unsupportedModelId = modelRegistry.getModelId("Model2/Repo", "model2.gguf");
 
         vm.prank(user);
-        vm.expectRevert("Host does not support model");
+        vm.expectRevert("Model not supported");
         marketplace.createSessionFromDepositForModel(
             unsupportedModelId,
             host,
