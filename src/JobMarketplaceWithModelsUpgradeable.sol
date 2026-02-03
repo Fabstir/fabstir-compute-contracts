@@ -402,7 +402,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         // Get model-specific pricing (falls back to default if not set)
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, address(0));
-        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+        require(pricePerToken >= hostMinPrice, "Price below host min");
 
         jobId = nextJobId++;
         sessionModel[jobId] = modelId;
@@ -496,7 +496,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         // Get model-specific pricing for this token (falls back to default stable if not set)
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, token);
-        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+        require(pricePerToken >= hostMinPrice, "Price below host min");
 
         // Transfer tokens after all validations pass
         IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
@@ -571,7 +571,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             require(params.deposit <= 1000 ether, "Deposit too large");
         } else {
             uint256 maxAllowed = tokenMaxDeposits[params.paymentToken];
-            require(maxAllowed > 0, "Token max deposit not configured");
+            require(maxAllowed > 0, "Token max not set");
             require(params.deposit <= maxAllowed, "Deposit too large");
         }
 
@@ -630,9 +630,10 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(signature.length == 65, "Invalid signature length");
 
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
-        // Rate limit: 1000 tokens/sec base * 2x buffer = 2000 tokens/sec max
-        uint256 expectedTokens = timeSinceLastProof * 1000;
-        require(tokensClaimed <= expectedTokens * 2, "Excessive tokens claimed");
+        bytes32 modelId = sessionModel[jobId];
+        // Per-model rate limit (default 2000 tokens/sec for non-model sessions)
+        uint256 expectedTokens = timeSinceLastProof * nodeRegistry.modelRegistry().getModelRateLimit(modelId);
+        require(tokensClaimed <= expectedTokens, "Excessive tokens claimed");
 
         uint256 newTotal = session.tokensUsed + tokensClaimed;
         // With PRICE_PRECISION: maxTokens = deposit * PRICE_PRECISION / pricePerToken
@@ -643,8 +644,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(address(proofSystem) != address(0), "ProofSystem not configured");
         // Construct 97-byte proof: proofHash (32) + signature (65)
         bytes memory proof = abi.encodePacked(proofHash, signature);
-        // AUDIT-F4: Get model ID for this session (bytes32(0) for non-model sessions)
-        bytes32 modelId = sessionModel[jobId];
+        // AUDIT-F4: modelId already retrieved above for rate limit check
         require(
             proofSystem.verifyAndMarkComplete(proof, msg.sender, tokensClaimed, modelId),
             "Invalid proof signature"
@@ -734,7 +734,7 @@ contract JobMarketplaceWithModelsUpgradeable is
                 accumulatedTreasuryNative += treasuryFee;
                 // Send ETH to HostEarnings contract
                 (bool sent,) = payable(address(hostEarnings)).call{value: netHostPayment}("");
-                require(sent, "ETH transfer to HostEarnings failed");
+                require(sent, "ETH transfer failed");
                 // Credit the host's earnings
                 hostEarnings.creditEarnings(session.host, netHostPayment, address(0));
             } else {
@@ -1122,7 +1122,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             uint256 minRequired = tokenMinDeposits[paymentToken];
             uint256 maxAllowed = tokenMaxDeposits[paymentToken];
             require(minRequired > 0, "Token not configured");
-            require(maxAllowed > 0, "Token max deposit not configured");
+            require(maxAllowed > 0, "Token max not set");
             require(deposit >= minRequired, "Insufficient deposit");
             require(deposit <= maxAllowed, "Deposit too large");
             require(userDepositsToken[msg.sender][paymentToken] >= deposit, "Insufficient token balance");
@@ -1201,7 +1201,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         // Model-specific pricing validation
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
-        require(pricePerToken >= hostMinPrice, "Price below host minimum for model");
+        require(pricePerToken >= hostMinPrice, "Price below host min");
 
         // Verify user has sufficient pre-deposited balance with token-specific limits
         if (paymentToken == address(0)) {
@@ -1214,7 +1214,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             uint256 minRequired = tokenMinDeposits[paymentToken];
             uint256 maxAllowed = tokenMaxDeposits[paymentToken];
             require(minRequired > 0, "Token not configured");
-            require(maxAllowed > 0, "Token max deposit not configured");
+            require(maxAllowed > 0, "Token max not set");
             require(deposit >= minRequired, "Insufficient deposit");
             require(deposit <= maxAllowed, "Deposit too large");
             require(userDepositsToken[msg.sender][paymentToken] >= deposit, "Insufficient token balance");

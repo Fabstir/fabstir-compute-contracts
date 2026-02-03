@@ -332,7 +332,7 @@ contract CreateFromDepositForModelTest is Test {
 
         // Try to create session with default price (lower than model price)
         vm.prank(user);
-        vm.expectRevert("Price below host minimum for model");
+        vm.expectRevert("Price below host min");
         marketplace.createSessionFromDepositForModel(
             modelId,
             host,

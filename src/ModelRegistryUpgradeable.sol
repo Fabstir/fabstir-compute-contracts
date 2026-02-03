@@ -72,6 +72,18 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     // Track last proposal execution time for cooldown
     mapping(bytes32 => uint256) public lastProposalExecutionTime;
 
+    // ============================================================
+    // Rate Limit Configuration
+    // ============================================================
+
+    /// @notice Per-model token generation rate limits (tokens per second)
+    mapping(bytes32 => uint256) public modelMaxTokensPerSecond;
+
+    // Constants for rate limit bounds
+    uint256 public constant MIN_RATE_LIMIT = 100;      // Minimum 100 tokens/sec
+    uint256 public constant MAX_RATE_LIMIT = 10000;    // Maximum 10000 tokens/sec
+    uint256 public constant DEFAULT_RATE_LIMIT = 2000; // Backward compatible default
+
     // Events
     event ModelAdded(bytes32 indexed modelId, string huggingfaceRepo, string fileName, uint256 tier);
     event ModelProposed(bytes32 indexed modelId, address indexed proposer, string huggingfaceRepo);
@@ -80,9 +92,10 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event ModelDeactivated(bytes32 indexed modelId);
     event ModelReactivated(bytes32 indexed modelId);
     event VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensionCount);
+    event ModelRateLimitUpdated(bytes32 indexed modelId, uint256 maxTokensPerSecond);
 
-    // Storage gap for future upgrades (reduced for lateVotes + lastProposalExecutionTime)
-    uint256[47] private __gap;
+    // Storage gap for future upgrades (reduced for modelMaxTokensPerSecond mapping)
+    uint256[46] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -408,5 +421,35 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
                 emit ModelAdded(modelId, repos[i], fileNames[i], 1);
             }
         }
+    }
+
+    // ============================================================
+    // Rate Limit Functions
+    // ============================================================
+
+    /**
+     * @notice Set the maximum token generation rate for a model
+     * @dev Only callable by owner. Rate must be between MIN_RATE_LIMIT and MAX_RATE_LIMIT.
+     * @param modelId The model identifier
+     * @param maxTokensPerSec Maximum tokens per second allowed for this model
+     */
+    function setModelRateLimit(bytes32 modelId, uint256 maxTokensPerSec) external onlyOwner {
+        require(models[modelId].timestamp > 0, "Model does not exist");
+        require(maxTokensPerSec >= MIN_RATE_LIMIT, "Rate below minimum");
+        require(maxTokensPerSec <= MAX_RATE_LIMIT, "Rate above maximum");
+
+        modelMaxTokensPerSecond[modelId] = maxTokensPerSec;
+        emit ModelRateLimitUpdated(modelId, maxTokensPerSec);
+    }
+
+    /**
+     * @notice Get the maximum token generation rate for a model
+     * @dev Returns DEFAULT_RATE_LIMIT if no rate is configured for the model
+     * @param modelId The model identifier
+     * @return Maximum tokens per second for this model
+     */
+    function getModelRateLimit(bytes32 modelId) external view returns (uint256) {
+        uint256 rate = modelMaxTokensPerSecond[modelId];
+        return rate > 0 ? rate : DEFAULT_RATE_LIMIT;
     }
 }
