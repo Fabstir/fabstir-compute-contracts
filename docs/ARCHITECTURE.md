@@ -1,20 +1,36 @@
 # Architecture Documentation
 
-**Version:** 2.2
-**Last Updated:** February 2, 2026
+**Version:** 2.3
+**Last Updated:** February 3, 2026
 **Network:** Base Sepolia (Testnet)
 
 ---
 
 ## 1. Contract Addresses (UUPS Proxies)
 
+> **⚠️ TWO DEPLOYMENT SETS:** Frozen (Audit) and Remediation (Active Development)
+
+### 1.1 Remediation Contracts (Active Development)
+
+Use for SDK development. Includes Early Cancellation Fee + Per-Model Rate Limits.
+
 | Contract | Proxy Address | Implementation |
 |----------|---------------|----------------|
-| JobMarketplace | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
+| JobMarketplace | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0x40df542b58A54B9F077289442944fbA562c94E67` |
 | NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xF2D98D38B2dF95f4e8e4A49750823C415E795377` |
-| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` |
-| ProofSystem | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` | `0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9` |
+| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x3F22fd532Ac051aE09b0F2e45F3DBfc835AfCD45` |
+| ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9` |
 | HostEarnings | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x8584AeAC9687613095D13EF7be4dE0A796F84D7a` |
+
+### 1.2 Frozen Contracts (Security Audit - DO NOT MODIFY)
+
+| Contract | Proxy Address | Implementation |
+|----------|---------------|----------------|
+| JobMarketplace | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` 🔒 | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
+| NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` 🔒 | `0xF2D98D38B2dF95f4e8e4A49750823C415E795377` |
+| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` 🔒 | `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` |
+| ProofSystem | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` 🔒 | `0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9` |
+| HostEarnings | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` 🔒 | `0x8584AeAC9687613095D13EF7be4dE0A796F84D7a` |
 
 **Tokens:**
 - FAB Token: `0xC78949004B4EB6dEf2D66e49Cd81231472612D62`
@@ -35,6 +51,8 @@
                           │  • Model whitelist    │
                           │  • Community voting   │
                           │  • Trusted models     │
+                          │  • Per-model rate     │
+                          │    limits (NEW)       │
                           └───────────┬───────────┘
                                       │ validates models
                                       ▼
@@ -259,6 +277,7 @@ For Coinbase Smart Wallet sub-accounts creating sessions using primary account's
       │                        │ 2. Calculate:          │                     │
       │                        │    hostPayment = 90%   │                     │
       │                        │    treasuryFee = 10%   │                     │
+      │                        │    earlyFee (if applicable)                  │
       │                        │    refund = remainder  │                     │
       │                        │                        │                     │
       │                        │ 3. creditEarnings()    │                     │
@@ -287,6 +306,46 @@ For Coinbase Smart Wallet sub-accounts creating sessions using primary account's
    │ <─────────────────│
    │                   │
 ```
+
+### 4.3b Early Cancellation Fee Flow (NEW - Feb 3, 2026)
+
+When depositor cancels **before any proofs** are submitted:
+
+```
+┌──────────┐        ┌─────────────────┐        ┌──────────────┐
+│ Depositor│        │  JobMarketplace │        │ HostEarnings │
+└────┬─────┘        └────────┬────────┘        └──────┬───────┘
+     │                       │                        │
+     │ 1. completeSessionJob()                        │
+     │    (proofs.length == 0)                        │
+     │ ─────────────────────>│                        │
+     │                       │                        │
+     │                       │ 2. Check conditions:   │
+     │                       │    - caller == depositor
+     │                       │    - proofs.length == 0│
+     │                       │    - minTokensFee > 0  │
+     │                       │                        │
+     │                       │ 3. Calculate earlyFee: │
+     │                       │    = minTokensFee *    │
+     │                       │      pricePerToken /   │
+     │                       │      PRICE_PRECISION   │
+     │                       │                        │
+     │                       │ 4. creditEarnings()    │
+     │                       │    (earlyFee to host)  │
+     │                       │ ──────────────────────>│
+     │                       │                        │
+     │                       │ 5. NO treasury fee     │
+     │                       │    (only on proven work)
+     │                       │                        │
+     │ 6. Refund = deposit - earlyFee                 │
+     │ <─────────────────────│                        │
+     │                       │                        │
+```
+
+**Key Points:**
+- Early cancellation fee goes 100% to host (no treasury cut)
+- Fee only charged when depositor cancels with 0 proofs
+- Protects hosts from free inference exploitation
 
 ### 4.4 Model Governance Flow
 
@@ -349,8 +408,14 @@ mapping(address => uint256) public tokenMinDeposits;    // Slot 17
 uint256 public accumulatedTreasuryNative;         // Slot 18
 mapping(address => uint256) public accumulatedTreasuryTokens;  // Slot 19
 
-// Slot 20-69: Storage gap (50 slots reserved)
-uint256[50] private __gap;
+// V2 Delegation (Feb 2, 2026)
+mapping(address => mapping(address => bool)) public isAuthorizedDelegate;  // Slot 20
+
+// Early Cancellation Fee (Feb 3, 2026)
+uint256 public minTokensFee;                      // Slot 21 - Min tokens charged on early cancel
+
+// Slot 22-54: Storage gap (33 slots reserved)
+uint256[33] private __gap;
 ```
 
 ### 5.2 SessionJob Struct Layout
@@ -403,15 +468,38 @@ mapping(address => uint256) public lastSlashTime; // Slot 15
 uint256[36] private __gap;
 ```
 
-### 5.4 Storage Gap Strategy
+### 5.4 ModelRegistryUpgradeable
+
+```solidity
+// Slot 0-2: Inherited storage (Ownable, etc.)
+
+IERC20 public fabToken;                           // Slot 3
+mapping(bytes32 => Model) public models;          // Slot 4
+mapping(bytes32 => ModelProposal) public proposals;  // Slot 5
+bytes32[] public approvedModels;                  // Slot 6
+mapping(bytes32 => bool) public trustedModels;    // Slot 7
+
+// Voting state
+mapping(bytes32 => mapping(address => uint256)) public voterDeposits;  // Slot 8
+mapping(bytes32 => uint256) public lateVotes;     // Slot 9
+mapping(bytes32 => uint256) public lastProposalExecutionTime;  // Slot 10
+
+// Per-Model Rate Limits (Feb 3, 2026)
+mapping(bytes32 => uint256) public modelRateLimits;  // Slot 11 - tokens/second (0 = unlimited)
+
+// Slot 12-60: Storage gap (49 slots)
+uint256[49] private __gap;
+```
+
+### 5.6 Storage Gap Strategy
 
 All upgradeable contracts reserve storage gaps for future additions:
 
 | Contract | Gap Size | Reserved Slots |
 |----------|----------|----------------|
-| JobMarketplaceWithModelsUpgradeable | 50 | Future payment methods, analytics |
+| JobMarketplaceWithModelsUpgradeable | 33 | Reduced for delegation + early cancel fee |
 | NodeRegistryWithModelsUpgradeable | 36 | Reputation (reduced from 39 for slashing) |
-| ModelRegistryUpgradeable | 49 | Governance extensions |
+| ModelRegistryUpgradeable | 49 | Governance extensions + rate limits |
 | ProofSystemUpgradeable | 49 | ZK proof support |
 | HostEarningsUpgradeable | 48 | Multi-chain earnings |
 
