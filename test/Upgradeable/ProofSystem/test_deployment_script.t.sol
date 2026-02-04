@@ -12,32 +12,15 @@ import {DeployProofSystemUpgradeable} from "../../../script/DeployProofSystemUpg
 contract ProofSystemDeploymentScriptTest is Test {
     DeployProofSystemUpgradeable public deployScript;
 
-    // Use actual private key for signing tests
-    uint256 constant PROVER_PRIVATE_KEY = 0xA11CE;
-    address public prover;
+    address public prover = address(0xA11CE);
 
     function setUp() public {
-        prover = vm.addr(PROVER_PRIVATE_KEY);
         // Create deployment script
         deployScript = new DeployProofSystemUpgradeable();
     }
 
-    // AUDIT-F4: Use bytes32(0) for non-model sessions
+    // Use bytes32(0) for non-model sessions
     bytes32 constant MODEL_ID = bytes32(0);
-
-    function createSignedProof(
-        bytes32 proofHash,
-        uint256 claimedTokens
-    ) internal view returns (bytes memory) {
-        // AUDIT-F4: Include modelId in signature
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens, MODEL_ID));
-        bytes32 messageHash = keccak256(abi.encodePacked(
-            "\x19Ethereum Signed Message:\n32",
-            dataHash
-        ));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(PROVER_PRIVATE_KEY, messageHash);
-        return abi.encodePacked(proofHash, r, s, v);
-    }
 
     function test_DeploymentScriptWorks() public {
         // Run the deployment script
@@ -90,18 +73,25 @@ contract ProofSystemDeploymentScriptTest is Test {
         assertEq(readImpl, address(newImpl));
     }
 
-    function test_DeployedContractCanVerifyProofs() public {
+    function test_DeployedContractCanMarkProofsUsed() public {
         (address proxy, ) = deployScript.run();
 
         ProofSystemUpgradeable proofSystem = ProofSystemUpgradeable(proxy);
+        address owner = proofSystem.owner();
 
-        // Verify a signed proof (AUDIT-F4: includes modelId)
+        // Authorize caller (owner calls markProofUsed)
         bytes32 proofHash = bytes32(uint256(0x1234));
         uint256 claimedTokens = 100;
-        bytes memory proof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystem.verifyHostSignature(proof, prover, claimedTokens, MODEL_ID);
-        assertTrue(result);
+        // Owner can mark proof used
+        vm.prank(owner);
+        bool result = proofSystem.markProofUsed(proofHash, prover, claimedTokens, MODEL_ID);
+        assertTrue(result, "First call should succeed");
+
+        // Replay should fail
+        vm.prank(owner);
+        bool replayResult = proofSystem.markProofUsed(proofHash, prover, claimedTokens, MODEL_ID);
+        assertFalse(replayResult, "Replay should fail");
     }
 
     function test_DeployedContractCanRegisterCircuits() public {

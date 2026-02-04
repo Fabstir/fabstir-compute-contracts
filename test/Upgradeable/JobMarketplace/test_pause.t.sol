@@ -105,6 +105,10 @@ contract JobMarketplacePauseTest is Test {
         vm.prank(owner);
         marketplace.setProofSystem(address(proofSystem));
 
+        // Authorize marketplace in ProofSystem (for markProofUsed)
+        vm.prank(owner);
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         // Authorize marketplace in HostEarnings
         vm.prank(owner);
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
@@ -280,12 +284,11 @@ contract JobMarketplacePauseTest is Test {
         // Advance time
         vm.warp(block.timestamp + 1);
 
-        // Try to submit proof (should revert due to pause, not signature)
+        // Try to submit proof (should revert due to pause)
         bytes32 proofHash = bytes32(uint256(123));
-        bytes memory signature = _generateSignature(proofHash, 100);
         vm.prank(host1);
         vm.expectRevert();
-        marketplace.submitProofOfWork(sessionId, 100, proofHash, signature, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 100, proofHash, "QmProofCID", "");
     }
 
     function test_SubmitProofWorksWhenUnpaused() public {
@@ -309,11 +312,10 @@ contract JobMarketplacePauseTest is Test {
         // Advance time
         vm.warp(block.timestamp + 1);
 
-        // Submit proof with valid signature
+        // Submit proof (no signature needed)
         bytes32 proofHash = bytes32(uint256(123));
-        bytes memory signature = _generateSignature(proofHash, 100);
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 100, proofHash, signature, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 100, proofHash, "QmProofCID", "");
 
         // Verify tokens used (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 17 return values (all except ProofSubmission[] array)
@@ -406,12 +408,11 @@ contract JobMarketplacePauseTest is Test {
             300
         );
 
-        // Submit proof with valid signature
+        // Submit proof (no signature needed)
         vm.warp(block.timestamp + 1);
         bytes32 proofHash = bytes32(uint256(123));
-        bytes memory signature = _generateSignature(proofHash, 1000);
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 1000, proofHash, signature, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 1000, proofHash, "QmProofCID", "");
 
         // Complete session
         vm.prank(user1);
@@ -450,20 +451,4 @@ contract JobMarketplacePauseTest is Test {
         marketplace.unpause();
     }
 
-    // ============================================================
-    // Helper Functions
-    // ============================================================
-
-    function _generateSignature(bytes32 proofHash, uint256 tokensClaimed)
-        internal
-        view
-        returns (bytes memory)
-    {
-        // AUDIT-F4: Include modelId in signature
-        bytes32 modelIdForSig = bytes32(0); // Non-model session
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host1, tokensClaimed, modelIdForSig));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(host1PrivateKey, messageHash);
-        return abi.encodePacked(r, s, v);
-    }
 }

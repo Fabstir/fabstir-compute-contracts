@@ -1,7 +1,7 @@
 # Architecture Documentation
 
-**Version:** 2.3
-**Last Updated:** February 3, 2026
+**Version:** 2.4
+**Last Updated:** February 4, 2026
 **Network:** Base Sepolia (Testnet)
 
 ---
@@ -12,14 +12,14 @@
 
 ### 1.1 Remediation Contracts (Active Development)
 
-Use for SDK development. Includes Early Cancellation Fee + Per-Model Rate Limits.
+Use for SDK development. Includes Signature Removal, Early Cancellation Fee + Per-Model Rate Limits.
 
 | Contract | Proxy Address | Implementation |
 |----------|---------------|----------------|
-| JobMarketplace | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0x40df542b58A54B9F077289442944fbA562c94E67` |
+| JobMarketplace | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0x1a0436a15d2fD911b2F062D08aA312141A978955` |
 | NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xF2D98D38B2dF95f4e8e4A49750823C415E795377` |
 | ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x3F22fd532Ac051aE09b0F2e45F3DBfc835AfCD45` |
-| ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9` |
+| ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0x5345a926dcf3B0E1A6895406FB68210ED19AC556` |
 | HostEarnings | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x8584AeAC9687613095D13EF7be4dE0A796F84D7a` |
 
 ### 1.2 Frozen Contracts (Security Audit - DO NOT MODIFY)
@@ -75,14 +75,14 @@ Use for SDK development. Includes Early Cancellation Fee + Per-Model Rate Limits
 │  • Timeout enforcement         • Treasury collection                        │
 └────────────────┬────────────────────────────────────┬───────────────────────┘
                  │                                    │
-                 │ verifies signatures                │ credits earnings
+                 │ marks proofs used                  │ credits earnings
                  ▼                                    ▼
     ┌───────────────────────┐            ┌───────────────────────┐
     │     ProofSystem       │            │    HostEarnings       │
     │  ─────────────────    │            │  ─────────────────    │
-    │  • ECDSA verification │            │  • Earnings ledger    │
-    │  • Proof recording    │            │  • Batch withdrawals  │
-    │  • Replay prevention  │            │  • Multi-token        │
+    │  • Replay prevention  │            │  • Earnings ledger    │
+    │  • markProofUsed()    │            │  • Batch withdrawals  │
+    │  • Proof hash storage │            │  • Multi-token        │
     └───────────────────────┘            └───────────────────────┘
 ```
 
@@ -237,22 +237,22 @@ For Coinbase Smart Wallet sub-accounts creating sessions using primary account's
    │  1. Generate inference        │                                  │
    │     (off-chain)               │                                  │
    │                               │                                  │
-   │  2. Upload proof to S5   │                                  │
+   │  2. Upload proof to S5        │                                  │
    │     → get proofCID, deltaCID  │                                  │
    │                               │                                  │
-   │  3. Sign proof:               │                                  │
-   │     hash(proof, tokens)       │                                  │
-   │                               │                                  │
-   │  4. submitProofOfWork(        │                                  │
+   │  3. submitProofOfWork(        │                                  │
    │       jobId, tokens,          │                                  │
-   │       proofHash, signature,   │                                  │
+   │       proofHash,              │                                  │
    │       proofCID, deltaCID)     │                                  │
    │ ─────────────────────────────>│                                  │
    │                               │                                  │
-   │                               │  5. verifyHostSignature()        │
+   │                               │  4. Verify msg.sender == host    │
+   │                               │     (no signature needed)        │
+   │                               │                                  │
+   │                               │  5. markProofUsed(proofHash)     │
    │                               │ ────────────────────────────────>│
    │                               │                                  │
-   │                               │  6. ECDSA.recover() == host?     │
+   │                               │  6. Proof marked (replay protect)│
    │                               │ <────────────────────────────────│
    │                               │                                  │
    │                               │  7. Update tokensUsed            │
@@ -263,6 +263,8 @@ For Coinbase Smart Wallet sub-accounts creating sessions using primary account's
    │ <─────────────────────────────│                                  │
    │                               │                                  │
 ```
+
+> **Note (Feb 4, 2026):** Signature verification removed. Host authentication is via `msg.sender == session.host` check.
 
 ### 4.3 Payment Settlement Flow
 

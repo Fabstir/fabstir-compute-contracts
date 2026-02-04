@@ -120,6 +120,10 @@ contract JobMarketplaceUpgradeTest is Test {
         vm.prank(owner);
         marketplace.setProofSystem(address(proofSystem));
 
+        // Authorize marketplace in ProofSystem (for markProofUsed)
+        vm.prank(owner);
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         // Authorize marketplace in HostEarnings
         vm.prank(owner);
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
@@ -163,19 +167,6 @@ contract JobMarketplaceUpgradeTest is Test {
             1000,
             300
         );
-    }
-
-    function _generateSignature(bytes32 proofHash, uint256 tokensClaimed)
-        internal
-        view
-        returns (bytes memory)
-    {
-        // AUDIT-F4: Include modelId in signature
-        bytes32 modelIdForSig = bytes32(0); // Non-model session
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host1, tokensClaimed, modelIdForSig));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(host1PrivateKey, messageHash);
-        return abi.encodePacked(r, s, v);
     }
 
     // ============================================================
@@ -444,13 +435,12 @@ contract JobMarketplaceUpgradeTest is Test {
 
         JobMarketplaceWithModelsUpgradeableV2 marketplaceV2 = JobMarketplaceWithModelsUpgradeableV2(payable(address(marketplace)));
 
-        // Submit proof for existing session
+        // Submit proof for existing session (no signature needed)
         vm.warp(block.timestamp + 1);
         bytes32 proofHash = bytes32(uint256(123));
-        bytes memory signature = _generateSignature(proofHash, 100);
 
         vm.prank(host1);
-        marketplaceV2.submitProofOfWork(1, 100, proofHash, signature, "QmProofCID", "");
+        marketplaceV2.submitProofOfWork(1, 100, proofHash, "QmProofCID", "");
 
         // Verify tokens used updated (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 17 return values (all except ProofSubmission[] array)

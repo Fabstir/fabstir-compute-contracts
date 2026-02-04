@@ -9,11 +9,10 @@ import "./interfaces/IProofSystem.sol";
 
 /**
  * @title ProofSystemUpgradeable
- * @notice Host signature verification system for the Fabstir P2P LLM marketplace (UUPS Upgradeable)
- * @dev Uses ECDSA signatures with optimistic trust model. Hosts stake FAB tokens
- *      as economic bond against misbehavior. Proofs are stored on S5 for post-hoc auditing.
- *      This is NOT zero-knowledge proof verification - it verifies host signatures on
- *      claimed token counts, with economic security provided by host staking.
+ * @notice Proof replay protection system for the Fabstir P2P LLM marketplace (UUPS Upgradeable)
+ * @dev Provides replay protection via verifiedProofs mapping. Authentication is handled
+ *      by JobMarketplace via msg.sender == session.host check. Proofs are stored on S5
+ *      for post-hoc auditing. Economic security is provided by host staking of FAB tokens.
  */
 contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgradeable, IProofSystem {
     // Track verified proofs to prevent replay
@@ -29,7 +28,6 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     // Events
     event ProofVerified(bytes32 indexed proofHash, address indexed prover, uint256 tokens);
     event CircuitRegistered(bytes32 indexed circuitHash, address indexed model);
-    event BatchProofVerified(bytes32[] proofHashes, address indexed prover, uint256 totalTokens);
     event AuthorizedCallerUpdated(address indexed caller, bool authorized);
 
     // Storage gap for future upgrades (reduced by 1 for authorizedCallers mapping)
@@ -66,69 +64,6 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Verify host signature on proof of work (AUDIT-F4: includes modelId)
-     * @dev The host must sign keccak256(proofHash, prover, claimedTokens, modelId) using eth_sign.
-     *      This provides cryptographic attestation that the host claims to have processed
-     *      the specified number of tokens for a specific model. Economic security comes from host staking.
-     * @param proof Proof bytes: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v]
-     * @param prover Address that should have signed the proof (host)
-     * @param claimedTokens Number of tokens being claimed
-     * @param modelId Model ID for the session (bytes32(0) for non-model sessions)
-     * @return True if signature is valid and proof not replayed
-     */
-    function verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens, bytes32 modelId)
-        external
-        view
-        override
-        returns (bool)
-    {
-        return _verifyHostSignature(proof, prover, claimedTokens, modelId);
-    }
-
-    /**
-     * @notice Internal host signature verification logic (AUDIT-F4: includes modelId)
-     * @dev Proof format: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v] = 97 bytes minimum
-     *      The host must sign: keccak256(proofHash, prover, claimedTokens, modelId)
-     *      For non-model sessions, modelId should be bytes32(0)
-     */
-    function _verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens, bytes32 modelId) internal view returns (bool) {
-        // Proof must contain: proofHash (32) + r (32) + s (32) + v (1) = 97 bytes
-        if (proof.length < 97) return false;
-        if (claimedTokens == 0) return false;
-        if (prover == address(0)) return false;
-
-        // Extract signature components from proof
-        bytes32 proofHash;
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-
-        assembly {
-            proofHash := calldataload(proof.offset)
-            r := calldataload(add(proof.offset, 32))
-            s := calldataload(add(proof.offset, 64))
-            v := byte(0, calldataload(add(proof.offset, 96)))
-        }
-
-        // Check not already verified (prevent replay)
-        if (verifiedProofs[proofHash]) return false;
-
-        // AUDIT-F4: Reconstruct the message that was signed (now includes modelId)
-        // The prover signs: keccak256(proofHash, prover, claimedTokens, modelId)
-        // Using eth_sign which prefixes with "\x19Ethereum Signed Message:\n32"
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens, modelId));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-
-        // Recover signer and verify it matches the prover (host)
-        address recoveredSigner = ecrecover(messageHash, v, r, s);
-
-        // ecrecover returns address(0) on failure
-        if (recoveredSigner == address(0)) return false;
-
-        return recoveredSigner == prover;
-    }
-
-    /**
      * @notice Record a verified proof to prevent replay attacks
      * @dev Only callable by authorized contracts (e.g., JobMarketplace) or owner
      * @param proofHash The hash of the verified proof
@@ -140,28 +75,25 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
-     * @notice Verify and mark proof as complete (prevents replay) (AUDIT-F4: includes modelId)
-     * @param proof Proof bytes: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v]
-     * @param prover Address that should have signed the proof (host)
-     * @param claimedTokens Number of tokens being claimed
-     * @param modelId Model ID for the session (bytes32(0) for non-model sessions)
-     * @return True if verification succeeded
+     * @notice Mark a proof hash as used (replay protection only)
+     * @dev Only callable by authorized contracts (JobMarketplace) or owner.
+     *      Authentication is handled by JobMarketplace via msg.sender == host check.
+     * @param proofHash The hash of the proof
+     * @param prover The address of the prover (host) - for event logging
+     * @param claimedTokens Number of tokens claimed - for event logging
+     * @param modelId The model ID (unused, kept for interface consistency)
+     * @return True if proof was marked, false if already used (replay protection)
      */
-    function verifyAndMarkComplete(bytes calldata proof, address prover, uint256 claimedTokens, bytes32 modelId)
-        external
-        override
-        returns (bool)
-    {
-        // First verify using internal function (AUDIT-F4: passes modelId)
-        if (!_verifyHostSignature(proof, prover, claimedTokens, modelId)) {
-            return false;
-        }
+    function markProofUsed(
+        bytes32 proofHash,
+        address prover,
+        uint256 claimedTokens,
+        bytes32 modelId
+    ) external override returns (bool) {
+        require(authorizedCallers[msg.sender] || msg.sender == owner(), "Unauthorized");
 
-        // Extract proof hash and mark as verified
-        bytes32 proofHash;
-        assembly {
-            proofHash := calldataload(proof.offset)
-        }
+        // Replay protection - return false if already used
+        if (verifiedProofs[proofHash]) return false;
 
         verifiedProofs[proofHash] = true;
         emit ProofVerified(proofHash, prover, claimedTokens);
@@ -194,92 +126,5 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
      */
     function getModelCircuit(address model) external view returns (bytes32) {
         return modelCircuits[model];
-    }
-
-    /**
-     * @notice Batch verification of multiple proofs (AUDIT-F4: includes modelId)
-     * @param proofs Array of proof bytes
-     * @param prover Address that should have signed all proofs (host)
-     * @param tokenCounts Array of token counts for each proof
-     * @param modelId Model ID for all proofs in batch (bytes32(0) for non-model sessions)
-     */
-    function verifyBatch(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts, bytes32 modelId)
-        external
-        returns (bool)
-    {
-        require(proofs.length == tokenCounts.length, "Length mismatch");
-        require(proofs.length > 0, "Empty batch");
-        require(proofs.length <= 10, "Batch too large");
-
-        bytes32[] memory proofHashes = new bytes32[](proofs.length);
-        uint256 totalTokens = 0;
-
-        for (uint256 i = 0; i < proofs.length; i++) {
-            // Verify each proof using internal function (AUDIT-F4: passes modelId)
-            require(_verifyHostSignatureInternal(proofs[i], prover, tokenCounts[i], modelId), "Invalid proof at index");
-
-            // Extract and record proof hash (first 32 bytes of proof)
-            bytes32 proofHash;
-            bytes calldata currentProof = proofs[i];
-            assembly {
-                proofHash := calldataload(currentProof.offset)
-            }
-
-            proofHashes[i] = proofHash;
-            verifiedProofs[proofHash] = true;
-            totalTokens += tokenCounts[i];
-        }
-
-        emit BatchProofVerified(proofHashes, prover, totalTokens);
-        return true;
-    }
-
-    /**
-     * @notice View function for batch verification (doesn't modify state) (AUDIT-F4: includes modelId)
-     * @param proofs Array of proof bytes
-     * @param prover Address that should have signed all proofs (host)
-     * @param tokenCounts Array of token counts for each proof
-     * @param modelId Model ID for all proofs in batch (bytes32(0) for non-model sessions)
-     */
-    function verifyBatchView(bytes[] calldata proofs, address prover, uint256[] calldata tokenCounts, bytes32 modelId)
-        external
-        view
-        returns (bool[] memory results)
-    {
-        require(proofs.length == tokenCounts.length, "Length mismatch");
-
-        results = new bool[](proofs.length);
-        for (uint256 i = 0; i < proofs.length; i++) {
-            results[i] = this.verifyHostSignature(proofs[i], prover, tokenCounts[i], modelId);
-        }
-    }
-
-    /**
-     * @notice Estimate gas for batch verification
-     * @dev Gas constants derived from actual measurements on verifyBatch():
-     *      - Base cost: ~15,000 gas (function call overhead, array setup, event emission)
-     *      - Per-proof: ~27,000 gas (signature recovery via ecrecover, hash computations,
-     *        storage write for verifiedProofs mapping)
-     *      Constants include ~10% safety margin for variance across different EVM implementations.
-     *      Measured values: Base ~14,839, Per-proof ~26,824 (rounded up for safety)
-     * @param batchSize Number of proofs in batch (1-10)
-     * @return Estimated gas consumption for the batch verification
-     */
-    function estimateBatchGas(uint256 batchSize) external pure returns (uint256) {
-        require(batchSize > 0 && batchSize <= 10, "Invalid batch size");
-        // BASE_VERIFICATION_GAS = 15000, PER_PROOF_GAS = 27000
-        return 15000 + (batchSize * 27000);
-    }
-
-    /**
-     * @notice Internal helper for batch signature verification (AUDIT-F4: includes modelId)
-     * @dev Used by verifyBatch for batch verification
-     */
-    function _verifyHostSignatureInternal(bytes calldata proof, address prover, uint256 claimedTokens, bytes32 modelId)
-        internal
-        view
-        returns (bool)
-    {
-        return _verifyHostSignature(proof, prover, claimedTokens, modelId);
     }
 }

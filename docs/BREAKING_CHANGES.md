@@ -2,6 +2,102 @@
 
 ---
 
+## February 4, 2026: Signature Removal from Proof Submission
+
+**Contracts Affected**: JobMarketplaceWithModelsUpgradeable, ProofSystemUpgradeable (Remediation Proxies)
+**Impact Level**: HIGH - Function signature change requires SDK updates
+
+### Summary
+
+Removed redundant ECDSA signature verification from `submitProofOfWork()`. Authentication is now handled via `msg.sender == session.host` check, providing equivalent security with ~3,000 gas savings per proof.
+
+| Change | Impact | Action Required |
+|--------|--------|-----------------|
+| `submitProofOfWork` signature param removed | HIGH | Update to 5 parameters (remove signature) |
+| `verifyAndMarkComplete` removed from ProofSystem | MEDIUM | Use `markProofUsed` instead |
+| `verifyHostSignature` removed from ProofSystem | MEDIUM | No longer needed |
+
+### 1. submitProofOfWork Signature Change (BREAKING)
+
+**Before (6 parameters):**
+```solidity
+function submitProofOfWork(
+    uint256 jobId,
+    uint256 tokensClaimed,
+    bytes32 proofHash,
+    bytes calldata signature,    // ❌ REMOVED
+    string calldata proofCID,
+    string calldata deltaCID
+) external
+```
+
+**After (5 parameters):**
+```solidity
+function submitProofOfWork(
+    uint256 jobId,
+    uint256 tokensClaimed,
+    bytes32 proofHash,
+    string calldata proofCID,
+    string calldata deltaCID     // 5 params total
+) external
+```
+
+**Migration:**
+```javascript
+// Before (6 params with signature)
+const dataHash = keccak256(solidityPacked(['bytes32', 'address', 'uint256'], [proofHash, hostAddress, tokensClaimed]));
+const signature = await hostWallet.signMessage(getBytes(dataHash));
+await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, signature, proofCID, deltaCID);
+
+// After (5 params, no signature)
+await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, proofCID, deltaCID);
+```
+
+### 2. ProofSystem Function Changes
+
+**Removed Functions:**
+- `verifyAndMarkComplete(bytes proof, address prover, uint256 claimedTokens, bytes32 modelId)` - No longer exists
+- `verifyHostSignature(bytes proof, address prover, uint256 claimedTokens, bytes32 modelId)` - No longer exists
+
+**New Function:**
+```solidity
+// Simple replay protection - no signature verification
+function markProofUsed(bytes32 proofHash) external returns (bool)
+```
+
+**Note:** `markProofUsed` is called internally by JobMarketplace. SDK developers do not need to call it directly.
+
+### 3. Updated Implementation Addresses
+
+| Contract | Proxy | New Implementation |
+|----------|-------|-------------------|
+| JobMarketplace (Remediation) | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0x1a0436a15d2fD911b2F062D08aA312141A978955` |
+| ProofSystem (Remediation) | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0x5345a926dcf3B0E1A6895406FB68210ED19AC556` |
+
+### Why This Change?
+
+The signature was **redundant** because:
+1. Only the session host can call `submitProofOfWork()` (enforced by `msg.sender == session.host`)
+2. The host is already authenticated by their Ethereum address
+3. Removing ECDSA verification saves ~3,000 gas per proof submission
+4. Simpler integration for hosts (no signature generation code needed)
+
+### Migration Checklist
+
+#### For SDK Developers
+
+- [ ] Update `submitProofOfWork` calls to 5 parameters (remove signature)
+- [ ] Remove signature generation code from host integration
+- [ ] Update cached ABIs from `client-abis/`
+
+#### For Node Operators (Hosts)
+
+- [ ] Remove signature generation from proof submission code
+- [ ] Update SDK/library to latest version
+- [ ] Test proof submission with new 5-parameter function
+
+---
+
 ## February 3, 2026: Early Cancellation Fee + Per-Model Rate Limits
 
 **Contracts Affected**: JobMarketplaceWithModelsUpgradeable, ModelRegistryUpgradeable (Remediation Proxies)

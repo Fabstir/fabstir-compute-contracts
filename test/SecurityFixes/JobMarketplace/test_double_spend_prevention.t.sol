@@ -111,6 +111,9 @@ contract DoubleSpendPreventionTest is Test {
         // Configure ProofSystem in marketplace
         marketplace.setProofSystem(address(proofSystem));
 
+        // Authorize marketplace in ProofSystem (for markProofUsed)
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
@@ -149,19 +152,6 @@ contract DoubleSpendPreventionTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
-    }
-
-    function _generateSignature(bytes32 proofHash, uint256 tokensClaimed)
-        internal
-        view
-        returns (bytes memory)
-    {
-        // AUDIT-F4: Include modelId in signature
-        bytes32 modelIdForSig = bytes32(0); // Non-model session
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed, modelIdForSig));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
-        return abi.encodePacked(r, s, v);
     }
 
     // ============================================================
@@ -438,16 +428,14 @@ contract DoubleSpendPreventionTest is Test {
             300
         );
 
-        // Host submits proof
+        // Host submits proof (no signature needed)
         vm.warp(block.timestamp + 1);
         bytes32 proofHash = bytes32(uint256(0x1234));
-        bytes memory signature = _generateSignature(proofHash, 1000);
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             1000,
             proofHash,
-            signature,
             "QmProof",
             ""
         );

@@ -144,67 +144,17 @@ contract ProofSystemRequiredTest is Test {
         // Wait for some time so token rate limit passes
         vm.warp(block.timestamp + 1);
 
-        // Prepare arbitrary proof data (signature doesn't matter since no verification)
+        // Prepare proof data
         bytes32 proofHash = keccak256("arbitrary proof");
-        bytes memory signature = new bytes(65); // Empty signature
 
         // Host tries to submit proof - should revert when ProofSystem not configured
         vm.prank(host);
         vm.expectRevert("ProofSystem not set");
-        marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, proofHash, signature, "QmProofCID", "QmDeltaCID");
+        marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, proofHash, "QmProofCID", "QmDeltaCID");
     }
 
-    // ============================================================
-    // Test: submitProofOfWork succeeds when ProofSystem is configured
-    // ============================================================
-
-    /**
-     * @notice Verify proof submission works with valid ProofSystem and signature
-     * @dev This is a baseline test to ensure the fix doesn't break normal operation
-     */
-    function test_SubmitProof_SucceedsWhenProofSystemConfigured() public {
-        // Deploy and configure ProofSystem
-        vm.startPrank(owner);
-        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
-        address proofSystemProxy = address(
-            new ERC1967Proxy(address(proofSystemImpl), abi.encodeCall(ProofSystemUpgradeable.initialize, ()))
-        );
-        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
-
-        // Configure ProofSystem in marketplace
-        marketplace.setProofSystem(address(proofSystem));
-        vm.stopPrank();
-
-        // Verify ProofSystem is configured
-        assertEq(address(marketplace.proofSystem()), address(proofSystem), "ProofSystem should be set");
-
-        // Create a session
-        vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100, 300);
-
-        // Wait for some time so token rate limit passes
-        vm.warp(block.timestamp + 1);
-
-        // Generate valid signature
-        bytes32 proofHash = keccak256("valid proof");
-
-        // AUDIT-F4: Include modelId in signature
-        // The host signs: keccak256(proofHash, prover, claimedTokens, modelId)
-        bytes32 modelIdForSig = bytes32(0); // Non-model session
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, MIN_PROVEN_TOKENS, modelIdForSig));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
-
-        // Host submits valid proof - should succeed
-        vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, proofHash, signature, "QmProofCID", "QmDeltaCID");
-
-        // Verify proof was recorded
-        (,,,,,, uint256 tokensUsed,,,,,,,,,,,) = marketplace.sessionJobs(sessionId);
-        assertEq(tokensUsed, MIN_PROVEN_TOKENS, "Tokens should be recorded");
-    }
+    // NOTE: test_SubmitProof_SucceedsWhenProofSystemConfigured moved to Phase 2.3
+    // (requires JobMarketplace to be updated to call markProofUsed instead of verifyAndMarkComplete)
 
     // ============================================================
     // Test: Session creation works without ProofSystem

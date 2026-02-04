@@ -168,24 +168,22 @@ contract DeltaCIDTest is Test {
         // Advance time for rate limiting
         vm.warp(block.timestamp + 10);
 
-        // Generate proof and signature
+        // Generate proof hash (no signature needed)
         bytes32 proofHash = keccak256("AI inference output batch 1");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
         // Expect event with deltaCID
         vm.expectEmit(true, true, false, true);
         emit ProofSubmitted(sessionId, host, tokensClaimed, proofHash, "QmProofCID", "QmDeltaCID123");
 
-        // Submit proof with deltaCID (6 parameters)
+        // Submit proof with deltaCID (5 parameters - no signature)
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             tokensClaimed,
             proofHash,
-            signature,
             "QmProofCID",
-            "QmDeltaCID123"  // NEW: deltaCID parameter
+            "QmDeltaCID123"
         );
     }
 
@@ -208,17 +206,15 @@ contract DeltaCIDTest is Test {
         // Advance time
         vm.warp(block.timestamp + 10);
 
-        // Generate and submit proof with deltaCID
+        // Generate and submit proof with deltaCID (no signature needed)
         bytes32 proofHash = keccak256("AI inference output");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             tokensClaimed,
             proofHash,
-            signature,
             "QmProofCID",
             "QmDeltaCID_Stored"  // deltaCID to store
         );
@@ -263,14 +259,12 @@ contract DeltaCIDTest is Test {
         for (uint256 i = 0; i < 3; i++) {
             bytes32 proofHash = keccak256(abi.encodePacked("proof batch ", i));
             uint256 tokensClaimed = 100;
-            bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
             vm.prank(host);
             marketplace.submitProofOfWork(
                 sessionId,
                 tokensClaimed,
                 proofHash,
-                signature,
                 "QmProofCID",
                 deltaCIDs[i]  // Different deltaCID for each
             );
@@ -305,10 +299,9 @@ contract DeltaCIDTest is Test {
         // Advance time
         vm.warp(block.timestamp + 10);
 
-        // Generate proof
+        // Generate proof (no signature needed)
         bytes32 proofHash = keccak256("AI inference output");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
         // Submit with empty deltaCID - should not revert
         vm.prank(host);
@@ -316,7 +309,6 @@ contract DeltaCIDTest is Test {
             sessionId,
             tokensClaimed,
             proofHash,
-            signature,
             "QmProofCID",
             ""  // Empty deltaCID
         );
@@ -345,10 +337,9 @@ contract DeltaCIDTest is Test {
         // Advance time
         vm.warp(block.timestamp + 10);
 
-        // Submit proof with specific deltaCID
+        // Submit proof with specific deltaCID (no signature needed)
         bytes32 proofHash = keccak256("test proof");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
         string memory expectedDeltaCID = "QmDeltaCID_GetterTest_12345";
 
@@ -357,7 +348,6 @@ contract DeltaCIDTest is Test {
             sessionId,
             tokensClaimed,
             proofHash,
-            signature,
             "QmProofCID",
             expectedDeltaCID
         );
@@ -378,34 +368,4 @@ contract DeltaCIDTest is Test {
         assertEq(returnedDeltaCID, expectedDeltaCID, "deltaCID should match expected");
     }
 
-    // ============================================================
-    // Helper Functions
-    // ============================================================
-
-    /**
-     * @dev Generate a valid ECDSA signature for the given proof
-     * AUDIT-F4: Uses session's modelId since this test uses createSessionJobForModel
-     */
-    function _generateSignature(
-        uint256 privateKey,
-        bytes32 proofHash,
-        address signer,
-        uint256 tokensClaimed
-    ) internal view returns (bytes memory) {
-        // AUDIT-F4: Include modelId in signature
-        // This test uses createSessionJobForModel, so we use the actual modelId
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, signer, tokensClaimed, modelId));
-
-        // Create Ethereum signed message hash (EIP-191)
-        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked(
-            "\x19Ethereum Signed Message:\n32",
-            dataHash
-        ));
-
-        // Sign with private key
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, ethSignedMessageHash);
-
-        // Return 65-byte signature (r, s, v)
-        return abi.encodePacked(r, s, v);
-    }
 }

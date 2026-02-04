@@ -140,6 +140,9 @@ contract FullFlowIntegrationTest is Test {
         // Configure ProofSystem in JobMarketplace (AUDIT-F2: now required for proof submission)
         jobMarketplace.setProofSystem(address(proofSystem));
 
+        // Authorize JobMarketplace in ProofSystem (for markProofUsed)
+        proofSystem.setAuthorizedCaller(address(jobMarketplace), true);
+
         // Set treasury
         jobMarketplace.setTreasury(treasury);
 
@@ -249,20 +252,18 @@ contract FullFlowIntegrationTest is Test {
         );
         assertEq(sessionId, 1, "Session ID should be 1");
 
-        // Step 3: Submit proofs (with valid signatures)
+        // Step 3: Submit proofs (no signature needed - msg.sender is host)
         vm.warp(block.timestamp + 1); // Advance time
 
         bytes32 proofHash1 = bytes32(uint256(123));
-        bytes memory sig1 = _generateSignature(host1PrivateKey, host1, proofHash1, 1000);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, proofHash1, sig1, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, proofHash1, "QmProof1", "");
 
         vm.warp(block.timestamp + 2);
 
         bytes32 proofHash2 = bytes32(uint256(456));
-        bytes memory sig2 = _generateSignature(host1PrivateKey, host1, proofHash2, 500);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, proofHash2, sig2, "QmProof2", "");
+        jobMarketplace.submitProofOfWork(sessionId, 500, proofHash2, "QmProof2", "");
 
         // Step 4: Complete session
         vm.prank(user1);
@@ -311,18 +312,16 @@ contract FullFlowIntegrationTest is Test {
         assertEq(session1, 1, "Session 1 ID");
         assertEq(session2, 2, "Session 2 ID");
 
-        // Both hosts submit proofs (with valid signatures)
+        // Both hosts submit proofs (no signature needed - msg.sender is host)
         vm.warp(block.timestamp + 1);
 
         bytes32 proof1Hash = bytes32(uint256(1));
-        bytes memory proof1Sig = _generateSignature(host1PrivateKey, host1, proof1Hash, 500);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(session1, 500, proof1Hash, proof1Sig, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(session1, 500, proof1Hash, "QmProof1", "");
 
         bytes32 proof2Hash = bytes32(uint256(2));
-        bytes memory proof2Sig = _generateSignature(host2PrivateKey, host2, proof2Hash, 500);
         vm.prank(host2);
-        jobMarketplace.submitProofOfWork(session2, 500, proof2Hash, proof2Sig, "QmProof2", "");
+        jobMarketplace.submitProofOfWork(session2, 500, proof2Hash, "QmProof2", "");
 
         // Complete both sessions
         vm.prank(user1);
@@ -362,12 +361,11 @@ contract FullFlowIntegrationTest is Test {
         // Verify model is tracked
         assertEq(jobMarketplace.sessionModel(sessionId), modelId1, "Session model should be tracked");
 
-        // Complete flow (with valid signature) - AUDIT-F4: use model-specific signature
+        // Complete flow (no signature needed - msg.sender is host)
         vm.warp(block.timestamp + 1);
         bytes32 modelProofHash = bytes32(uint256(1));
-        bytes memory modelProofSig = _generateSignatureWithModel(host1PrivateKey, host1, modelProofHash, 500, modelId1);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, modelProofHash, modelProofSig, "QmProof", "");
+        jobMarketplace.submitProofOfWork(sessionId, 500, modelProofHash, "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");
@@ -393,9 +391,8 @@ contract FullFlowIntegrationTest is Test {
 
         vm.warp(block.timestamp + 1);
         bytes32 treasuryProofHash = bytes32(uint256(1));
-        bytes memory treasuryProofSig = _generateSignature(host1PrivateKey, host1, treasuryProofHash, 1000);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, treasuryProofHash, treasuryProofSig, "QmProof", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, treasuryProofHash, "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");
@@ -478,40 +475,4 @@ contract FullFlowIntegrationTest is Test {
         assertEq(fabToken.balanceOf(host1), host1BalanceBefore, "Stake returned");
     }
 
-    // ============================================================
-    // Helper: Generate Valid Host Signature
-    // ============================================================
-
-    /**
-     * @dev Generate valid ECDSA signature for proof submission
-     * @param hostPrivateKey The private key of the host
-     * @param hostAddr The host address (must match private key)
-     * @param proofHash The proof hash being signed
-     * @param tokensClaimed Number of tokens claimed
-     */
-    function _generateSignature(
-        uint256 hostPrivateKey,
-        address hostAddr,
-        bytes32 proofHash,
-        uint256 tokensClaimed
-    ) internal pure returns (bytes memory) {
-        return _generateSignatureWithModel(hostPrivateKey, hostAddr, proofHash, tokensClaimed, bytes32(0));
-    }
-
-    /**
-     * @dev Generate signature with specific modelId (AUDIT-F4)
-     */
-    function _generateSignatureWithModel(
-        uint256 hostPrivateKey,
-        address hostAddr,
-        bytes32 proofHash,
-        uint256 tokensClaimed,
-        bytes32 modelIdForSig
-    ) internal pure returns (bytes memory) {
-        // AUDIT-F4: Include modelId in signature
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, hostAddr, tokensClaimed, modelIdForSig));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
-        return abi.encodePacked(r, s, v);
-    }
 }

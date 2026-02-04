@@ -13,17 +13,10 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-// Proof system interface (AUDIT-F4: updated to include modelId parameter)
+// Proof system interface (AUDIT REMEDIATION: simplified to markProofUsed only)
 interface IProofSystemUpgradeable {
-    function verifyHostSignature(
-        bytes calldata proof,
-        address prover,
-        uint256 claimedTokens,
-        bytes32 modelId
-    ) external view returns (bool);
-
-    function verifyAndMarkComplete(
-        bytes calldata proof,
+    function markProofUsed(
+        bytes32 proofHash,
         address prover,
         uint256 claimedTokens,
         bytes32 modelId
@@ -627,7 +620,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 jobId,
         uint256 tokensClaimed,
         bytes32 proofHash,
-        bytes calldata signature,
         string calldata proofCID,
         string calldata deltaCID
     ) external nonReentrant whenNotPaused {
@@ -635,7 +627,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(session.status == SessionStatus.Active, "Session not active");
         require(msg.sender == session.host, "Not host");
         require(tokensClaimed >= MIN_PROVEN_TOKENS, "Min tokens required");
-        require(signature.length == 65, "Invalid signature length");
 
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
         bytes32 modelId = sessionModel[jobId];
@@ -648,14 +639,12 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxTokens = (session.deposit * PRICE_PRECISION) / session.pricePerToken;
         require(newTotal <= maxTokens, "Exceeds deposit");
 
-        // Verify proof via ProofSystem (AUDIT-F2: ProofSystem MUST be configured)
+        // AUDIT REMEDIATION: Verify proof via ProofSystem (replay protection only)
+        // Authentication is via msg.sender == session.host check above
         require(address(proofSystem) != address(0), "ProofSystem not set");
-        // Construct 97-byte proof: proofHash (32) + signature (65)
-        bytes memory proof = abi.encodePacked(proofHash, signature);
-        // AUDIT-F4: modelId already retrieved above for rate limit check
         require(
-            proofSystem.verifyAndMarkComplete(proof, msg.sender, tokensClaimed, modelId),
-            "Invalid proof signature"
+            proofSystem.markProofUsed(proofHash, msg.sender, tokensClaimed, modelId),
+            "Proof already used"
         );
         bool verified = true;
 

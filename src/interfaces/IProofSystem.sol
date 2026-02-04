@@ -4,30 +4,16 @@ pragma solidity ^0.8.19;
 
 interface IProofSystem {
     /**
-     * @notice Verify host signature including modelId in the signed message
-     * @param proof Proof bytes: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v]
-     * @param prover Address that should have signed the proof (host)
-     * @param claimedTokens Number of tokens being claimed
-     * @param modelId Model ID for the session (bytes32(0) for non-model sessions)
-     * @return True if signature is valid
+     * @notice Mark a proof hash as used (replay protection only)
+     * @dev Called by JobMarketplace after msg.sender authentication
+     * @param proofHash The hash of the proof
+     * @param prover The address of the prover (host) - for event logging
+     * @param claimedTokens Number of tokens claimed - for event logging
+     * @param modelId The model ID for the session (bytes32(0) for non-model sessions)
+     * @return True if proof was successfully marked (not already used)
      */
-    function verifyHostSignature(
-        bytes calldata proof,
-        address prover,
-        uint256 claimedTokens,
-        bytes32 modelId
-    ) external view returns (bool);
-
-    /**
-     * @notice Verify and mark proof as complete (prevents replay)
-     * @param proof Proof bytes: [32 bytes proofHash][32 bytes r][32 bytes s][1 byte v]
-     * @param prover Address that should have signed the proof (host)
-     * @param claimedTokens Number of tokens being claimed
-     * @param modelId Model ID for the session (bytes32(0) for non-model sessions)
-     * @return True if verification succeeded
-     */
-    function verifyAndMarkComplete(
-        bytes calldata proof,
+    function markProofUsed(
+        bytes32 proofHash,
         address prover,
         uint256 claimedTokens,
         bytes32 modelId

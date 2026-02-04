@@ -1338,11 +1338,6 @@
         "internalType": "bytes32"
       },
       {
-        "name": "signature",
-        "type": "bytes",
-        "internalType": "bytes"
-      },
-      {
         "name": "proofCID",
         "type": "string",
         "internalType": "string"

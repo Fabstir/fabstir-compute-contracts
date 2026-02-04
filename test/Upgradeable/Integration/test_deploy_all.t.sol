@@ -209,6 +209,10 @@ contract DeployAllUpgradeableTest is Test {
         vm.prank(owner);
         marketplace.setProofSystem(address(proofSystem));
 
+        // Authorize marketplace in ProofSystem (for markProofUsed)
+        vm.prank(owner);
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         // Step 3: Create a session
         address user = address(0x200);
         vm.deal(user, 10 ether);
@@ -217,12 +221,11 @@ contract DeployAllUpgradeableTest is Test {
         uint256 sessionId = marketplace.createSessionJob{value: 0.1 ether}(host, 227_273, 1 days, 1000, 300);
         assertEq(sessionId, 1, "Session created");
 
-        // Step 4: Submit proof with valid signature
+        // Step 4: Submit proof (no signature needed - msg.sender is host)
         vm.warp(100);
         bytes32 proofHash = bytes32(uint256(1));
-        bytes memory signature = _generateSignature(proofHash, host, 500);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, proofHash, signature, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 500, proofHash, "QmProof", "");
 
         // Step 5: Complete session
         vm.prank(user);
@@ -232,20 +235,4 @@ contract DeployAllUpgradeableTest is Test {
         assertTrue(hostEarnings.getBalance(host, address(0)) > 0, "Host earned");
     }
 
-    // ============================================================
-    // Helper Functions
-    // ============================================================
-
-    function _generateSignature(bytes32 proofHash, address host, uint256 tokensClaimed)
-        internal
-        view
-        returns (bytes memory)
-    {
-        // AUDIT-F4: Include modelId in signature
-        bytes32 modelIdForSig = bytes32(0); // Non-model session
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed, modelIdForSig));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
-        return abi.encodePacked(r, s, v);
-    }
 }

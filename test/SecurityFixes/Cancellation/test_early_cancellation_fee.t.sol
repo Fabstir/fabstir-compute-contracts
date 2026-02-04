@@ -100,15 +100,6 @@ contract EarlyCancellationFeeTest is Test {
         usdcToken.mint(user, 10_000_000_000);
     }
 
-    function _generateSignature(bytes32 proofHash, uint256 tokensClaimed, bytes32 modelIdForSig)
-        internal view returns (bytes memory)
-    {
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed, modelIdForSig));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
-        return abi.encodePacked(r, s, v);
-    }
-
     function test_SetMinTokensFee_OnlyOwner() public {
         vm.prank(nonOwner);
         vm.expectRevert();
@@ -152,9 +143,8 @@ contract EarlyCancellationFeeTest is Test {
         );
 
         vm.warp(block.timestamp + 1);
-        bytes memory sig = _generateSignature(keccak256("proof1"), 500, modelId);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, keccak256("proof1"), sig, "cid1", "delta1");
+        marketplace.submitProofOfWork(sessionId, 500, keccak256("proof1"), "cid1", "delta1");
 
         (,,,,,, uint256 tokensUsed,,,,,,,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, 500, "Tokens should be recorded");

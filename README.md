@@ -122,8 +122,8 @@ const proofCID = await s5.uploadBlob(proof);
 // 4. Calculate hash
 const proofHash = '0x' + crypto.createHash('sha256').update(proof).digest('hex');
 
-// 5. Submit hash + CID (NOT full proof)
-await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, proofCID);
+// 5. Submit hash + CID (NOT full proof) - no signature needed!
+await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, proofCID, deltaCID);
 
 // 6. Complete session to claim payment
 await marketplace.completeSessionJob(jobId, conversationCID);
@@ -261,14 +261,16 @@ function submitProofOfWork(
 ) external
 ```
 
-**New Contract**: `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D` (UUPS Proxy)
+**Current Contract**: `0x95132177F964FF053C1E874b53CF74d819618E06` (Remediation Proxy)
 ```solidity
 function submitProofOfWork(
     uint256 jobId,
     uint256 tokensClaimed,
     bytes32 proofHash,         // ✅ 32 bytes - SHA256 hash
-    string calldata proofCID   // ✅ S5 CID for retrieval
+    string calldata proofCID,  // ✅ S5 CID for retrieval
+    string calldata deltaCID   // ✅ Delta CID for incremental changes
 ) external
+// No signature needed! Authentication via msg.sender == session.host
 ```
 
 See [Breaking Changes](docs/BREAKING_CHANGES.md) for full migration guide.

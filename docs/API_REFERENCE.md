@@ -1,6 +1,6 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** February 3, 2026
+**Last Updated:** February 4, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 **PRICE_PRECISION:** 1000 (all prices multiplied by 1000 for sub-$1/million support)
 
@@ -31,12 +31,12 @@ const remediationContracts = {
   usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
 };
 
-// Remediation implementation addresses - Updated Feb 3, 2026
+// Remediation implementation addresses - Updated Feb 4, 2026
 const remediationImplementations = {
-  jobMarketplace: "0x40df542b58A54B9F077289442944fbA562c94E67", // Early Cancel Fee + Per-Model Rate Limits (Feb 3)
+  jobMarketplace: "0x1a0436a15d2fD911b2F062D08aA312141A978955", // Signature Removal + Early Cancel Fee (Feb 4)
+  proofSystem: "0x5345a926dcf3B0E1A6895406FB68210ED19AC556", // markProofUsed + Signature Removal (Feb 4)
   modelRegistry: "0x3F22fd532Ac051aE09b0F2e45F3DBfc835AfCD45", // Per-Model Rate Limits (Feb 3)
   nodeRegistry: "0xF2D98D38B2dF95f4e8e4A49750823C415E795377",
-  proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9",
   hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a",
 };
 ```
@@ -845,57 +845,46 @@ function createSessionJobForModelWithToken(
 
 #### `submitProofOfWork`
 
-Submit signed proof of work for tokens generated.
+Submit proof of work for tokens generated. No signature required - authentication via `msg.sender == session.host`.
 
 ```solidity
 function submitProofOfWork(
     uint256 jobId,          // Session ID
     uint256 tokensClaimed,  // Number of tokens in this proof
     bytes32 proofHash,      // SHA256 hash of STARK proof
-    bytes calldata signature,  // Host's ECDSA signature (65 bytes)
     string calldata proofCID,  // S5 CID where full proof is stored
-    string calldata deltaCID   // S5 CID for delta since last proof (NEW - Jan 14, 2026)
+    string calldata deltaCID   // S5 CID for delta since last proof
 ) external
 ```
 
 **Requirements:**
 
-- Only the session host can submit proofs
+- Only the session host can submit proofs (`msg.sender == session.host`)
 - `tokensClaimed >= MIN_PROVEN_TOKENS` (100)
-- `signature.length == 65` bytes (r, s, v format)
-- Signature must be from the session host
 - Session must be Active
 
 **Example:**
 
 ```javascript
-import { keccak256, solidityPacked, getBytes } from "ethers";
+import { keccak256 } from "ethers";
 
-// Host submits signed proof after generating tokens
+// Host submits proof after generating tokens (no signature needed!)
 const proofHash = keccak256(proofBytes);
 const proofCID = "bafyreib..."; // S5 storage CID for full proof
 const deltaCID = "bafyreic..."; // S5 storage CID for delta changes
 const tokensClaimed = 1000;
 
-// 1. Generate signature
-const dataHash = keccak256(
-  solidityPacked(
-    ["bytes32", "address", "uint256"],
-    [proofHash, hostAddress, tokensClaimed]
-  )
-);
-const signature = await hostWallet.signMessage(getBytes(dataHash));
-
-// 2. Submit with signature and CIDs
+// Submit directly as host - no signature generation required
 await marketplace.submitProofOfWork(
   sessionId,
   tokensClaimed,
   proofHash,
-  signature,
   proofCID,
   deltaCID // Can be "" if not tracking incremental changes
 );
 ```
+
+> **Note (Feb 4, 2026):** Signature parameter was removed. Authentication is handled by `msg.sender == session.host` check, providing equivalent security with ~3,000 gas savings.
 
 #### `getProofSubmission`
 
@@ -1399,7 +1388,7 @@ const { jobId } = (await tx.wait()).logs[0].args;
 ### 3. Host Inference Flow
 
 ```javascript
-import { keccak256, solidityPacked, getBytes } from "ethers";
+import { keccak256 } from "ethers";
 
 // 1. Listen for new sessions
 marketplace.on("SessionJobCreated", async (jobId, requester, host, deposit) => {
@@ -1409,28 +1398,19 @@ marketplace.on("SessionJobCreated", async (jobId, requester, host, deposit) => {
   }
 });
 
-// 2. Submit signed proofs periodically with CID evidence
+// 2. Submit proofs periodically with CID evidence (no signature needed!)
 const tokensClaimed = 1000;
 const proofHash = keccak256(proofBytes);
-
-// Generate host signature
-const dataHash = keccak256(
-  solidityPacked(
-    ["bytes32", "address", "uint256"],
-    [proofHash, hostAddress, tokensClaimed]
-  )
-);
-const signature = await hostWallet.signMessage(getBytes(dataHash));
 
 // Upload proof data to S5
 const proofCID = await s5Client.upload(proofData);
 const deltaCID = await s5Client.upload(deltaData); // Incremental changes
 
+// Submit directly as host - authentication via msg.sender
 await marketplace.submitProofOfWork(
   sessionId,
   tokensClaimed,
   proofHash,
-  signature, // Host's ECDSA signature
   proofCID, // Full proof CID
   deltaCID // Delta CID (can be "" if not tracking)
 );

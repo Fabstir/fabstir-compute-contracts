@@ -39,18 +39,13 @@ contract ProofSystemUpgradeTest is Test {
     address public owner = address(0x1);
     address public user1 = address(0x2);
     address public modelAddress = address(0x100);
-
-    // Use actual private key for signing tests
-    uint256 constant PROVER_PRIVATE_KEY = 0xA11CE;
-    address public prover;
+    address public prover = address(0xA11CE);
 
     bytes32 constant CIRCUIT_HASH = bytes32(uint256(0x1234));
     bytes32 constant PROOF_HASH_1 = bytes32(uint256(0xABCD));
     bytes32 constant PROOF_HASH_2 = bytes32(uint256(0xEF01));
 
     function setUp() public {
-        // Derive prover from private key
-        prover = vm.addr(PROVER_PRIVATE_KEY);
         // Deploy implementation
         implementation = new ProofSystemUpgradeable();
 
@@ -71,26 +66,8 @@ contract ProofSystemUpgradeTest is Test {
         vm.stopPrank();
     }
 
-    // AUDIT-F4: Use bytes32(0) for non-model sessions in upgrade tests
+    // Use bytes32(0) for non-model sessions in upgrade tests
     bytes32 constant MODEL_ID = bytes32(0);
-
-    // ============================================================
-    // Helper Functions
-    // ============================================================
-
-    function createSignedProof(
-        bytes32 proofHash,
-        uint256 claimedTokens
-    ) internal view returns (bytes memory) {
-        // AUDIT-F4: Include modelId in signature
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, claimedTokens, MODEL_ID));
-        bytes32 messageHash = keccak256(abi.encodePacked(
-            "\x19Ethereum Signed Message:\n32",
-            dataHash
-        ));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(PROVER_PRIVATE_KEY, messageHash);
-        return abi.encodePacked(proofHash, r, s, v);
-    }
 
     // ============================================================
     // Pre-Upgrade State Verification
@@ -234,7 +211,7 @@ contract ProofSystemUpgradeTest is Test {
     // Post-Upgrade Functionality Tests
     // ============================================================
 
-    function test_CanVerifyProofsAfterUpgrade() public {
+    function test_CanMarkProofsUsedAfterUpgrade() public {
         ProofSystemUpgradeableV2 implementationV2 = new ProofSystemUpgradeableV2();
 
         vm.prank(owner);
@@ -242,13 +219,18 @@ contract ProofSystemUpgradeTest is Test {
 
         ProofSystemUpgradeableV2 proofSystemV2 = ProofSystemUpgradeableV2(address(proofSystem));
 
-        // Verify new proofs work (using signed proof) AUDIT-F4: includes modelId
+        // Mark proof as used (owner can call markProofUsed)
         bytes32 proofHash = bytes32(uint256(0x9999));
         uint256 claimedTokens = 100;
-        bytes memory newProof = createSignedProof(proofHash, claimedTokens);
 
-        bool result = proofSystemV2.verifyHostSignature(newProof, prover, claimedTokens, MODEL_ID);
-        assertTrue(result);
+        vm.prank(owner);
+        bool result = proofSystemV2.markProofUsed(proofHash, prover, claimedTokens, MODEL_ID);
+        assertTrue(result, "markProofUsed should succeed");
+
+        // Verify replay protection
+        vm.prank(owner);
+        bool replayResult = proofSystemV2.markProofUsed(proofHash, prover, claimedTokens, MODEL_ID);
+        assertFalse(replayResult, "Replay should fail");
     }
 
     function test_CanRecordProofsAfterUpgrade() public {

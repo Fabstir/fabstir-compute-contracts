@@ -103,6 +103,9 @@ contract BalanceSeparationTest is Test {
         // Configure ProofSystem in marketplace
         marketplace.setProofSystem(address(proofSystem));
 
+        // Authorize marketplace in ProofSystem (for markProofUsed)
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
@@ -137,19 +140,6 @@ contract BalanceSeparationTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
-    }
-
-    function _generateSignature(bytes32 proofHash, uint256 tokensClaimed)
-        internal
-        view
-        returns (bytes memory)
-    {
-        // AUDIT-F4: Include modelId in signature
-        bytes32 modelIdForSig = bytes32(0); // Non-model session
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed, modelIdForSig));
-        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, messageHash);
-        return abi.encodePacked(r, s, v);
     }
 
     // ============================================================
@@ -247,16 +237,14 @@ contract BalanceSeparationTest is Test {
         // Initial locked = 1 ETH
         assertEq(marketplace.getLockedBalanceNative(user), 1 ether, "Initial locked should be 1 ETH");
 
-        // Host submits proof for some tokens
+        // Host submits proof for some tokens (no signature needed)
         vm.warp(startTime + 1);
         bytes32 proofHash = bytes32(uint256(0x1234));
-        bytes memory signature = _generateSignature(proofHash, 1000);
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             1000, // tokens used
             proofHash,
-            signature,
             "QmProof",
             ""
         );
@@ -287,16 +275,14 @@ contract BalanceSeparationTest is Test {
         // Locked = 1 ETH initially
         assertEq(marketplace.getLockedBalanceNative(user), 1 ether, "Initial locked should be 1 ETH");
 
-        // Host submits proof
+        // Host submits proof (no signature needed)
         vm.warp(startTime + 1);
         bytes32 proofHash = bytes32(uint256(0x1234));
-        bytes memory signature = _generateSignature(proofHash, 500);
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             500,
             proofHash,
-            signature,
             "QmProof",
             ""
         );
@@ -475,12 +461,11 @@ contract BalanceSeparationTest is Test {
         // Locked should be 3 ETH
         assertEq(marketplace.getLockedBalanceNative(user), 3 ether, "Locked should be 3 ETH");
 
-        // Complete first session
+        // Complete first session (no signature needed)
         vm.warp(startTime + 1);
         bytes32 proofHash = bytes32(uint256(0x1234));
-        bytes memory signature = _generateSignature(proofHash, 100);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId1, 100, proofHash, signature, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId1, 100, proofHash, "QmProof", "");
         vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId1, "QmConversation");
