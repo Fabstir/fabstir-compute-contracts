@@ -436,16 +436,17 @@ contract JobMarketplaceUpgradeTest is Test {
         JobMarketplaceWithModelsUpgradeableV2 marketplaceV2 = JobMarketplaceWithModelsUpgradeableV2(payable(address(marketplace)));
 
         // Submit proof for existing session (no signature needed)
+        // First proof must claim >= proofInterval (1000)
         vm.warp(block.timestamp + 1);
         bytes32 proofHash = bytes32(uint256(123));
 
         vm.prank(host1);
-        marketplaceV2.submitProofOfWork(1, 100, proofHash, "QmProofCID", "");
+        marketplaceV2.submitProofOfWork(1, 1000, proofHash, "QmProofCID", "");
 
         // Verify tokens used updated (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 17 return values (all except ProofSubmission[] array)
         (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplaceV2.sessionJobs(1);
-        assertEq(tokensUsed, 100);
+        assertEq(tokensUsed, 1000);
     }
 
     // ============================================================

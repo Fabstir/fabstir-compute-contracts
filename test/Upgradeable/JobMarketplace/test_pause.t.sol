@@ -285,10 +285,11 @@ contract JobMarketplacePauseTest is Test {
         vm.warp(block.timestamp + 1);
 
         // Try to submit proof (should revert due to pause)
+        // Use tokensClaimed >= proofInterval (1000) so only pause causes revert
         bytes32 proofHash = bytes32(uint256(123));
         vm.prank(host1);
         vm.expectRevert();
-        marketplace.submitProofOfWork(sessionId, 100, proofHash, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 1000, proofHash, "QmProofCID", "");
     }
 
     function test_SubmitProofWorksWhenUnpaused() public {
@@ -313,14 +314,15 @@ contract JobMarketplacePauseTest is Test {
         vm.warp(block.timestamp + 1);
 
         // Submit proof (no signature needed)
+        // First proof must claim >= proofInterval (1000)
         bytes32 proofHash = bytes32(uint256(123));
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 100, proofHash, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 1000, proofHash, "QmProofCID", "");
 
         // Verify tokens used (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 17 return values (all except ProofSubmission[] array)
         (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
-        assertEq(tokensUsed, 100);
+        assertEq(tokensUsed, 1000);
     }
 
     // ============================================================

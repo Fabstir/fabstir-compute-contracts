@@ -276,12 +276,13 @@ contract BalanceSeparationTest is Test {
         assertEq(marketplace.getLockedBalanceNative(user), 1 ether, "Initial locked should be 1 ETH");
 
         // Host submits proof (no signature needed)
+        // First proof must claim >= proofInterval (1000)
         vm.warp(startTime + 1);
         bytes32 proofHash = bytes32(uint256(0x1234));
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
-            500,
+            1000,
             proofHash,
             "QmProof",
             ""
@@ -462,10 +463,11 @@ contract BalanceSeparationTest is Test {
         assertEq(marketplace.getLockedBalanceNative(user), 3 ether, "Locked should be 3 ETH");
 
         // Complete first session (no signature needed)
+        // First proof must claim >= proofInterval (1000)
         vm.warp(startTime + 1);
         bytes32 proofHash = bytes32(uint256(0x1234));
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId1, 100, proofHash, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId1, 1000, proofHash, "QmProof", "");
         vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId1, "QmConversation");

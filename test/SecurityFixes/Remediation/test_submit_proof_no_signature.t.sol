@@ -117,9 +117,9 @@ contract SubmitProofNoSignatureTest is Test {
         vm.deal(user, 100 ether);
         vm.deal(host, 100 ether);
 
-        // Create a session
+        // Create a session with proofInterval = 100 (matches MIN_PROVEN_TOKENS for easy testing)
         vm.prank(user);
-        sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300);
 
         // Advance time for rate limit
         vm.warp(block.timestamp + 10);

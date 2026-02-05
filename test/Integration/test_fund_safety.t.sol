@@ -168,7 +168,8 @@ contract FundSafetyTest is Test {
         assertEq(address(marketplace).balance, contractInitialBalance + deposit, "Contract should hold deposit");
 
         // Host submits proof (claims some tokens)
-        uint256 tokensUsed = 500;
+        // First proof must claim >= proofInterval (1000)
+        uint256 tokensUsed = 1000;
         vm.warp(startTime + 1);
         vm.prank(host);
         marketplace.submitProofOfWork(sessionId, tokensUsed, bytes32(uint256(0x1234)), "QmProof", "");
@@ -263,9 +264,10 @@ contract FundSafetyTest is Test {
         assertEq(marketplace.getLockedBalanceNative(user), 6 ether, "Locked should be 6 ETH");
 
         // Host submits proofs to session 1
+        // First proof must claim >= proofInterval (1000)
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(s1, 100, bytes32(uint256(0x1)), "QmProof1", "");
+        marketplace.submitProofOfWork(s1, 1000, bytes32(uint256(0x1)), "QmProof1", "");
 
         // Complete session 1
         vm.warp(startTime + disputeWindow + 2);
@@ -275,17 +277,17 @@ contract FundSafetyTest is Test {
         // Verify locked balance decreased
         assertEq(marketplace.getLockedBalanceNative(user), 5 ether, "Locked should be 5 ETH after s1 complete");
 
-        // Complete remaining sessions (MIN_PROVEN_TOKENS = 100)
+        // Complete remaining sessions (first proof >= proofInterval)
         vm.warp(startTime + disputeWindow + 3);
         vm.prank(host);
-        marketplace.submitProofOfWork(s2, 150, bytes32(uint256(0x2)), "QmProof2", "");
+        marketplace.submitProofOfWork(s2, 1000, bytes32(uint256(0x2)), "QmProof2", "");
         vm.warp(startTime + 2*disputeWindow + 4);
         vm.prank(user);
         marketplace.completeSessionJob(s2, "QmConvo2");
 
         vm.warp(startTime + 2*disputeWindow + 5);
         vm.prank(host2);
-        marketplace.submitProofOfWork(s3, 200, bytes32(uint256(0x3)), "QmProof3", "");
+        marketplace.submitProofOfWork(s3, 1000, bytes32(uint256(0x3)), "QmProof3", "");
         vm.warp(startTime + 3*disputeWindow + 6);
         vm.prank(user);
         marketplace.completeSessionJob(s3, "QmConvo3");
@@ -340,9 +342,10 @@ contract FundSafetyTest is Test {
         );
 
         // Host submits some proofs
+        // First proof must claim >= proofInterval (1000)
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 200, bytes32(uint256(0x1234)), "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(0x1234)), "QmProof", "");
 
         // Session times out
         vm.warp(startTime + maxDuration + 1);
@@ -352,7 +355,7 @@ contract FundSafetyTest is Test {
         marketplace.triggerSessionTimeout(sessionId);
 
         // Calculate expected distributions
-        uint256 hostPaymentGross = (200 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
+        uint256 hostPaymentGross = (1000 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
         uint256 treasuryFee = (hostPaymentGross * feeBasisPoints) / 10000;
         uint256 hostPaymentNet = hostPaymentGross - treasuryFee;
         uint256 userRefund = deposit - hostPaymentGross;
@@ -416,9 +419,10 @@ contract FundSafetyTest is Test {
         );
 
         // Host submits some proofs
+        // First proof must claim >= proofInterval (1000)
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 300, bytes32(uint256(0x1234)), "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(0x1234)), "QmProof", "");
 
         // User completes session after some work done
         vm.warp(startTime + disputeWindow + 2);
@@ -426,7 +430,7 @@ contract FundSafetyTest is Test {
         marketplace.completeSessionJob(sessionId, "QmConversation");
 
         // Verify host got paid for work done
-        uint256 hostPaymentGross = (300 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
+        uint256 hostPaymentGross = (1000 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
         uint256 treasuryFee = (hostPaymentGross * feeBasisPoints) / 10000;
         uint256 hostPaymentNet = hostPaymentGross - treasuryFee;
 

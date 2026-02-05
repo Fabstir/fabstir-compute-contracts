@@ -222,10 +222,11 @@ contract DeployAllUpgradeableTest is Test {
         assertEq(sessionId, 1, "Session created");
 
         // Step 4: Submit proof (no signature needed - msg.sender is host)
+        // First proof must claim >= proofInterval (1000)
         vm.warp(100);
         bytes32 proofHash = bytes32(uint256(1));
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, proofHash, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 1000, proofHash, "QmProof", "");
 
         // Step 5: Complete session
         vm.prank(user);

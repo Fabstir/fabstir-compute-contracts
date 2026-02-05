@@ -628,6 +628,14 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(msg.sender == session.host, "Not host");
         require(tokensClaimed >= MIN_PROVEN_TOKENS, "Min tokens required");
 
+        // First proof must meet proofInterval for minimum billing
+        if (session.tokensUsed == 0) {
+            require(
+                tokensClaimed >= session.proofInterval,
+                "First proof must meet proofInterval minimum"
+            );
+        }
+
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
         bytes32 modelId = sessionModel[jobId];
         // Per-model rate limit (default 2000 tokens/sec for non-model sessions)
@@ -718,7 +726,14 @@ contract JobMarketplaceWithModelsUpgradeable is
     function _settleSessionPayments(uint256 jobId, address completedBy) internal {
         SessionJob storage session = sessionJobs[jobId];
 
-        uint256 hostPayment = (session.tokensUsed * session.pricePerToken) / PRICE_PRECISION;
+        // Enforce minimum billing at completion (fallback for edge cases)
+        // Only apply if at least one proof submitted (don't affect early cancellation)
+        uint256 billableTokens = session.tokensUsed;
+        if (billableTokens < session.proofInterval && session.proofs.length > 0) {
+            billableTokens = session.proofInterval;
+        }
+
+        uint256 hostPayment = (billableTokens * session.pricePerToken) / PRICE_PRECISION;
         uint256 earlyFee;
         // Early cancel fee: depositor cancels before any proofs
         if (completedBy == session.depositor && session.proofs.length == 0 && minTokensFee > 0) {

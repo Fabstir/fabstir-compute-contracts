@@ -313,15 +313,16 @@ contract FullFlowIntegrationTest is Test {
         assertEq(session2, 2, "Session 2 ID");
 
         // Both hosts submit proofs (no signature needed - msg.sender is host)
+        // First proof must claim >= proofInterval (1000)
         vm.warp(block.timestamp + 1);
 
         bytes32 proof1Hash = bytes32(uint256(1));
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(session1, 500, proof1Hash, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(session1, 1000, proof1Hash, "QmProof1", "");
 
         bytes32 proof2Hash = bytes32(uint256(2));
         vm.prank(host2);
-        jobMarketplace.submitProofOfWork(session2, 500, proof2Hash, "QmProof2", "");
+        jobMarketplace.submitProofOfWork(session2, 1000, proof2Hash, "QmProof2", "");
 
         // Complete both sessions
         vm.prank(user1);
@@ -362,10 +363,11 @@ contract FullFlowIntegrationTest is Test {
         assertEq(jobMarketplace.sessionModel(sessionId), modelId1, "Session model should be tracked");
 
         // Complete flow (no signature needed - msg.sender is host)
+        // First proof must claim >= proofInterval (1000)
         vm.warp(block.timestamp + 1);
         bytes32 modelProofHash = bytes32(uint256(1));
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, modelProofHash, "QmProof", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, modelProofHash, "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");

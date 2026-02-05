@@ -170,10 +170,11 @@ contract UpgradeFlowIntegrationTest is Test {
         uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Step 3: Submit a proof (use explicit large timestamp to avoid rate limit issues)
+        // First proof must claim >= proofInterval (1000)
         vm.warp(100);
         bytes32 proofHash1 = bytes32(uint256(1));
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, proofHash1, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, proofHash1, "QmProof1", "");
 
         // Step 4: UPGRADE NodeRegistry
         NodeRegistryWithModelsUpgradeableV2 newNodeRegistryImpl = new NodeRegistryWithModelsUpgradeableV2();
@@ -225,10 +226,11 @@ contract UpgradeFlowIntegrationTest is Test {
         uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Step 3: Submit a proof (use explicit large timestamp)
+        // First proof must claim >= proofInterval (1000)
         vm.warp(100);
         bytes32 proofHash1 = bytes32(uint256(1));
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, proofHash1, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, proofHash1, "QmProof1", "");
 
         // Capture state before upgrade
         uint256 nextJobIdBefore = jobMarketplace.nextJobId();
@@ -281,7 +283,7 @@ contract UpgradeFlowIntegrationTest is Test {
         assertEq(sessionHost, host1, "Host preserved");
         assertEq(deposit, 1 ether, "Deposit preserved");
         assertEq(pricePerToken, MIN_PRICE_NATIVE, "Price preserved");
-        assertEq(tokensUsed, 500, "Tokens used preserved");
+        assertEq(tokensUsed, 1000, "Tokens used preserved");
 
         // Step 8: Continue session after upgrade (advance time for rate limit)
         vm.warp(200);
@@ -313,10 +315,11 @@ contract UpgradeFlowIntegrationTest is Test {
         uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Submit first proof with explicit large timestamp
+        // First proof must claim >= proofInterval (1000)
         vm.warp(100);
         bytes32 proofHash1 = bytes32(uint256(1));
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 300, proofHash1, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, proofHash1, "QmProof1", "");
 
         // Upgrade NodeRegistry
         NodeRegistryWithModelsUpgradeableV2 newNodeRegistryImpl = new NodeRegistryWithModelsUpgradeableV2();
@@ -391,10 +394,11 @@ contract UpgradeFlowIntegrationTest is Test {
         assertEq(sessionId, 1, "First session on V2");
 
         // Complete the session
+        // First proof must claim >= proofInterval (1000)
         vm.warp(block.timestamp + 1);
         bytes32 proofHash = bytes32(uint256(1));
         vm.prank(host1);
-        jobMarketplaceV2.submitProofOfWork(sessionId, 500, proofHash, "QmProof", "");
+        jobMarketplaceV2.submitProofOfWork(sessionId, 1000, proofHash, "QmProof", "");
 
         vm.prank(user1);
         jobMarketplaceV2.completeSessionJob(sessionId, "QmConv");

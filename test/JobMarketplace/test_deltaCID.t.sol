@@ -169,8 +169,9 @@ contract DeltaCIDTest is Test {
         vm.warp(block.timestamp + 10);
 
         // Generate proof hash (no signature needed)
+        // First proof must claim >= proofInterval (1000)
         bytes32 proofHash = keccak256("AI inference output batch 1");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // Expect event with deltaCID
         vm.expectEmit(true, true, false, true);
@@ -207,8 +208,9 @@ contract DeltaCIDTest is Test {
         vm.warp(block.timestamp + 10);
 
         // Generate and submit proof with deltaCID (no signature needed)
+        // First proof must claim >= proofInterval (1000)
         bytes32 proofHash = keccak256("AI inference output");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host);
         marketplace.submitProofOfWork(
@@ -254,11 +256,13 @@ contract DeltaCIDTest is Test {
         vm.warp(baseTime);
 
         // Submit 3 proofs with different deltaCIDs
+        // First proof must claim >= proofInterval (1000)
         string[3] memory deltaCIDs = ["QmDelta1", "QmDelta2", "QmDelta3"];
 
         for (uint256 i = 0; i < 3; i++) {
             bytes32 proofHash = keccak256(abi.encodePacked("proof batch ", i));
-            uint256 tokensClaimed = 100;
+            // First proof must be >= proofInterval, subsequent can be >= MIN_PROVEN_TOKENS
+            uint256 tokensClaimed = (i == 0) ? 1000 : 100;
 
             vm.prank(host);
             marketplace.submitProofOfWork(
@@ -300,8 +304,9 @@ contract DeltaCIDTest is Test {
         vm.warp(block.timestamp + 10);
 
         // Generate proof (no signature needed)
+        // First proof must claim >= proofInterval (1000)
         bytes32 proofHash = keccak256("AI inference output");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // Submit with empty deltaCID - should not revert
         vm.prank(host);
@@ -338,8 +343,9 @@ contract DeltaCIDTest is Test {
         vm.warp(block.timestamp + 10);
 
         // Submit proof with specific deltaCID (no signature needed)
+        // First proof must claim >= proofInterval (1000)
         bytes32 proofHash = keccak256("test proof");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         string memory expectedDeltaCID = "QmDeltaCID_GetterTest_12345";
 
