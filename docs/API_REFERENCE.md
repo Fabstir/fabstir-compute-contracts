@@ -551,7 +551,7 @@ function lastSlashTime(address host) external view returns (uint256)
 AI model governance and rate limits.
 
 **Proxy Address:** `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2`
-**Implementation:** `0x3F22fd532Ac051aE09b0F2e45F3DBfc835AfCD45` (Per-Model Rate Limits - Feb 3, 2026)
+**Implementation:** `0xb67bfC2a11484020446Ab08334B43F2B2af95CAD` (ModelSkipped Event - Feb 5, 2026)
 
 ### Per-Model Rate Limits (NEW - February 3, 2026)
 
@@ -636,6 +636,31 @@ function addTrustedModel(
     string memory filename,
     bytes32 sha256Hash
 ) external
+```
+
+**Reverts:** If model already exists.
+
+#### `batchAddTrustedModels`
+
+Batch add multiple trusted models (owner only, for initial setup).
+
+```solidity
+function batchAddTrustedModels(
+    string[] memory repos,
+    string[] memory filenames,
+    bytes32[] memory sha256Hashes
+) external
+```
+
+**Behavior:**
+- Skips existing models (does not revert)
+- Emits `ModelAdded` for new models
+- Emits `ModelSkipped` for duplicates
+
+**Events:**
+```solidity
+event ModelAdded(bytes32 indexed modelId, string huggingfaceRepo, string fileName, uint256 tier);
+event ModelSkipped(bytes32 indexed modelId, string reason);
 ```
 
 ---

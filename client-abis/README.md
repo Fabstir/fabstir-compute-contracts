@@ -160,13 +160,17 @@ const sessionId = await marketplace.connect(subAccount).createSessionForModelAsD
 
 ### ModelRegistryUpgradeable
 - **Proxy Address**: `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2`
-- **Implementation**: `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` ✅ Voting improvements (Jan 11, 2026)
+- **Implementation**: `0xb67bfC2a11484020446Ab08334B43F2B2af95CAD` ✅ ModelSkipped event (Feb 5, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `ModelRegistryUpgradeable-CLIENT-ABI.json`
 - **Approved Models** (2 models):
   - TinyVicuna-1B-32k (CohereForAI/TinyVicuna-1B-32k-GGUF)
   - TinyLlama-1.1B Chat (TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF)
+- **New Features (Feb 5, 2026) - Batch Duplicate Consistency**:
+  - `ModelSkipped(bytes32 indexed modelId, string reason)` event - Emitted when `batchAddTrustedModels()` skips duplicates
+  - Provides feedback when batch operations skip existing models (previously silent)
+  - `addTrustedModel()` still reverts on duplicates (unchanged behavior)
 - **New Features (Jan 11, 2026) - Security Audit Remediation**:
   - **Anti-Sniping Vote Extension**: Large votes (≥10k FAB) in last 4 hours extend voting by 1 day (max 3 extensions)
   - **Re-proposal Cooldown**: Rejected models can be re-proposed after 30 days
@@ -955,9 +959,10 @@ const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
 - **Replacement**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6
 
 ## Last Updated
-February 4, 2026 - Signature Removal from Proof Submission
+February 5, 2026 - ModelSkipped Event for Batch Duplicates
 
 ### Recent Changes
+- **Feb 5, 2026**: ModelRegistry - Added `ModelSkipped` event to `batchAddTrustedModels()` for duplicate handling consistency
 - **Feb 4, 2026**: **BREAKING** - Signature removed from `submitProofOfWork` (6 → 5 params). No signature generation needed.
 - **Feb 3, 2026**: Early Cancellation Fee - `minTokensFee()`, `setMinTokensFee()` - Protects hosts from instant cancellation abuse
 - **Jan 16, 2026**: Stake slashing - `slashStake()`, `initializeSlashing()`, `setSlashingAuthority()`, `setTreasury()`, `lastSlashTime()`

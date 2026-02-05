@@ -94,6 +94,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensionCount);
     event ModelRateLimitUpdated(bytes32 indexed modelId, uint256 maxTokensPerSecond);
     event ModelHashUpdated(bytes32 indexed modelId, bytes32 oldHash, bytes32 newHash);
+    event ModelSkipped(bytes32 indexed modelId, string reason);
 
     // Storage gap for future upgrades (reduced for modelMaxTokensPerSecond mapping)
     uint256[46] private __gap;
@@ -433,6 +434,8 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
                 modelList.push(modelId);
 
                 emit ModelAdded(modelId, repos[i], fileNames[i], 1);
+            } else {
+                emit ModelSkipped(modelId, "Model already exists");
             }
         }
     }
