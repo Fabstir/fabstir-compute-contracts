@@ -93,6 +93,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event ModelReactivated(bytes32 indexed modelId);
     event VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensionCount);
     event ModelRateLimitUpdated(bytes32 indexed modelId, uint256 maxTokensPerSecond);
+    event ModelHashUpdated(bytes32 indexed modelId, bytes32 oldHash, bytes32 newHash);
 
     // Storage gap for future upgrades (reduced for modelMaxTokensPerSecond mapping)
     uint256[46] private __gap;
@@ -326,6 +327,19 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         require(models[modelId].timestamp > 0, "Model does not exist");
         models[modelId].active = true;
         emit ModelReactivated(modelId);
+    }
+
+    /**
+     * @notice Update the SHA256 hash for a model (owner only)
+     * @dev Used to fix models registered with incorrect or zero hashes
+     * @param modelId The model identifier
+     * @param newHash The correct SHA256 hash of the model file
+     */
+    function updateModelHash(bytes32 modelId, bytes32 newHash) external onlyOwner {
+        require(models[modelId].timestamp > 0, "Model does not exist");
+        bytes32 oldHash = models[modelId].sha256Hash;
+        models[modelId].sha256Hash = newHash;
+        emit ModelHashUpdated(modelId, oldHash, newHash);
     }
 
     /**
