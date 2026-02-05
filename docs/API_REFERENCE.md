@@ -1,6 +1,6 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** February 4, 2026
+**Last Updated:** February 5, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 **PRICE_PRECISION:** 1000 (all prices multiplied by 1000 for sub-$1/million support)
 
@@ -31,11 +31,11 @@ const remediationContracts = {
   usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
 };
 
-// Remediation implementation addresses - Updated Feb 4, 2026
+// Remediation implementation addresses - Updated Feb 5, 2026
 const remediationImplementations = {
-  jobMarketplace: "0x1a0436a15d2fD911b2F062D08aA312141A978955", // Signature Removal + Early Cancel Fee (Feb 4)
+  jobMarketplace: "0x56b66c5210ba67452d991cd2a3037dc3b3e2eec7", // Minimum Billing Enforcement (Feb 5)
   proofSystem: "0x5345a926dcf3B0E1A6895406FB68210ED19AC556", // markProofUsed + Signature Removal (Feb 4)
-  modelRegistry: "0x3F22fd532Ac051aE09b0F2e45F3DBfc835AfCD45", // Per-Model Rate Limits (Feb 3)
+  modelRegistry: "0xf74B618C9e1de3a68B0260C90A26aeC075d281bb", // Rejected Fee Handling + lateVotes Cleanup (Feb 5)
   nodeRegistry: "0xF2D98D38B2dF95f4e8e4A49750823C415E795377",
   hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a",
 };
@@ -551,7 +551,7 @@ function lastSlashTime(address host) external view returns (uint256)
 AI model governance and rate limits.
 
 **Proxy Address:** `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2`
-**Implementation:** `0xb67bfC2a11484020446Ab08334B43F2B2af95CAD` (ModelSkipped Event - Feb 5, 2026)
+**Implementation:** `0xf74B618C9e1de3a68B0260C90A26aeC075d281bb` (Rejected Fee Handling + lateVotes Cleanup - Feb 5, 2026)
 
 ### Per-Model Rate Limits (NEW - February 3, 2026)
 
@@ -598,6 +598,57 @@ await modelRegistry.setModelRateLimit(TINY_VICUNA, 0);
 **Events:**
 ```solidity
 event ModelRateLimitUpdated(bytes32 indexed modelId, uint256 tokensPerSecond);
+```
+
+### Rejected Proposal Fee Management (NEW - February 5, 2026)
+
+When model proposals are rejected, the 100 FAB proposal fee is now accumulated (instead of being locked) and can be withdrawn by the contract owner.
+
+#### `accumulatedRejectedFees`
+
+Query the total accumulated fees from rejected proposals.
+
+```solidity
+function accumulatedRejectedFees() external view returns (uint256)
+```
+
+**Returns:** Total FAB tokens accumulated from rejected proposals
+
+**Example:**
+```javascript
+const accumulated = await modelRegistry.accumulatedRejectedFees();
+console.log(`Accumulated fees: ${ethers.formatEther(accumulated)} FAB`);
+// Output: "300000000000000000000" (300 FAB from 3 rejections)
+```
+
+#### `withdrawRejectedFees`
+
+Withdraw accumulated fees from rejected proposals (owner only).
+
+```solidity
+function withdrawRejectedFees(uint256 amount) external
+```
+
+**Parameters:**
+- `amount`: Amount to withdraw (use `0` to withdraw all accumulated fees)
+
+**Requirements:**
+- Caller must be contract owner
+- `amount <= accumulatedRejectedFees` (or use 0 for all)
+- `accumulatedRejectedFees > 0` if amount is 0
+
+**Example:**
+```javascript
+// Withdraw all accumulated fees
+await modelRegistry.withdrawRejectedFees(0);
+
+// Or withdraw specific amount
+await modelRegistry.withdrawRejectedFees(ethers.parseEther("100"));
+```
+
+**Events:**
+```solidity
+event RejectedFeesWithdrawn(address indexed recipient, uint256 amount);
 ```
 
 ### Model Approval Functions

@@ -72,6 +72,9 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     // Track last proposal execution time for cooldown
     mapping(bytes32 => uint256) public lastProposalExecutionTime;
 
+    // Accumulated fees from rejected proposals (withdrawable by owner)
+    uint256 public accumulatedRejectedFees;
+
     // ============================================================
     // Rate Limit Configuration
     // ============================================================
@@ -95,9 +98,10 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event ModelRateLimitUpdated(bytes32 indexed modelId, uint256 maxTokensPerSecond);
     event ModelHashUpdated(bytes32 indexed modelId, bytes32 oldHash, bytes32 newHash);
     event ModelSkipped(bytes32 indexed modelId, string reason);
+    event RejectedFeesWithdrawn(address indexed recipient, uint256 amount);
 
-    // Storage gap for future upgrades (reduced for modelMaxTokensPerSecond mapping)
-    uint256[46] private __gap;
+    // Storage gap for future upgrades (reduced for accumulatedRejectedFees)
+    uint256[45] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -262,9 +266,11 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
                           proposal.modelData.fileName, 2);
         }
 
-        // Return proposal fee to proposer if approved
+        // Return proposal fee to proposer if approved, otherwise accumulate
         if (approved) {
             governanceToken.safeTransfer(proposal.proposer, PROPOSAL_FEE);
+        } else {
+            accumulatedRejectedFees += PROPOSAL_FEE;
         }
 
         // Remove from active proposals
@@ -328,6 +334,21 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
         require(models[modelId].timestamp > 0, "Model does not exist");
         models[modelId].active = true;
         emit ModelReactivated(modelId);
+    }
+
+    /**
+     * @notice Withdraw accumulated fees from rejected proposals (owner only)
+     * @param amount Amount to withdraw (use 0 for all)
+     */
+    function withdrawRejectedFees(uint256 amount) external onlyOwner nonReentrant {
+        uint256 toWithdraw = amount == 0 ? accumulatedRejectedFees : amount;
+        require(toWithdraw > 0, "No fees to withdraw");
+        require(toWithdraw <= accumulatedRejectedFees, "Insufficient accumulated fees");
+
+        accumulatedRejectedFees -= toWithdraw;
+        governanceToken.safeTransfer(msg.sender, toWithdraw);
+
+        emit RejectedFeesWithdrawn(msg.sender, toWithdraw);
     }
 
     /**
@@ -405,6 +426,7 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     function _clearOldProposal(bytes32 modelId) internal {
         if (proposals[modelId].executed) {
             delete proposals[modelId];
+            delete lateVotes[modelId];  // Clear stale late votes for fresh re-proposal
         }
         require(proposals[modelId].endTime == 0, "Active proposal exists");
     }

@@ -1,7 +1,7 @@
 # Architecture Documentation
 
-**Version:** 2.4
-**Last Updated:** February 4, 2026
+**Version:** 2.5
+**Last Updated:** February 5, 2026
 **Network:** Base Sepolia (Testnet)
 
 ---
@@ -18,7 +18,7 @@ Use for SDK development. Includes Signature Removal, Early Cancellation Fee + Pe
 |----------|---------------|----------------|
 | JobMarketplace | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0x1a0436a15d2fD911b2F062D08aA312141A978955` |
 | NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xF2D98D38B2dF95f4e8e4A49750823C415E795377` |
-| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x3F22fd532Ac051aE09b0F2e45F3DBfc835AfCD45` |
+| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xf74B618C9e1de3a68B0260C90A26aeC075d281bb` |
 | ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0x5345a926dcf3B0E1A6895406FB68210ED19AC556` |
 | HostEarnings | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x8584AeAC9687613095D13EF7be4dE0A796F84D7a` |
 
@@ -375,11 +375,17 @@ When depositor cancels **before any proofs** are submitted:
      │                      │ 5. If approved:      │
      │                      │    - Add model       │
      │                      │    - Refund fee      │
+     │                      │    If rejected:      │
+     │                      │    - Fee accumulated │
+     │                      │      (owner can      │
+     │                      │       withdraw)      │
      │                      │                      │
      │                      │ 6. withdrawVotes()   │
      │                      │ <────────────────────│
      │                      │                      │
 ```
+
+**Security Fix (Feb 5, 2026):** Rejected proposal fees are now accumulated in `accumulatedRejectedFees` and can be withdrawn by the owner via `withdrawRejectedFees()`. Previously, these fees were locked forever.
 
 ---
 
@@ -489,8 +495,11 @@ mapping(bytes32 => uint256) public lastProposalExecutionTime;  // Slot 10
 // Per-Model Rate Limits (Feb 3, 2026)
 mapping(bytes32 => uint256) public modelRateLimits;  // Slot 11 - tokens/second (0 = unlimited)
 
-// Slot 12-60: Storage gap (49 slots)
-uint256[49] private __gap;
+// Rejected Proposal Fee Handling (Feb 5, 2026)
+uint256 public accumulatedRejectedFees;           // Slot 12 - FAB from rejected proposals
+
+// Slot 13-57: Storage gap (45 slots)
+uint256[45] private __gap;
 ```
 
 ### 5.6 Storage Gap Strategy
@@ -501,7 +510,7 @@ All upgradeable contracts reserve storage gaps for future additions:
 |----------|----------|----------------|
 | JobMarketplaceWithModelsUpgradeable | 33 | Reduced for delegation + early cancel fee |
 | NodeRegistryWithModelsUpgradeable | 36 | Reputation (reduced from 39 for slashing) |
-| ModelRegistryUpgradeable | 49 | Governance extensions + rate limits |
+| ModelRegistryUpgradeable | 45 | Governance extensions + rate limits + rejected fees |
 | ProofSystemUpgradeable | 49 | ZK proof support |
 | HostEarningsUpgradeable | 48 | Multi-chain earnings |
 
