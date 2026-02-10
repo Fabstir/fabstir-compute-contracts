@@ -138,11 +138,7 @@ Fabstir Compute solves these problems by:
 |----------|:-----:|:----:|:---------:|:------:|
 | `initialize()` | ✓ (once) | - | - | - |
 | `setAuthorizedCaller()` | ✓ | - | - | - |
-| `registerModelCircuit()` | ✓ | - | - | - |
-| `recordVerifiedProof()` | ✓ | AC | - | - |
-| `verifyHostSignature()` | - | - | - | ✓ |
-| `verifyAndMarkComplete()` | ✓ | AC | - | - |
-| `verifyBatch()` | ✓ | AC | - | - |
+| `markProofUsed()` | ✓ | AC | - | - |
 | `upgradeToAndCall()` | ✓ | - | - | - |
 
 *AC = Authorized Caller only*

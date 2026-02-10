@@ -38,10 +38,8 @@ contract ProofSystemUpgradeTest is Test {
 
     address public owner = address(0x1);
     address public user1 = address(0x2);
-    address public modelAddress = address(0x100);
     address public prover = address(0xA11CE);
 
-    bytes32 constant CIRCUIT_HASH = bytes32(uint256(0x1234));
     bytes32 constant PROOF_HASH_1 = bytes32(uint256(0xABCD));
     bytes32 constant PROOF_HASH_2 = bytes32(uint256(0xEF01));
 
@@ -59,10 +57,8 @@ contract ProofSystemUpgradeTest is Test {
 
         // Set up some state to test preservation
         vm.startPrank(owner);
-        proofSystem.registerModelCircuit(modelAddress, CIRCUIT_HASH);
-        // Record verified proofs (requires owner authorization after security fix)
-        proofSystem.recordVerifiedProof(PROOF_HASH_1);
-        proofSystem.recordVerifiedProof(PROOF_HASH_2);
+        proofSystem.markProofUsed(PROOF_HASH_1, prover, 100, MODEL_ID);
+        proofSystem.markProofUsed(PROOF_HASH_2, prover, 200, MODEL_ID);
         vm.stopPrank();
     }
 
@@ -74,10 +70,6 @@ contract ProofSystemUpgradeTest is Test {
     // ============================================================
 
     function test_PreUpgradeStateIsCorrect() public view {
-        // Verify circuits registered
-        assertTrue(proofSystem.isCircuitRegistered(CIRCUIT_HASH));
-        assertEq(proofSystem.getModelCircuit(modelAddress), CIRCUIT_HASH);
-
         // Verify proofs recorded
         assertTrue(proofSystem.verifiedProofs(PROOF_HASH_1));
         assertTrue(proofSystem.verifiedProofs(PROOF_HASH_2));
@@ -140,30 +132,6 @@ contract ProofSystemUpgradeTest is Test {
         assertTrue(proofSystemV2.verifiedProofs(PROOF_HASH_2));
     }
 
-    function test_UpgradePreservesRegisteredCircuits() public {
-        ProofSystemUpgradeableV2 implementationV2 = new ProofSystemUpgradeableV2();
-
-        vm.prank(owner);
-        UUPSUpgradeable(address(proofSystem)).upgradeToAndCall(address(implementationV2), "");
-
-        ProofSystemUpgradeableV2 proofSystemV2 = ProofSystemUpgradeableV2(address(proofSystem));
-
-        // Verify circuit still registered
-        assertTrue(proofSystemV2.isCircuitRegistered(CIRCUIT_HASH));
-    }
-
-    function test_UpgradePreservesModelCircuits() public {
-        ProofSystemUpgradeableV2 implementationV2 = new ProofSystemUpgradeableV2();
-
-        vm.prank(owner);
-        UUPSUpgradeable(address(proofSystem)).upgradeToAndCall(address(implementationV2), "");
-
-        ProofSystemUpgradeableV2 proofSystemV2 = ProofSystemUpgradeableV2(address(proofSystem));
-
-        // Verify model-to-circuit mapping preserved
-        assertEq(proofSystemV2.getModelCircuit(modelAddress), CIRCUIT_HASH);
-    }
-
     // ============================================================
     // Upgrade With Initialization Tests
     // ============================================================
@@ -187,7 +155,6 @@ contract ProofSystemUpgradeTest is Test {
         // Verify V1 state still preserved
         assertEq(proofSystemV2.owner(), owner);
         assertTrue(proofSystemV2.verifiedProofs(PROOF_HASH_1));
-        assertTrue(proofSystemV2.isCircuitRegistered(CIRCUIT_HASH));
     }
 
     function test_V2InitializationCannotBeCalledTwice() public {
@@ -233,41 +200,6 @@ contract ProofSystemUpgradeTest is Test {
         assertFalse(replayResult, "Replay should fail");
     }
 
-    function test_CanRecordProofsAfterUpgrade() public {
-        ProofSystemUpgradeableV2 implementationV2 = new ProofSystemUpgradeableV2();
-
-        vm.prank(owner);
-        UUPSUpgradeable(address(proofSystem)).upgradeToAndCall(address(implementationV2), "");
-
-        ProofSystemUpgradeableV2 proofSystemV2 = ProofSystemUpgradeableV2(address(proofSystem));
-
-        // Record a new proof (requires owner authorization after security fix)
-        bytes32 newProofHash = bytes32(uint256(0x7777));
-        vm.prank(owner);
-        proofSystemV2.recordVerifiedProof(newProofHash);
-
-        assertTrue(proofSystemV2.verifiedProofs(newProofHash));
-    }
-
-    function test_CanRegisterCircuitsAfterUpgrade() public {
-        ProofSystemUpgradeableV2 implementationV2 = new ProofSystemUpgradeableV2();
-
-        vm.prank(owner);
-        UUPSUpgradeable(address(proofSystem)).upgradeToAndCall(address(implementationV2), "");
-
-        ProofSystemUpgradeableV2 proofSystemV2 = ProofSystemUpgradeableV2(address(proofSystem));
-
-        // Register a new circuit
-        address newModel = address(0x200);
-        bytes32 newCircuitHash = bytes32(uint256(0x6666));
-
-        vm.prank(owner);
-        proofSystemV2.registerModelCircuit(newModel, newCircuitHash);
-
-        assertTrue(proofSystemV2.isCircuitRegistered(newCircuitHash));
-        assertEq(proofSystemV2.getModelCircuit(newModel), newCircuitHash);
-    }
-
     function test_CanTransferOwnershipAfterUpgrade() public {
         ProofSystemUpgradeableV2 implementationV2 = new ProofSystemUpgradeableV2();
 
@@ -281,10 +213,6 @@ contract ProofSystemUpgradeTest is Test {
         proofSystemV2.transferOwnership(user1);
 
         assertEq(proofSystemV2.owner(), user1);
-
-        // New owner can register circuits
-        vm.prank(user1);
-        proofSystemV2.registerModelCircuit(address(0x300), bytes32(uint256(0x5555)));
     }
 
     // ============================================================

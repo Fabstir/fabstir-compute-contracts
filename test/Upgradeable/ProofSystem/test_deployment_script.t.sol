@@ -94,21 +94,4 @@ contract ProofSystemDeploymentScriptTest is Test {
         assertFalse(replayResult, "Replay should fail");
     }
 
-    function test_DeployedContractCanRegisterCircuits() public {
-        (address proxy, ) = deployScript.run();
-
-        ProofSystemUpgradeable proofSystem = ProofSystemUpgradeable(proxy);
-        address owner = proofSystem.owner();
-
-        // Register a circuit
-        address model = address(0x200);
-        bytes32 circuitHash = bytes32(uint256(0x3456));
-
-        vm.prank(owner);
-        proofSystem.registerModelCircuit(model, circuitHash);
-
-        // Verify
-        assertTrue(proofSystem.isCircuitRegistered(circuitHash));
-        assertEq(proofSystem.getModelCircuit(model), circuitHash);
-    }
 }

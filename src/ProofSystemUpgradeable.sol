@@ -18,20 +18,15 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     // Track verified proofs to prevent replay
     mapping(bytes32 => bool) public verifiedProofs;
 
-    // Circuit registry state variables
-    mapping(bytes32 => bool) public registeredCircuits;
-    mapping(address => bytes32) public modelCircuits;
-
-    // Access control for recordVerifiedProof - restricts to authorized callers only
+    // Access control for markProofUsed - restricts to authorized callers only
     mapping(address => bool) public authorizedCallers;
 
     // Events
     event ProofVerified(bytes32 indexed proofHash, address indexed prover, uint256 tokens);
-    event CircuitRegistered(bytes32 indexed circuitHash, address indexed model);
     event AuthorizedCallerUpdated(address indexed caller, bool authorized);
 
-    // Storage gap for future upgrades (reduced by 1 for authorizedCallers mapping)
-    uint256[46] private __gap;
+    // Storage gap for future upgrades
+    uint256[48] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -52,7 +47,7 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /**
-     * @notice Set authorized caller status for recordVerifiedProof
+     * @notice Set authorized caller status for markProofUsed
      * @dev Only owner can authorize/revoke callers. Typically JobMarketplace is authorized.
      * @param caller The address to authorize or revoke
      * @param authorized True to authorize, false to revoke
@@ -61,17 +56,6 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
         require(caller != address(0), "Invalid caller");
         authorizedCallers[caller] = authorized;
         emit AuthorizedCallerUpdated(caller, authorized);
-    }
-
-    /**
-     * @notice Record a verified proof to prevent replay attacks
-     * @dev Only callable by authorized contracts (e.g., JobMarketplace) or owner
-     * @param proofHash The hash of the verified proof
-     */
-    function recordVerifiedProof(bytes32 proofHash) external {
-        require(authorizedCallers[msg.sender] || msg.sender == owner(), "Unauthorized");
-        verifiedProofs[proofHash] = true;
-        emit ProofVerified(proofHash, msg.sender, 0);
     }
 
     /**
@@ -99,32 +83,5 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
         emit ProofVerified(proofHash, prover, claimedTokens);
 
         return true;
-    }
-
-    /**
-     * @notice Register a model circuit (owner only)
-     */
-    function registerModelCircuit(address model, bytes32 circuitHash) external onlyOwner {
-        require(model != address(0), "Invalid model");
-        require(circuitHash != bytes32(0), "Invalid circuit");
-
-        registeredCircuits[circuitHash] = true;
-        modelCircuits[model] = circuitHash;
-
-        emit CircuitRegistered(circuitHash, model);
-    }
-
-    /**
-     * @notice Check if a circuit is registered
-     */
-    function isCircuitRegistered(bytes32 circuitHash) external view returns (bool) {
-        return registeredCircuits[circuitHash];
-    }
-
-    /**
-     * @notice Get the circuit hash for a model
-     */
-    function getModelCircuit(address model) external view returns (bytes32) {
-        return modelCircuits[model];
     }
 }

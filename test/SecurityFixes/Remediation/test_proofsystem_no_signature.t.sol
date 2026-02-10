@@ -364,40 +364,6 @@ contract ProofSystemNoSignatureTest is Test {
     }
 
     // ============================================================
-    // Test: recordVerifiedProof still works (backwards compat)
-    // ============================================================
-
-    /**
-     * @notice Verify recordVerifiedProof still works for backwards compatibility
-     */
-    function test_RecordVerifiedProof_StillWorks() public {
-        bytes32 proofHash = keccak256("record test");
-
-        assertFalse(proofSystem.verifiedProofs(proofHash), "Should be false initially");
-
-        vm.prank(owner);
-        proofSystem.recordVerifiedProof(proofHash);
-
-        assertTrue(proofSystem.verifiedProofs(proofHash), "Should be true after record");
-    }
-
-    /**
-     * @notice Verify recordVerifiedProof blocks markProofUsed for same hash
-     */
-    function test_RecordVerifiedProof_BlocksMarkProofUsed() public {
-        bytes32 proofHash = keccak256("cross test");
-
-        // Record via recordVerifiedProof
-        vm.prank(owner);
-        proofSystem.recordVerifiedProof(proofHash);
-
-        // markProofUsed should return false
-        vm.prank(authorizedCaller);
-        bool result = proofSystem.markProofUsed(proofHash, prover, 100, bytes32(0));
-        assertFalse(result, "markProofUsed should fail after recordVerifiedProof");
-    }
-
-    // ============================================================
     // Test: Authorization management
     // ============================================================
 
