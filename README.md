@@ -37,7 +37,7 @@ Fabstir Compute is a **peer-to-peer AI inference marketplace** that connects GPU
 - Dual pricing (native + stablecoin)
 
 🎯 **Model Governance**
-- 2 approved models: TinyVicuna-1B, TinyLlama-1.1B
+- 5 approved models: gpt-oss-120B, gpt-oss-20B, GLM-4.7-Flash, TinyVicuna-1B (legacy), TinyLlama-1.1B (legacy)
 - Community voting for new models via ModelRegistry
 
 ⚡ **Gas Optimized**

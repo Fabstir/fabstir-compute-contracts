@@ -72,20 +72,28 @@ const frozenImplementations = {
 
 ### Approved Models
 
-| Model              | Repo                                   | File                          | Model ID (bytes32)                                                   |
-| ------------------ | -------------------------------------- | ----------------------------- | -------------------------------------------------------------------- |
-| TinyVicuna-1B      | CohereForAI/TinyVicuna-1B-32k-GGUF     | tiny-vicuna-1b.q4_k_m.gguf    | `0x0b75a2061e70e736924a30c0a327db7ab719402129f76f631adbd7b7a5a5bced` |
-| TinyLlama-1.1B     | TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF | tinyllama-1b.Q4_K_M.gguf      | `0x14843424179fbcb9aeb7fd446fa97143300609757bd49ffb3ec7fb2f75aed1ca` |
-| OpenAI GPT-OSS-20B | bartowski/openai_gpt-oss-20b-GGUF      | openai_gpt-oss-20b-MXFP4.gguf | `0x7583557c14f71d2bf21d48ffb7cde9329f9494090869d2d311ea481b26e7e06c` |
+| Model              | Repo                                    | File                                      | Model ID (bytes32)                                                   |
+| ------------------ | --------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------- |
+| gpt-oss-120B       | ggml-org/gpt-oss-120b-GGUF              | gpt-oss-120b-mxfp4-00001-of-00003.gguf    | `0x14a27756f6b24902cb060fc650b37abffc3319db5e966c9b0c6ecbe737e4183d` |
+| gpt-oss-20B        | ggml-org/gpt-oss-20b-GGUF               | gpt-oss-20b-mxfp4.gguf                    | `0xd98bfb6ee09045d5ad24ea30959a6720dac7913d122acff948df3d6ee335d729` |
+| GLM-4.7-Flash      | unsloth/GLM-4.7-Flash-GGUF              | GLM-4.7-Flash-UD-Q8_K_XL.gguf             | `0x681d145ee8b1e7b7540a654b57c19f89ef16617ce46e395165fb705aa41aa823` |
+| TinyVicuna-1B      | CohereForAI/TinyVicuna-1B-32k-GGUF      | tiny-vicuna-1b.q4_k_m.gguf               | `0x0b75a2061e70e736924a30c0a327db7ab719402129f76f631adbd7b7a5a5bced` |
+| TinyLlama-1.1B     | TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF  | tinyllama-1b.Q4_K_M.gguf                 | `0x14843424179fbcb9aeb7fd446fa97143300609757bd49ffb3ec7fb2f75aed1ca` |
+
+> **Note:** TinyVicuna-1B and TinyLlama-1.1B are legacy models (approved but not in `getAllModels()` array - added pre-upgrade). GLM-4.7-Flash-Q8_0.gguf (`0x7f23b52d...`) was deactivated in favour of the UD-Q8_K_XL variant.
 
 ```javascript
 // Model IDs (use these exact values)
+const GPT_OSS_120B =
+  "0x14a27756f6b24902cb060fc650b37abffc3319db5e966c9b0c6ecbe737e4183d";
+const GPT_OSS_20B =
+  "0xd98bfb6ee09045d5ad24ea30959a6720dac7913d122acff948df3d6ee335d729";
+const GLM_4_7_FLASH =
+  "0x681d145ee8b1e7b7540a654b57c19f89ef16617ce46e395165fb705aa41aa823";
 const TINY_VICUNA =
   "0x0b75a2061e70e736924a30c0a327db7ab719402129f76f631adbd7b7a5a5bced";
 const TINY_LLAMA =
   "0x14843424179fbcb9aeb7fd446fa97143300609757bd49ffb3ec7fb2f75aed1ca";
-const GPT_OSS_20B =
-  "0x7583557c14f71d2bf21d48ffb7cde9329f9494090869d2d311ea481b26e7e06c";
 ```
 
 > **Note:** Model IDs are derived from the model's on-chain registration, not simple keccak256 hashes of names. Always use the exact bytes32 values above.

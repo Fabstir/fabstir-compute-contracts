@@ -164,9 +164,12 @@ const sessionId = await marketplace.connect(subAccount).createSessionForModelAsD
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `ModelRegistryUpgradeable-CLIENT-ABI.json`
-- **Approved Models** (2 models):
-  - TinyVicuna-1B-32k (CohereForAI/TinyVicuna-1B-32k-GGUF)
-  - TinyLlama-1.1B Chat (TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF)
+- **Approved Models** (5 models):
+  - gpt-oss-120B (ggml-org/gpt-oss-120b-GGUF)
+  - gpt-oss-20B (ggml-org/gpt-oss-20b-GGUF)
+  - GLM-4.7-Flash UD-Q8_K_XL (unsloth/GLM-4.7-Flash-GGUF)
+  - TinyVicuna-1B-32k (CohereForAI/TinyVicuna-1B-32k-GGUF) - legacy
+  - TinyLlama-1.1B Chat (TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF) - legacy
 - **New Features (Feb 5, 2026) - Batch Duplicate Consistency**:
   - `ModelSkipped(bytes32 indexed modelId, string reason)` event - Emitted when `batchAddTrustedModels()` skips duplicates
   - Provides feedback when batch operations skip existing models (previously silent)
