@@ -280,7 +280,7 @@ contract SessionCreationRefactorTest is Test {
         bytes32 unsupportedModel = bytes32(uint256(999));
 
         vm.prank(user);
-        vm.expectRevert("Model not supported");
+        vm.expectRevert("Model not approved");
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(
             host, unsupportedModel, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300
         );

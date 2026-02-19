@@ -248,13 +248,12 @@ contract CreateFromDepositForModelTest is Test {
     // ============================================================
 
     /**
-     * @notice Verify function reverts when model is not supported by host
-     * @dev Since hosts can only register with approved models, an unapproved model
-     *      will never be supported by any host, resulting in "Host does not support model"
+     * @notice Verify function reverts when model is not approved
+     * @dev The isModelApproved check fires before nodeSupportsModel
      */
     function test_CreateFromDepositForModel_UnapprovedModel_Reverts() public {
         vm.prank(user);
-        vm.expectRevert("Model not supported");
+        vm.expectRevert("Model not approved");
         marketplace.createSessionFromDepositForModel(
             unapprovedModelId, // Not supported by host
             host,
