@@ -296,6 +296,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     function setProofSystem(address _proofSystem) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Only treasury or owner");
+        require(_proofSystem != address(0), "Invalid proof system");
         proofSystem = IProofSystemUpgradeable(_proofSystem);
     }
 
