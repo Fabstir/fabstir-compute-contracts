@@ -222,7 +222,7 @@ contract CreateFromDepositForModelTest is Test {
         bytes32 unsupportedModelId = modelRegistry.getModelId("Model2/Repo", "model2.gguf");
 
         vm.prank(user);
-        vm.expectRevert("Host does not support model");
+        vm.expectRevert("Model not supported");
         marketplace.createSessionFromDepositForModel(
             unsupportedModelId, host, address(0), 0.1 ether, MIN_PRICE_NATIVE, 1 hours, 100, 300
         );
@@ -246,7 +246,7 @@ contract CreateFromDepositForModelTest is Test {
 
     function test_CreateFromDepositForModel_InsufficientDeposit_Reverts() public {
         vm.prank(user);
-        vm.expectRevert("Insufficient native balance");
+        vm.expectRevert("Insufficient balance");
         marketplace.createSessionFromDepositForModel(
             modelId, host, address(0), 2 ether, MIN_PRICE_NATIVE, 1 hours, 100, 300
         );
@@ -263,7 +263,7 @@ contract CreateFromDepositForModelTest is Test {
 
         // Below model price should revert
         vm.prank(user);
-        vm.expectRevert("Price below host minimum for model");
+        vm.expectRevert("Price below host min");
         marketplace.createSessionFromDepositForModel(
             modelId, host, address(0), 0.1 ether, MIN_PRICE_NATIVE, 1 hours, 100, 300
         );

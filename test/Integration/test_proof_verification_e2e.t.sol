@@ -327,7 +327,7 @@ contract ProofVerificationE2ETest is Test {
         bytes32 proofHash2 = keccak256("attempted cross-session by host1");
 
         vm.prank(host1);
-        vm.expectRevert("Only host can submit proof");
+        vm.expectRevert("Not host");
         marketplace.submitProofOfWork(sessionId2, tokensClaimed, proofHash2, "QmProofCID", "");
     }
 
@@ -398,7 +398,7 @@ contract ProofVerificationE2ETest is Test {
 
         // Non-host tries to submit proof - should fail
         vm.prank(user);
-        vm.expectRevert("Only host can submit proof");
+        vm.expectRevert("Not host");
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmProofCID", "");
     }
 

@@ -146,7 +146,7 @@ contract ProofTimeoutWindowTest is Test {
         uint256 tooSmallTimeout = 30; // Below MIN_PROOF_TIMEOUT (60s)
 
         vm.prank(user);
-        vm.expectRevert("Invalid proof timeout window");
+        vm.expectRevert("Bad timeout");
         marketplace.createSessionJob{value: 0.01 ether}(
             host, MIN_PRICE_NATIVE, 1 hours, proofInterval, tooSmallTimeout
         );
@@ -157,7 +157,7 @@ contract ProofTimeoutWindowTest is Test {
         uint256 tooLargeTimeout = 7200; // Above MAX_PROOF_TIMEOUT (3600s)
 
         vm.prank(user);
-        vm.expectRevert("Invalid proof timeout window");
+        vm.expectRevert("Bad timeout");
         marketplace.createSessionJob{value: 0.01 ether}(
             host, MIN_PRICE_NATIVE, 1 hours, proofInterval, tooLargeTimeout
         );

@@ -160,7 +160,7 @@ contract JobMarketplacePauseTest is Test {
 
     function test_RandomUserCannotPause() public {
         vm.prank(user1);
-        vm.expectRevert("Only treasury or owner");
+        vm.expectRevert("Not admin");
         marketplace.pause();
     }
 
@@ -189,7 +189,7 @@ contract JobMarketplacePauseTest is Test {
         marketplace.pause();
 
         vm.prank(user1);
-        vm.expectRevert("Only treasury or owner");
+        vm.expectRevert("Not admin");
         marketplace.unpause();
     }
 

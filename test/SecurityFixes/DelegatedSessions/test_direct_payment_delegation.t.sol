@@ -169,7 +169,7 @@ contract DirectPaymentDelegationTest is Test {
     function test_CreateSessionForModelAsDelegate_UnauthorizedDelegate_Reverts() public {
         address unauthorizedDelegate = makeAddr("unauthorized");
         vm.prank(unauthorizedDelegate);
-        vm.expectRevert("Not authorized delegate");
+        vm.expectRevert("Not delegate");
         marketplace.createSessionForModelAsDelegate(
             payer, modelId, host, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
         );
@@ -180,7 +180,7 @@ contract DirectPaymentDelegationTest is Test {
         marketplace.authorizeDelegate(delegate, false);
 
         vm.prank(delegate);
-        vm.expectRevert("Not authorized delegate");
+        vm.expectRevert("Not delegate");
         marketplace.createSessionForModelAsDelegate(
             payer, modelId, host, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
         );
@@ -188,7 +188,7 @@ contract DirectPaymentDelegationTest is Test {
 
     function test_CreateSessionForModelAsDelegate_ETH_Reverts() public {
         vm.prank(delegate);
-        vm.expectRevert("Direct delegation requires ERC-20 token");
+        vm.expectRevert("ERC20 only");
         marketplace.createSessionForModelAsDelegate(
             payer, modelId, host, address(0), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
         );

@@ -407,7 +407,7 @@ contract TokenMaxDepositTest is Test {
 
         // Random user tries to update
         vm.prank(user);
-        vm.expectRevert("Only treasury or owner");
+        vm.expectRevert("Not admin");
         marketplace.updateTokenMaxDeposit(address(daiToken), 50000 * 10**18);
     }
 

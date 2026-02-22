@@ -197,7 +197,7 @@ contract DepositSessionDedupTest is Test {
         uint256 tooMuch = 50 ether; // User only deposited 10 ether
 
         vm.prank(user);
-        vm.expectRevert("Insufficient native balance");
+        vm.expectRevert("Insufficient balance");
         marketplace.createSessionFromDeposit(host, address(0), tooMuch, MIN_PRICE_NATIVE, 1 hours, 100, 300);
     }
 
@@ -209,7 +209,7 @@ contract DepositSessionDedupTest is Test {
         uint256 tooMuch = 50_000_000_000; // User only deposited 5B
 
         vm.prank(user);
-        vm.expectRevert("Insufficient token balance");
+        vm.expectRevert("Insufficient balance");
         marketplace.createSessionFromDeposit(host, address(usdcToken), tooMuch, MIN_PRICE_STABLE, 1 hours, 100, 300);
     }
 

@@ -151,7 +151,7 @@ contract SubmitProofNoSignatureTest is Test {
         vm.warp(block.timestamp + 1);
 
         vm.prank(nonHost);
-        vm.expectRevert("Only host can submit proof");
+        vm.expectRevert("Not host");
         marketplace.submitProofOfWork(
             sessionId,
             100,

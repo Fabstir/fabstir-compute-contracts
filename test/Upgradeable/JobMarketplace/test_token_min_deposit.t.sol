@@ -126,7 +126,7 @@ contract TokenMinDepositTest is Test {
         uint256 newMinDeposit = 100000;
 
         vm.prank(user1);
-        vm.expectRevert("Only treasury or owner");
+        vm.expectRevert("Not admin");
         marketplace.updateTokenMinDeposit(address(usdcToken), newMinDeposit);
     }
 

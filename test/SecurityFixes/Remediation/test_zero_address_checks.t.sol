@@ -58,7 +58,7 @@ contract ZeroAddressChecksTest is Test {
     /// @notice setProofSystem(address(0)) should revert
     function test_SetProofSystem_ZeroAddress_Reverts() public {
         vm.prank(owner);
-        vm.expectRevert("Invalid proof system");
+        vm.expectRevert("Zero address");
         marketplace.setProofSystem(address(0));
     }
 

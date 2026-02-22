@@ -172,7 +172,7 @@ contract ProofNoSignatureTest is Test {
         uint256 tokensClaimed = 500;
 
         vm.prank(nonHost);
-        vm.expectRevert("Only host can submit proof");
+        vm.expectRevert("Not host");
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
     }
 
