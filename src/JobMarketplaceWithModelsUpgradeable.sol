@@ -391,6 +391,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         _validateSessionParams(params);
 
         // Model-specific validations
+        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Model not approved");
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
 
         // Get model-specific pricing (falls back to default if not set)
@@ -485,6 +486,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         _validateSessionParams(params);
 
         // Model-specific validations
+        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Model not approved");
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
 
         // Get model-specific pricing for this token (falls back to default stable if not set)
@@ -1199,6 +1201,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         _validateHostRegistration(host);
         _validateProofRequirements(proofInterval, deposit, pricePerToken);
 
+        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Model not approved");
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
 
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
@@ -1304,6 +1307,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(amount >= minRequired, "Amount below minimum");
         require(amount <= maxAllowed, "Amount above maximum");
 
+        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Model not approved");
         require(nodeRegistry.nodeSupportsModel(host, modelId), "Host does not support model");
 
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
