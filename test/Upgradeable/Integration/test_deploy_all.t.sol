@@ -25,8 +25,12 @@ contract DeployAllUpgradeableTest is Test {
     uint256 constant feeBasisPoints = 1000;
     uint256 constant disputeWindow = 30;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal view returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
+    }
 
     function setUp() public {
         // Deploy mock FAB token
@@ -184,14 +188,22 @@ contract DeployAllUpgradeableTest is Test {
         JobMarketplaceWithModelsUpgradeable marketplace = JobMarketplaceWithModelsUpgradeable(payable(result.jobMarketplaceProxy));
         HostEarningsUpgradeable hostEarnings = HostEarningsUpgradeable(payable(result.hostEarningsProxy));
 
+        // Configure ProofSystem in marketplace
+        ProofSystemUpgradeable proofSystem = ProofSystemUpgradeable(result.proofSystemProxy);
+        address owner = marketplace.owner();
+        vm.startPrank(owner);
+        marketplace.setProofSystem(address(proofSystem));
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+        vm.stopPrank();
+
         // Step 1: Add a model (as owner)
-        address owner = modelRegistry.owner();
         vm.prank(owner);
         modelRegistry.addTrustedModel("TestModel/Repo", "model.gguf", bytes32(uint256(1)));
         bytes32 modelId = modelRegistry.getModelId("TestModel/Repo", "model.gguf");
 
         // Step 2: Register a host
-        address host = address(0x100);
+        uint256 hostPrivateKey = 0x100;
+        address host = vm.addr(hostPrivateKey);
         fabToken.mint(host, 10000 * 10**18);
 
         vm.startPrank(host);
@@ -214,8 +226,9 @@ contract DeployAllUpgradeableTest is Test {
 
         // Step 4: Submit proof
         vm.warp(100);
+        bytes memory sig = _generateSignature(hostPrivateKey, bytes32(uint256(1)), host, 500);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), sig, "QmProof", "");
 
         // Step 5: Complete session
         vm.prank(user);

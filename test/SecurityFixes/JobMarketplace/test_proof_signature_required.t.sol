@@ -109,6 +109,9 @@ contract ProofSignatureRequiredTest is Test {
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
+
         // Authorize marketplace in ProofSystem
         proofSystem.setAuthorizedCaller(address(marketplace), true);
 

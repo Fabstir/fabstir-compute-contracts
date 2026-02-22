@@ -29,7 +29,8 @@ contract HostValidationE2ETest is Test {
     ERC20Mock public usdcToken;
 
     address public owner = address(0x1);
-    address public host = address(0x2);
+    uint256 public hostPrivateKey = 0x2;
+    address public host;
     address public user = address(0x3);
     address public randomAddress = address(0x999);
 
@@ -41,10 +42,9 @@ contract HostValidationE2ETest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
-
     function setUp() public {
+        host = vm.addr(hostPrivateKey);
+
         // Deploy mock tokens
         fabToken = new ERC20Mock("FAB Token", "FAB");
         usdcToken = new ERC20Mock("USDC", "USDC");
@@ -103,6 +103,9 @@ contract HostValidationE2ETest is Test {
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
+
         // Authorize marketplace in ProofSystem
         proofSystem.setAuthorizedCaller(address(marketplace), true);
 
@@ -138,6 +141,13 @@ contract HostValidationE2ETest is Test {
         );
     }
 
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal pure returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
+    }
+
     // ============================================================
     // Test: Full Flow - Register Host, Create Session, Submit Proof, Complete
     // ============================================================
@@ -164,12 +174,13 @@ contract HostValidationE2ETest is Test {
         // Need to wait a bit for rate limiting
         vm.warp(block.timestamp + 1);
 
+        bytes32 proofHash = bytes32(uint256(0x1234));
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             1000, // tokens claimed
-            bytes32(uint256(0x1234)), // proof hash
-            DUMMY_SIG,
+            proofHash,
+            _generateSignature(hostPrivateKey, proofHash, host, 1000),
             "QmProofCID123",
             ""
         );
@@ -322,12 +333,13 @@ contract HostValidationE2ETest is Test {
 
         // Host submits some proof (wait 1 second, can claim up to 2000 tokens)
         vm.warp(startTime + 1);
+        bytes32 phABCD = bytes32(uint256(0xABCD));
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             500,
-            bytes32(uint256(0xABCD)),
-            DUMMY_SIG,
+            phABCD,
+            _generateSignature(hostPrivateKey, phABCD, host, 500),
             "QmProof1",
             ""
         );
@@ -340,12 +352,13 @@ contract HostValidationE2ETest is Test {
         // Host can still submit more proofs for existing session
         // Wait 1 second from last proof (allows up to 2000 tokens)
         vm.warp(startTime + 2);
+        bytes32 phEF01 = bytes32(uint256(0xEF01));
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             200, // Reduced to ensure within rate limit
-            bytes32(uint256(0xEF01)),
-            DUMMY_SIG,
+            phEF01,
+            _generateSignature(hostPrivateKey, phEF01, host, 200),
             "QmProof2",
             ""
         );
@@ -375,12 +388,13 @@ contract HostValidationE2ETest is Test {
 
         // Host submits proof
         vm.warp(block.timestamp + 1);
+        bytes32 ph1111 = bytes32(uint256(0x1111));
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             1000,
-            bytes32(uint256(0x1111)),
-            DUMMY_SIG,
+            ph1111,
+            _generateSignature(hostPrivateKey, ph1111, host, 1000),
             "QmProof",
             ""
         );

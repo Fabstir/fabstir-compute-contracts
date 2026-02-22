@@ -576,6 +576,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         string calldata proofCID,
         string calldata deltaCID
     ) external nonReentrant whenNotPaused {
+        require(address(proofSystem) != address(0), "ProofSystem not set");
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
         require(msg.sender == session.host, "Only host can submit proof");

@@ -7,6 +7,7 @@ import {JobMarketplaceWithModelsUpgradeable} from "../../src/JobMarketplaceWithM
 import {NodeRegistryWithModelsUpgradeable} from "../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {ModelRegistryUpgradeable} from "../../src/ModelRegistryUpgradeable.sol";
 import {HostEarningsUpgradeable} from "../../src/HostEarningsUpgradeable.sol";
+import {ProofSystemUpgradeable} from "../../src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "../mocks/ERC20Mock.sol";
 
 /**
@@ -21,12 +22,15 @@ contract FundSafetyTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
     ERC20Mock public fabToken;
     ERC20Mock public usdcToken;
 
     address public owner = address(0x1);
-    address public host = address(0x2);
-    address public host2 = address(0x22);
+    uint256 public hostPrivateKey = 0x2;
+    address public host;
+    uint256 public host2PrivateKey = 0x22;
+    address public host2;
     address public user = address(0x3);
     address public user2 = address(0x33);
 
@@ -39,10 +43,9 @@ contract FundSafetyTest is Test {
     uint256 constant MIN_PRICE_STABLE = 1;
     uint256 constant PRICE_PRECISION = 1000;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
-
     function setUp() public {
+        host = vm.addr(hostPrivateKey);
+        host2 = vm.addr(host2PrivateKey);
         fabToken = new ERC20Mock("FAB Token", "FAB");
         usdcToken = new ERC20Mock("USDC", "USDC");
 
@@ -90,6 +93,20 @@ contract FundSafetyTest is Test {
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
         marketplace.addAcceptedToken(address(usdcToken), 500000, 1_000_000 * 10**6);
 
+        // Deploy ProofSystem
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        address proofSystemProxy = address(new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        ));
+        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
+
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
+
+        // Authorize marketplace in ProofSystem
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         vm.stopPrank();
 
         // Register hosts
@@ -125,6 +142,13 @@ contract FundSafetyTest is Test {
         );
     }
 
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal pure returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
+    }
+
     // ============================================================
     // Full Session Lifecycle - No Funds Lost or Duplicated
     // ============================================================
@@ -153,9 +177,10 @@ contract FundSafetyTest is Test {
 
         // Host submits proof (claims some tokens)
         uint256 tokensUsed = 500;
+        bytes32 proofHash1 = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensUsed, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, tokensUsed, proofHash1, _generateSignature(hostPrivateKey, proofHash1, host, tokensUsed), "QmProof", "");
 
         // Complete session
         vm.warp(startTime + disputeWindow + 2);
@@ -205,9 +230,10 @@ contract FundSafetyTest is Test {
 
         // Host submits proof
         uint256 tokensUsed = 1000;
+        bytes32 proofHash2 = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensUsed, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, tokensUsed, proofHash2, _generateSignature(hostPrivateKey, proofHash2, host, tokensUsed), "QmProof", "");
 
         // Complete session
         vm.warp(startTime + disputeWindow + 2);
@@ -246,9 +272,10 @@ contract FundSafetyTest is Test {
         assertEq(marketplace.getLockedBalanceNative(user), 6 ether, "Locked should be 6 ETH");
 
         // Host submits proofs to session 1
+        bytes32 ph1 = bytes32(uint256(0x1));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(s1, 100, bytes32(uint256(0x1)), DUMMY_SIG, "QmProof1", "");
+        marketplace.submitProofOfWork(s1, 100, ph1, _generateSignature(hostPrivateKey, ph1, host, 100), "QmProof1", "");
 
         // Complete session 1
         vm.warp(startTime + disputeWindow + 2);
@@ -259,16 +286,18 @@ contract FundSafetyTest is Test {
         assertEq(marketplace.getLockedBalanceNative(user), 5 ether, "Locked should be 5 ETH after s1 complete");
 
         // Complete remaining sessions (MIN_PROVEN_TOKENS = 100)
+        bytes32 ph2 = bytes32(uint256(0x2));
         vm.warp(startTime + disputeWindow + 3);
         vm.prank(host);
-        marketplace.submitProofOfWork(s2, 150, bytes32(uint256(0x2)), DUMMY_SIG, "QmProof2", "");
+        marketplace.submitProofOfWork(s2, 150, ph2, _generateSignature(hostPrivateKey, ph2, host, 150), "QmProof2", "");
         vm.warp(startTime + 2*disputeWindow + 4);
         vm.prank(user);
         marketplace.completeSessionJob(s2, "QmConvo2");
 
+        bytes32 ph3 = bytes32(uint256(0x3));
         vm.warp(startTime + 2*disputeWindow + 5);
         vm.prank(host2);
-        marketplace.submitProofOfWork(s3, 200, bytes32(uint256(0x3)), DUMMY_SIG, "QmProof3", "");
+        marketplace.submitProofOfWork(s3, 200, ph3, _generateSignature(host2PrivateKey, ph3, host2, 200), "QmProof3", "");
         vm.warp(startTime + 3*disputeWindow + 6);
         vm.prank(user);
         marketplace.completeSessionJob(s3, "QmConvo3");
@@ -322,9 +351,10 @@ contract FundSafetyTest is Test {
         );
 
         // Host submits some proofs
+        bytes32 phTimeout = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 200, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 200, phTimeout, _generateSignature(hostPrivateKey, phTimeout, host, 200), "QmProof", "");
 
         // Session times out
         vm.warp(startTime + maxDuration + 1);
@@ -396,9 +426,10 @@ contract FundSafetyTest is Test {
         );
 
         // Host submits some proofs
+        bytes32 phPartial = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 300, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 300, phPartial, _generateSignature(hostPrivateKey, phPartial, host, 300), "QmProof", "");
 
         // User completes session after some work done
         vm.warp(startTime + disputeWindow + 2);

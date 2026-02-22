@@ -6,6 +6,7 @@ import "../../src/JobMarketplaceWithModelsUpgradeable.sol";
 import "../../src/NodeRegistryWithModelsUpgradeable.sol";
 import "../../src/ModelRegistryUpgradeable.sol";
 import "../../src/HostEarningsUpgradeable.sol";
+import "../../src/ProofSystemUpgradeable.sol";
 import "../mocks/ERC20Mock.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -23,6 +24,7 @@ contract FullSessionLifecycleTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
 
     ERC20Mock public fabToken;
 
@@ -39,9 +41,7 @@ contract FullSessionLifecycleTest is Test {
     uint256 public constant FEE_BASIS_POINTS = 1000; // 10%
     uint256 public constant DISPUTE_WINDOW = 30;
 
-    // Dummy proof data for tests
-    bytes32 constant DUMMY_PROOF_HASH = keccak256("test_proof");
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+    // Proof data for tests
     string constant DUMMY_CID = "QmTest123";
 
     function setUp() public {
@@ -93,6 +93,20 @@ contract FullSessionLifecycleTest is Test {
         // Configure authorizations
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
+        // Deploy ProofSystem
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        address proofSystemProxy = address(new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        ));
+        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
+
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
+
+        // Authorize marketplace in ProofSystem
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         // Add trusted model
         modelRegistry.addTrustedModel("test/repo", "model.gguf", bytes32(uint256(1)));
         modelId = modelRegistry.getModelId("test/repo", "model.gguf");
@@ -141,10 +155,11 @@ contract FullSessionLifecycleTest is Test {
             vm.warp(currentTime);
 
             uint256 tokensClaimed = 100 + i * 50; // 100, 150, 200
+            bytes32 proofHash = keccak256(abi.encodePacked("proof", i));
             totalTokensClaimed += tokensClaimed;
 
             vm.prank(host);
-            marketplace.submitProofOfWork(jobId, tokensClaimed, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
+            marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed), DUMMY_CID, "");
         }
 
         // Verify tokens were tracked (tokensUsed is 7th field, 17 total excluding array)
@@ -192,8 +207,9 @@ contract FullSessionLifecycleTest is Test {
         // Step 2: Host submits one proof (warp time first to allow tokens)
         vm.warp(block.timestamp + 1); // Allow enough tokens
 
+        bytes32 proofHash = keccak256("timeout_proof");
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, 100, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
+        marketplace.submitProofOfWork(jobId, 100, proofHash, _generateSignature(hostPrivateKey, proofHash, host, 100), DUMMY_CID, "");
 
         // Step 3: Host goes offline (time passes beyond 3x proofInterval)
         vm.warp(block.timestamp + 400); // 4x proofInterval
@@ -248,8 +264,9 @@ contract FullSessionLifecycleTest is Test {
 
         for (uint256 i = 0; i < 3; i++) {
             vm.warp(block.timestamp + 1); // Allow enough tokens
+            bytes32 proofHash = keccak256(abi.encodePacked("multi_proof", i));
             vm.prank(host);
-            marketplace.submitProofOfWork(jobIds[i], tokens[i], DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
+            marketplace.submitProofOfWork(jobIds[i], tokens[i], proofHash, _generateSignature(hostPrivateKey, proofHash, host, tokens[i]), DUMMY_CID, "");
         }
 
         // Wait for dispute window
@@ -285,8 +302,9 @@ contract FullSessionLifecycleTest is Test {
         vm.warp(block.timestamp + 1);
 
         // Host submits some proofs (MIN_PROVEN_TOKENS = 100)
+        bytes32 proofHash = keccak256("early_proof");
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, 100, DUMMY_PROOF_HASH, DUMMY_SIG, DUMMY_CID, "");
+        marketplace.submitProofOfWork(jobId, 100, proofHash, _generateSignature(hostPrivateKey, proofHash, host, 100), DUMMY_CID, "");
 
         // Depositor decides to end early - NO dispute window needed for depositor
         uint256 depositorBalanceBefore = depositor.balance;
@@ -343,5 +361,12 @@ contract FullSessionLifecycleTest is Test {
             MIN_PRICE_STABLE
         );
         vm.stopPrank();
+    }
+
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal pure returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
     }
 }

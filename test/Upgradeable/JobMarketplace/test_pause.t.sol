@@ -7,6 +7,7 @@ import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWi
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
 import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol";
+import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
@@ -19,10 +20,12 @@ contract JobMarketplacePauseTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
     ERC20Mock public fabToken;
 
     address public owner = address(0x1);
-    address public host1 = address(0x2);
+    uint256 public host1PrivateKey = 0x2;
+    address public host1;
     address public user1 = address(0x3);
     address public treasury = address(0x4);
 
@@ -33,10 +36,15 @@ contract JobMarketplacePauseTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal view returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
+    }
 
     function setUp() public {
+        host1 = vm.addr(host1PrivateKey);
         // Deploy mock token
         fabToken = new ERC20Mock("FAB Token", "FAB");
 
@@ -93,6 +101,23 @@ contract JobMarketplacePauseTest is Test {
         // Authorize marketplace in HostEarnings
         vm.prank(owner);
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
+
+        // Deploy ProofSystem
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        vm.prank(owner);
+        address proofSystemProxy = address(new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        ));
+        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
+
+        // Configure ProofSystem in marketplace
+        vm.prank(owner);
+        marketplace.setProofSystem(address(proofSystem));
+
+        // Authorize marketplace in ProofSystem
+        vm.prank(owner);
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
 
         // Setup host
         fabToken.mint(host1, 10000 * 10**18);
@@ -262,9 +287,10 @@ contract JobMarketplacePauseTest is Test {
         vm.warp(block.timestamp + 1);
 
         // Try to submit proof
+        bytes memory sig1 = _generateSignature(host1PrivateKey, bytes32(uint256(123)), host1, 100);
         vm.prank(host1);
         vm.expectRevert();
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), sig1, "QmProofCID", "");
     }
 
     function test_SubmitProofWorksWhenUnpaused() public {
@@ -288,8 +314,9 @@ contract JobMarketplacePauseTest is Test {
         vm.warp(block.timestamp + 1);
 
         // Submit proof should work
+        bytes memory sig2 = _generateSignature(host1PrivateKey, bytes32(uint256(123)), host1, 100);
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), sig2, "QmProofCID", "");
 
         // Verify tokens used (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 17 return values (all except ProofSubmission[] array)
@@ -382,8 +409,9 @@ contract JobMarketplacePauseTest is Test {
 
         // Submit proof
         vm.warp(block.timestamp + 1);
+        bytes memory sig3 = _generateSignature(host1PrivateKey, bytes32(uint256(123)), host1, 1000);
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), sig3, "QmProofCID", "");
 
         // Complete session
         vm.prank(user1);

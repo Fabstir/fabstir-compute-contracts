@@ -7,6 +7,7 @@ import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWi
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
 import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol";
+import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
@@ -40,10 +41,12 @@ contract LegacyRemovalTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
     ERC20Mock public fabToken;
 
     address public owner = address(0x1);
-    address public host = address(0x2);
+    uint256 public hostPrivateKey = 0x2;
+    address public host;
     address public user = address(0x3);
 
     bytes32 public modelId;
@@ -53,10 +56,8 @@ contract LegacyRemovalTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
-
     function setUp() public {
+        host = vm.addr(hostPrivateKey);
         fabToken = new ERC20Mock("FAB Token", "FAB");
 
         vm.startPrank(owner);
@@ -102,6 +103,20 @@ contract LegacyRemovalTest is Test {
 
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
+        // Deploy ProofSystem
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        address proofSystemProxy = address(new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        ));
+        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
+
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
+
+        // Authorize marketplace in ProofSystem
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         vm.stopPrank();
 
         // Register host
@@ -127,6 +142,13 @@ contract LegacyRemovalTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+    }
+
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal view returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
     }
 
     // ============================================================
@@ -159,9 +181,10 @@ contract LegacyRemovalTest is Test {
         assertEq(sessionId, 1, "Session ID should be 1");
 
         // Complete the session flow
+        bytes32 proofHash = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 500, proofHash, _generateSignature(hostPrivateKey, proofHash, host, 500), "QmProof", "");
 
         vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
@@ -243,9 +266,10 @@ contract LegacyRemovalTest is Test {
         uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
 
         // Submit proof
+        bytes32 ph = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 500, ph, _generateSignature(hostPrivateKey, ph, host, 500), "QmProof", "");
 
         // Verify locked balance decreased
         uint256 lockedAfterProof = marketplace.getLockedBalanceNative(user);
