@@ -190,7 +190,8 @@ contract TokenMaxDepositTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -218,7 +219,8 @@ contract TokenMaxDepositTest is Test {
             tooMuchDeposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
         vm.stopPrank();
     }
@@ -262,7 +264,8 @@ contract TokenMaxDepositTest is Test {
             validDeposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
         vm.stopPrank();
 

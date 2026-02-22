@@ -168,7 +168,8 @@ contract FundSafetyTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Verify: user paid, contract received
@@ -223,7 +224,8 @@ contract FundSafetyTest is Test {
             deposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(usdcToken.balanceOf(user), userInitialBalance - deposit, "User should have paid deposit");
@@ -263,9 +265,9 @@ contract FundSafetyTest is Test {
 
         // User creates 3 sessions with different amounts
         vm.startPrank(user);
-        uint256 s1 = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        uint256 s2 = marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        uint256 s3 = marketplace.createSessionJob{value: 3 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 s1 = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s2 = marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s3 = marketplace.createSessionJob{value: 3 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.stopPrank();
 
         // Verify locked balance = 6 ETH
@@ -316,11 +318,11 @@ contract FundSafetyTest is Test {
 
         // User1 creates session
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // User2 creates session
         vm.prank(user2);
-        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Verify independent locked balances
         assertEq(marketplace.getLockedBalanceNative(user), 2 ether, "User1 locked should be 2 ETH");
@@ -347,7 +349,8 @@ contract FundSafetyTest is Test {
             host,
             MIN_PRICE_NATIVE,
             maxDuration,
-            1000
+            1000,
+            300
         );
 
         // Host submits some proofs
@@ -396,7 +399,8 @@ contract FundSafetyTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Host never submits any proofs
@@ -422,7 +426,8 @@ contract FundSafetyTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Host submits some proofs
@@ -464,7 +469,7 @@ contract FundSafetyTest is Test {
 
         // Create session from pre-deposit
         vm.prank(user);
-        marketplace.createSessionFromDeposit(host, address(0), sessionAmount, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionFromDeposit(host, address(0), sessionAmount, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Verify balance deducted from pre-deposit, added to locked
         assertEq(marketplace.userDepositsNative(user), preDeposit - sessionAmount, "Pre-deposit should be reduced");
@@ -515,7 +520,7 @@ contract FundSafetyTest is Test {
 
         // Create inline session
         vm.prank(user);
-        marketplace.createSessionJob{value: sessionDeposit}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: sessionDeposit}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Pre-deposit balance should be 0 (not credited)
         assertEq(marketplace.userDepositsNative(user), 0, "Pre-deposit should NOT be credited for inline session");
@@ -544,7 +549,7 @@ contract FundSafetyTest is Test {
             uint256 deposit = ((seed / (i + 1)) % 3 + 1) * 0.5 ether; // 0.5-1.5 ETH
             deposits[i] = deposit;
             totalDeposited += deposit;
-            sessionIds[i] = marketplace.createSessionJob{value: deposit}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+            sessionIds[i] = marketplace.createSessionJob{value: deposit}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         }
         vm.stopPrank();
 
@@ -570,10 +575,10 @@ contract FundSafetyTest is Test {
         vm.prank(user);
         marketplace.depositNative{value: 3 ether}();
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.prank(user2);
-        marketplace.createSessionJob{value: 4 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 4 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Contract balance should equal sum of all deposits and sessions
         uint256 expectedBalance = 3 ether + 2 ether + 4 ether; // 9 ETH total

@@ -132,7 +132,8 @@ contract HostValidationTest is Test {
             address(0),
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -145,7 +146,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -161,7 +163,8 @@ contract HostValidationTest is Test {
             unregisteredHost,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -174,7 +177,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -186,7 +190,8 @@ contract HostValidationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -200,7 +205,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -236,7 +242,8 @@ contract HostValidationTest is Test {
             registeredHost,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -258,7 +265,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -276,7 +284,8 @@ contract HostValidationTest is Test {
             registeredHost,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -290,7 +299,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -303,7 +313,8 @@ contract HostValidationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -318,7 +329,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -365,7 +377,8 @@ contract HostValidationTest is Test {
             tempHost,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 

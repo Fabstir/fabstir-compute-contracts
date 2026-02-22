@@ -173,7 +173,8 @@ contract DoubleSpendPreventionTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // User's pre-deposit balance should be ZERO (not credited)
@@ -195,7 +196,8 @@ contract DoubleSpendPreventionTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // User's pre-deposit balance should be ZERO
@@ -222,7 +224,8 @@ contract DoubleSpendPreventionTest is Test {
             depositAmount,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // User's pre-deposit balance should be ZERO
@@ -246,7 +249,8 @@ contract DoubleSpendPreventionTest is Test {
             depositAmount,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // User's pre-deposit balance should be ZERO
@@ -281,7 +285,8 @@ contract DoubleSpendPreventionTest is Test {
             sessionAmount,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pre-deposit balance should be reduced
@@ -314,7 +319,8 @@ contract DoubleSpendPreventionTest is Test {
             sessionAmount,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pre-deposit balance should be reduced
@@ -343,7 +349,8 @@ contract DoubleSpendPreventionTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Contract should have received the ETH
@@ -376,7 +383,8 @@ contract DoubleSpendPreventionTest is Test {
             attackAmount,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Attacker's USDC balance should be reduced
@@ -399,9 +407,9 @@ contract DoubleSpendPreventionTest is Test {
         // Create multiple sessions
         vm.startPrank(user);
 
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.stopPrank();
 
@@ -422,7 +430,8 @@ contract DoubleSpendPreventionTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Host submits proof

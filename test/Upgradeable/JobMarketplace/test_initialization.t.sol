@@ -233,7 +233,8 @@ contract JobMarketplaceInitializationTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -248,7 +249,8 @@ contract JobMarketplaceInitializationTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -259,7 +261,8 @@ contract JobMarketplaceInitializationTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 

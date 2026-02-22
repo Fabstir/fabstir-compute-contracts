@@ -173,7 +173,7 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Step 2: Create active session
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Step 3: Submit a proof (use explicit large timestamp to avoid rate limit issues)
         vm.warp(100);
@@ -228,7 +228,7 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Step 2: Create active session
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Step 3: Submit a proof (use explicit large timestamp)
         vm.warp(100);
@@ -279,6 +279,7 @@ contract UpgradeFlowIntegrationTest is Test {
             ,
             ,
             ,
+            ,
         ) = jobMarketplaceV2.sessionJobs(sessionId);
 
         assertEq(id, sessionId, "Session ID preserved");
@@ -315,7 +316,7 @@ contract UpgradeFlowIntegrationTest is Test {
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Submit first proof with explicit large timestamp
         vm.warp(100);
@@ -391,7 +392,7 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Create new session on V2
         vm.prank(user1);
-        uint256 sessionId = jobMarketplaceV2.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId = jobMarketplaceV2.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         assertEq(sessionId, 1, "First session on V2");
 

@@ -163,7 +163,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000 // proof interval
+            1000, // proof interval
+            300   // proofTimeoutWindow
         );
         assertEq(sessionId, 1, "Session ID should be 1");
 
@@ -210,7 +211,8 @@ contract HostValidationE2ETest is Test {
             randomAddress,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -229,7 +231,8 @@ contract HostValidationE2ETest is Test {
                 fakeHosts[i],
                 MIN_PRICE_NATIVE,
                 1 days,
-                1000
+                1000,
+                300
             );
         }
     }
@@ -249,7 +252,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
         assertEq(sessionId1, 1);
 
@@ -265,7 +269,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -279,7 +284,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
         assertEq(sessionId1, 1);
 
@@ -306,7 +312,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -328,7 +335,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Host submits some proof (wait 1 second, can claim up to 2000 tokens)
@@ -383,7 +391,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Host submits proof
@@ -427,7 +436,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
         assertEq(sessionId1, 1);
 
@@ -442,7 +452,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Re-register
@@ -455,7 +466,8 @@ contract HostValidationE2ETest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
         assertEq(sessionId2, 2);
     }
@@ -474,9 +486,9 @@ contract HostValidationE2ETest is Test {
 
         // Sessions with registered hosts succeed
         vm.prank(user);
-        uint256 s1 = marketplace.createSessionJob{value: 0.1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 s1 = marketplace.createSessionJob{value: 0.1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.prank(user);
-        uint256 s2 = marketplace.createSessionJob{value: 0.1 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 s2 = marketplace.createSessionJob{value: 0.1 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         assertEq(s1, 1);
         assertEq(s2, 2);
@@ -484,6 +496,6 @@ contract HostValidationE2ETest is Test {
         // Session with unregistered host3 fails
         vm.prank(user);
         vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.1 ether}(host3, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 0.1 ether}(host3, MIN_PRICE_NATIVE, 1 days, 1000, 300);
     }
 }

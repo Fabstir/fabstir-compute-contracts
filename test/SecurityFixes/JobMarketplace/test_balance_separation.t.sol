@@ -174,7 +174,8 @@ contract BalanceSeparationTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // userDepositsNative should be 0 (inline session doesn't credit it)
@@ -200,7 +201,8 @@ contract BalanceSeparationTest is Test {
             1 ether,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Create inline session with 2 ETH
@@ -209,7 +211,8 @@ contract BalanceSeparationTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Withdrawable should be 2 ETH (3 - 1 used for session)
@@ -233,7 +236,8 @@ contract BalanceSeparationTest is Test {
             host,
             pricePerToken,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Initial locked = 1 ETH
@@ -271,7 +275,8 @@ contract BalanceSeparationTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Locked = 1 ETH initially
@@ -331,7 +336,8 @@ contract BalanceSeparationTest is Test {
             sessionDeposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // userDepositsToken should be 0 (inline session doesn't credit it)
@@ -361,7 +367,8 @@ contract BalanceSeparationTest is Test {
             sessionFromDeposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Create inline session with 15 USDC
@@ -372,7 +379,8 @@ contract BalanceSeparationTest is Test {
             inlineSession,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Withdrawable should be 20 USDC (30 - 10)
@@ -392,9 +400,9 @@ contract BalanceSeparationTest is Test {
     function test_LockedBalanceAcrossMultipleSessions_ETH() public {
         // Create 3 sessions with different amounts
         vm.startPrank(user);
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.stopPrank();
 
         // Total locked should be 6 ETH
@@ -414,11 +422,11 @@ contract BalanceSeparationTest is Test {
 
         // Create session from deposit (5 ETH)
         vm.prank(user);
-        marketplace.createSessionFromDeposit(host, address(0), 5 ether, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionFromDeposit(host, address(0), 5 ether, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Create inline session (3 ETH)
         vm.prank(user);
-        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Pre-deposit more (2 ETH)
         vm.prank(user);
@@ -454,9 +462,9 @@ contract BalanceSeparationTest is Test {
 
         // Create 2 sessions
         vm.prank(user);
-        uint256 sessionId1 = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId1 = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Locked should be 3 ETH
         assertEq(marketplace.getLockedBalanceNative(user), 3 ether, "Locked should be 3 ETH");

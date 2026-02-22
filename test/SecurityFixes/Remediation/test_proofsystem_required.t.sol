@@ -117,7 +117,7 @@ contract ProofSystemRequiredTest is Test {
 
         // Create a session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100);
+        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100, 300);
 
         // Advance time so rate limit passes
         vm.warp(block.timestamp + 1);
@@ -151,7 +151,7 @@ contract ProofSystemRequiredTest is Test {
 
         // Create a session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100);
+        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100, 300);
 
         // Advance time so rate limit passes
         vm.warp(block.timestamp + 1);
@@ -168,7 +168,7 @@ contract ProofSystemRequiredTest is Test {
         marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, proofHash, signature, "QmProofCID", "QmDeltaCID");
 
         // Verify proof was recorded
-        (,,,,,, uint256 tokensUsed,,,,,,,,,,) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, MIN_PROVEN_TOKENS, "Tokens should be recorded");
     }
 
@@ -177,11 +177,11 @@ contract ProofSystemRequiredTest is Test {
         assertEq(address(marketplace.proofSystem()), address(0), "ProofSystem should be address(0)");
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100);
+        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100, 300);
 
         assertGt(sessionId, 0, "Session should be created");
 
-        (uint256 id, address depositor, address sessionHost,,,,,,,,,,,,,,) = marketplace.sessionJobs(sessionId);
+        (uint256 id, address depositor, address sessionHost,,,,,,,,,,,,,,,) = marketplace.sessionJobs(sessionId);
         assertEq(id, sessionId, "Session ID should match");
         assertEq(depositor, user, "Depositor should be user");
         assertEq(sessionHost, host, "Host should match");

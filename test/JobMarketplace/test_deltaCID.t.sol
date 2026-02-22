@@ -161,7 +161,8 @@ contract DeltaCIDTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Advance time for rate limiting
@@ -200,7 +201,8 @@ contract DeltaCIDTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Advance time
@@ -248,7 +250,8 @@ contract DeltaCIDTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             2 days,
-            1000
+            1000,
+            300
         );
 
         uint256 baseTime = 1000;
@@ -295,7 +298,8 @@ contract DeltaCIDTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Advance time
@@ -334,7 +338,8 @@ contract DeltaCIDTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Advance time

@@ -227,7 +227,8 @@ contract SafeTransferMethodsTest is Test {
             500 * 1e6,     // deposit
             100,           // pricePerToken
             1 days,        // maxDuration
-            100            // proofInterval
+            100,           // proofInterval
+            300            // proofTimeoutWindow
         );
         vm.stopPrank();
 

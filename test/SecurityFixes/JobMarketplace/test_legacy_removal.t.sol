@@ -169,7 +169,8 @@ contract LegacyRemovalTest is Test {
             host,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Verify session was created
@@ -204,12 +205,12 @@ contract LegacyRemovalTest is Test {
 
         // Method 1: createSessionJob (ETH)
         vm.prank(user);
-        uint256 s1 = marketplace.createSessionJob{value: 0.1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 s1 = marketplace.createSessionJob{value: 0.1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         assertEq(s1, 1, "First session ID should be 1");
 
         // Method 2: createSessionJobForModel (ETH)
         vm.prank(user);
-        uint256 s2 = marketplace.createSessionJobForModel{value: 0.1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 s2 = marketplace.createSessionJobForModel{value: 0.1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         assertEq(s2, 2, "Second session ID should be 2");
 
         // Verify sessions are tracked by checking nextJobId
@@ -226,7 +227,8 @@ contract LegacyRemovalTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Verify model is tracked
@@ -263,7 +265,7 @@ contract LegacyRemovalTest is Test {
         vm.warp(startTime);
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Submit proof
         bytes32 ph = bytes32(uint256(0x1234));
@@ -285,7 +287,7 @@ contract LegacyRemovalTest is Test {
         vm.warp(startTime);
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, maxDuration, 1000);
+        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, maxDuration, 1000, 300);
 
         // Fast forward past timeout
         vm.warp(startTime + maxDuration + 1);

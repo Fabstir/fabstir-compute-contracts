@@ -136,7 +136,8 @@ contract FullSessionLifecycleTest is Test {
             host,
             pricePerToken,
             3600, // maxDuration
-            100   // proofInterval
+            100,  // proofInterval
+            300   // proofTimeoutWindow
         );
 
         assertGt(jobId, 0, "Job should be created");
@@ -162,8 +163,8 @@ contract FullSessionLifecycleTest is Test {
             marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed), DUMMY_CID, "");
         }
 
-        // Verify tokens were tracked (tokensUsed is 7th field, 17 total excluding array)
-        (,,,,,, uint256 tokensUsed,,,,,,,,,,) = marketplace.sessionJobs(jobId);
+        // Verify tokens were tracked (tokensUsed is 7th field, 18 total excluding array)
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,,) = marketplace.sessionJobs(jobId);
         assertEq(tokensUsed, totalTokensClaimed, "Tokens should match");
 
         // Step 3: Host must wait dispute window before completing
@@ -201,7 +202,8 @@ contract FullSessionLifecycleTest is Test {
             host,
             MIN_PRICE_NATIVE,
             3600,
-            100   // proofInterval
+            100,  // proofInterval
+            300   // proofTimeoutWindow
         );
 
         // Step 2: Host submits one proof (warp time first to allow tokens)
@@ -243,17 +245,17 @@ contract FullSessionLifecycleTest is Test {
 
         vm.prank(depositor);
         jobIds[0] = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100
+            host, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         vm.prank(depositor2);
         jobIds[1] = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100
+            host, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         vm.prank(depositor3);
         jobIds[2] = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100
+            host, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         // Host serves all sessions with different token amounts
@@ -295,7 +297,7 @@ contract FullSessionLifecycleTest is Test {
         // Create session
         vm.prank(depositor);
         uint256 jobId = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100
+            host, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         // Warp time to allow token claims
@@ -326,7 +328,8 @@ contract FullSessionLifecycleTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             3600,
-            100
+            100,
+            300
         );
 
         // Verify model is tracked
@@ -340,8 +343,8 @@ contract FullSessionLifecycleTest is Test {
         vm.prank(host);
         marketplace.completeSessionJob(jobId, "QmModelCID");
 
-        // Verify completion worked - check status is not Active (proofInterval is 11th field, 17 total excluding array)
-        (,,,,,,,,,,uint256 proofInterval,,,,,,) = marketplace.sessionJobs(jobId);
+        // Verify completion worked - check status is not Active (proofInterval is 11th field, 18 total excluding array)
+        (,,,,,,,,,,uint256 proofInterval,,,,,,,) = marketplace.sessionJobs(jobId);
         assertEq(proofInterval, 100, "Session should exist");
     }
 

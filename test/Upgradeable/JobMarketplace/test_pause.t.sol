@@ -228,7 +228,8 @@ contract JobMarketplacePauseTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -244,7 +245,8 @@ contract JobMarketplacePauseTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -261,7 +263,8 @@ contract JobMarketplacePauseTest is Test {
             modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -276,7 +279,8 @@ contract JobMarketplacePauseTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pause contract
@@ -300,7 +304,8 @@ contract JobMarketplacePauseTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pause and unpause
@@ -319,8 +324,8 @@ contract JobMarketplacePauseTest is Test {
         marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), sig2, "QmProofCID", "");
 
         // Verify tokens used (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
-        // Total 17 return values (all except ProofSubmission[] array)
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        // Total 18 return values (all except ProofSubmission[] array)
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, 100);
     }
 
@@ -361,7 +366,8 @@ contract JobMarketplacePauseTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pause contract
@@ -404,7 +410,8 @@ contract JobMarketplacePauseTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Submit proof

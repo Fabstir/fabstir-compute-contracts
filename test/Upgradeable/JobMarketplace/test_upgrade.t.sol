@@ -161,7 +161,8 @@ contract JobMarketplaceUpgradeTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.prank(user2);
@@ -169,7 +170,8 @@ contract JobMarketplaceUpgradeTest is Test {
             host1,
             MIN_PRICE_NATIVE * 2,
             2 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -188,6 +190,7 @@ contract JobMarketplaceUpgradeTest is Test {
             address host1Session,
             ,
             uint256 deposit1,
+            ,
             ,
             ,
             ,
@@ -308,6 +311,7 @@ contract JobMarketplaceUpgradeTest is Test {
             ,
             ,
             ,
+            ,
         ) = marketplaceV2.sessionJobs(1);
         assertEq(id1, 1);
         assertEq(depositor1, user1);
@@ -321,6 +325,7 @@ contract JobMarketplaceUpgradeTest is Test {
             ,
             ,
             uint256 deposit2,
+            ,
             ,
             ,
             ,
@@ -419,7 +424,8 @@ contract JobMarketplaceUpgradeTest is Test {
             host1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 3);
@@ -443,8 +449,8 @@ contract JobMarketplaceUpgradeTest is Test {
         marketplaceV2.submitProofOfWork(1, 100, bytes32(uint256(123)), sig, "QmProofCID", "");
 
         // Verify tokens used updated (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
-        // Total 17 return values (all except ProofSubmission[] array)
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplaceV2.sessionJobs(1);
+        // Total 18 return values (all except ProofSubmission[] array)
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplaceV2.sessionJobs(1);
         assertEq(tokensUsed, 100);
     }
 
