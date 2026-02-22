@@ -1,6 +1,6 @@
 # UPGRADE_GUIDE.md - Contract Upgrade Procedures
 
-**Last Updated:** January 15, 2026
+**Last Updated:** February 22, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 
 ---
@@ -13,11 +13,11 @@ This guide documents the procedures for upgrading the Fabstir marketplace smart 
 
 | Contract | Proxy Address | Current Implementation |
 |----------|---------------|------------------------|
-| JobMarketplaceWithModelsUpgradeable | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
+| JobMarketplaceWithModelsUpgradeable | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba` |
 | NodeRegistryWithModelsUpgradeable | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0x4574d6f1D888cF97eBb8E1bb5E02a5A386b6cFA7` |
-| ModelRegistryUpgradeable | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` |
+| ModelRegistryUpgradeable | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xF12a0A07d4230E0b045dB22057433a9826d21652` |
 | HostEarningsUpgradeable | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | `0x8584AeAC9687613095D13EF7be4dE0A796F84D7a` |
-| ProofSystemUpgradeable | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` | `0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9` |
+| ProofSystemUpgradeable | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` |
 
 ---
 
@@ -147,7 +147,7 @@ function reinitialize(uint256 version) public reinitializer(version) {
 
 ### JobMarketplaceWithModelsUpgradeable
 
-**Current Proxy**: `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E`
+**Current Proxy**: `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` (fresh proxy, Feb 22, 2026)
 
 **Critical Dependencies**:
 - NodeRegistry address (immutable after deployment)
@@ -201,7 +201,7 @@ cast send $PROXY_ADDRESS "pause()" \
 
 ### ProofSystemUpgradeable
 
-**Current Proxy**: `0x5afB91977e69Cc5003288849059bc62d47E7deeb`
+**Current Proxy**: `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31`
 
 **Upgrade Considerations**:
 - Proof verification logic changes require careful testing
@@ -343,6 +343,9 @@ When deploying to Base Mainnet:
 
 | Version | Date | Changes | Implementation |
 |---------|------|---------|----------------|
+| 3.0.0 | February 22, 2026 | **Post-audit remediation** — fresh JM proxy, all 20 findings addressed, shortened strings (F202615067) | JM: `0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba` |
+| — | February 22, 2026 | ProofSystem impl upgrade — dead code removal, storage placeholders | PS: `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` |
+| — | February 22, 2026 | ModelRegistry impl upgrade — rejected fees, lateVotes cleanup, per-model rate limits | MR: `0xF12a0A07d4230E0b045dB22057433a9826d21652` |
 | 2.1.0 | January 14, 2026 | deltaCID support in submitProofOfWork (6 params) | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
 | 2.0.0 | January 9, 2026 | Clean slate JobMarketplace deployment (no deprecated storage) | `0x26f27C19F80596d228D853dC39A204f0f6C45C7E` |
 | 1.0.0 | December 14, 2025 | Initial upgradeable deployment | Legacy |

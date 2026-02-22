@@ -1,5 +1,109 @@
 # Client ABIs Changelog
 
+## February 22, 2026 - Post-Audit Remediation Deployment (ALL 20 FINDINGS ADDRESSED)
+
+### PROXY ADDRESS CHANGED
+**JobMarketplace proxy address has changed** due to fresh proxy deployment (clean storage layout for `minTokensFee` + `isAuthorizedDelegate`).
+
+| Contract | Old Proxy | New Proxy |
+|----------|-----------|-----------|
+| JobMarketplace | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` |
+
+### Implementation Upgrades
+| Contract | Proxy (unchanged unless noted) | New Implementation |
+|----------|-------------------------------|-------------------|
+| JobMarketplace | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` (FRESH) | `0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba` |
+| ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` |
+| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xF12a0A07d4230E0b045dB22057433a9826d21652` |
+
+### SDK Breaking Changes
+
+**`submitProofOfWork` signature changed (signature parameter removed):**
+```solidity
+// Old (no longer works):
+function submitProofOfWork(uint256 jobId, uint256 tokensClaimed, bytes32 proofHash,
+    bytes calldata signature, string calldata proofCID, string calldata deltaCID)
+
+// New (required):
+function submitProofOfWork(uint256 sessionId, uint256 tokensClaimed, bytes32 proofHash,
+    string calldata proofCID, string calldata deltaCID)
+```
+
+**All session creation functions now require `proofTimeoutWindow` parameter:**
+- `createSessionJob()`, `createSessionJobWithToken()`, `createSessionJobForModel()`, etc.
+- Value in seconds (60-3600), use 0 for default (300s)
+
+**Require string text changed (F202615067):**
+- Error messages shortened for EVM contract size compliance
+- Example: `"Only host can submit proof"` -> `"Not host"`
+- Behavior unchanged; only error message text differs
+
+### New Functions (Audit Remediation)
+```solidity
+// F202614916: Deposit-based model sessions + delegation
+function createSessionFromDepositForModel(bytes32 modelId, address host, address paymentToken,
+    uint256 amount, uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval,
+    uint256 proofTimeoutWindow) external returns (uint256)
+function createSessionForModelAsDelegate(address payer, bytes32 modelId, address host,
+    address paymentToken, uint256 amount, uint256 pricePerToken, uint256 maxDuration,
+    uint256 proofInterval, uint256 proofTimeoutWindow) external returns (uint256)
+function authorizeDelegate(address delegate, bool authorized) external
+function isDelegateAuthorized(address depositor, address delegate) external view returns (bool)
+
+// F202614917: Early cancellation fee
+function setMinTokensFee(uint256 fee) external  // owner-only
+function minTokensFee() external view returns (uint256)
+
+// F202614964: Rejected proposal fee withdrawal (ModelRegistry)
+function withdrawRejectedFees() external  // owner-only
+function accumulatedRejectedFees() external view returns (uint256)
+
+// F202614913: Per-model rate limits (ModelRegistry)
+function setModelRateLimit(bytes32 modelId, uint256 maxTokensPerSecond) external  // owner-only
+function getModelRateLimit(bytes32 modelId) external view returns (uint256)
+```
+
+### New Events
+```solidity
+// F202614898: Pull-pattern refund
+event RefundCreditedToDeposit(uint256 indexed jobId, address indexed depositor, uint256 amount, address indexed token);
+
+// F202614916: Delegation
+event DelegateAuthorized(address indexed depositor, address indexed delegate, bool authorized);
+event SessionCreatedByDelegate(uint256 indexed sessionId, address indexed depositor, address indexed delegate);
+
+// F202614913: Rate limits (ModelRegistry)
+event ModelRateLimitUpdated(bytes32 indexed modelId, uint256 maxTokensPerSecond);
+
+// F202614964: Rejected fees (ModelRegistry)
+event RejectedFeesWithdrawn(address indexed to, uint256 amount);
+```
+
+### SDK Migration Guide
+```javascript
+// Update contract address
+const CONTRACTS = {
+  jobMarketplace: "0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4",  // CHANGED
+  proofSystem: "0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31",
+  // ... other addresses unchanged
+};
+
+// Update submitProofOfWork (signature parameter removed)
+// OLD:
+await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, signature, proofCID, deltaCID);
+// NEW:
+await marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, proofCID, deltaCID);
+
+// Update session creation (proofTimeoutWindow added)
+// OLD:
+await marketplace.createSessionJob(host, pricePerToken, maxDuration, proofInterval, { value: deposit });
+// NEW:
+const proofTimeoutWindow = 300; // 5 minutes (or 0 for default)
+await marketplace.createSessionJob(host, pricePerToken, maxDuration, proofInterval, proofTimeoutWindow, { value: deposit });
+```
+
+---
+
 ## January 16, 2026 - Stake Slashing Feature
 
 ### New Feature: Host Stake Slashing
