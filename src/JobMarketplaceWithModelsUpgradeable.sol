@@ -197,6 +197,11 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 indexed jobId, address indexed depositor, address indexed host, bytes32 modelId, uint256 deposit
     );
 
+    // Settlement pull pattern event (F202614898)
+    event RefundCreditedToDeposit(
+        uint256 indexed jobId, address indexed depositor, uint256 amount, address indexed token
+    );
+
     // Pause events
     event ContractPaused(address indexed by);
     event ContractUnpaused(address indexed by);
@@ -757,13 +762,26 @@ contract JobMarketplaceWithModelsUpgradeable is
         }
 
         if (userRefund > 0) {
+            session.refundedToUser = userRefund;
             if (session.paymentToken == address(0)) {
                 (bool sent,) = payable(session.depositor).call{value: userRefund}("");
-                require(sent, "ETH refund failed");
+                if (!sent) {
+                    // F202614898: Credit to deposit balance on ETH refund failure
+                    userDepositsNative[session.depositor] += userRefund;
+                    emit RefundCreditedToDeposit(jobId, session.depositor, userRefund, address(0));
+                }
             } else {
-                IERC20(session.paymentToken).safeTransfer(session.depositor, userRefund);
+                // F202614898: Use try/catch with low-level transfer for pull pattern
+                try IERC20(session.paymentToken).transfer(session.depositor, userRefund) returns (bool success) {
+                    if (!success) {
+                        userDepositsToken[session.depositor][session.paymentToken] += userRefund;
+                        emit RefundCreditedToDeposit(jobId, session.depositor, userRefund, session.paymentToken);
+                    }
+                } catch {
+                    userDepositsToken[session.depositor][session.paymentToken] += userRefund;
+                    emit RefundCreditedToDeposit(jobId, session.depositor, userRefund, session.paymentToken);
+                }
             }
-            session.refundedToUser = userRefund;
         }
 
         // Emit both events for backward compatibility
