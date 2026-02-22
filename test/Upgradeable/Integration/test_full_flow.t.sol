@@ -260,15 +260,13 @@ contract FullFlowIntegrationTest is Test {
         // Step 3: Submit proofs
         vm.warp(block.timestamp + 1); // Advance time
 
-        bytes memory sig1 = _generateSignature(host1PrivateKey, bytes32(uint256(123)), host1, 1000);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), sig1, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), "QmProof1", "");
 
         vm.warp(block.timestamp + 2);
 
-        bytes memory sig2 = _generateSignature(host1PrivateKey, bytes32(uint256(456)), host1, 500);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(456)), sig2, "QmProof2", "");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(456)), "QmProof2", "");
 
         // Step 4: Complete session
         vm.prank(user1);
@@ -320,13 +318,11 @@ contract FullFlowIntegrationTest is Test {
         // Both hosts submit proofs
         vm.warp(block.timestamp + 1);
 
-        bytes memory sigH1 = _generateSignature(host1PrivateKey, bytes32(uint256(1)), host1, 500);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(session1, 500, bytes32(uint256(1)), sigH1, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(session1, 500, bytes32(uint256(1)), "QmProof1", "");
 
-        bytes memory sigH2 = _generateSignature(host2PrivateKey, bytes32(uint256(2)), host2, 500);
         vm.prank(host2);
-        jobMarketplace.submitProofOfWork(session2, 500, bytes32(uint256(2)), sigH2, "QmProof2", "");
+        jobMarketplace.submitProofOfWork(session2, 500, bytes32(uint256(2)), "QmProof2", "");
 
         // Complete both sessions
         vm.prank(user1);
@@ -368,9 +364,8 @@ contract FullFlowIntegrationTest is Test {
 
         // Complete flow
         vm.warp(block.timestamp + 1);
-        bytes memory sigModel = _generateSignature(host1PrivateKey, bytes32(uint256(1)), host1, 500);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), sigModel, "QmProof", "");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");
@@ -395,9 +390,8 @@ contract FullFlowIntegrationTest is Test {
         uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.warp(block.timestamp + 1);
-        bytes memory sigTreasury = _generateSignature(host1PrivateKey, bytes32(uint256(1)), host1, 1000);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), sigTreasury, "QmProof", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");

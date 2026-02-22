@@ -291,10 +291,9 @@ contract JobMarketplacePauseTest is Test {
         vm.warp(block.timestamp + 1);
 
         // Try to submit proof
-        bytes memory sig1 = _generateSignature(host1PrivateKey, bytes32(uint256(123)), host1, 100);
         vm.prank(host1);
         vm.expectRevert();
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), sig1, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), "QmProofCID", "");
     }
 
     function test_SubmitProofWorksWhenUnpaused() public {
@@ -319,9 +318,8 @@ contract JobMarketplacePauseTest is Test {
         vm.warp(block.timestamp + 1);
 
         // Submit proof should work
-        bytes memory sig2 = _generateSignature(host1PrivateKey, bytes32(uint256(123)), host1, 100);
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), sig2, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), "QmProofCID", "");
 
         // Verify tokens used (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 18 return values (all except ProofSubmission[] array)
@@ -416,9 +414,8 @@ contract JobMarketplacePauseTest is Test {
 
         // Submit proof
         vm.warp(block.timestamp + 1);
-        bytes memory sig3 = _generateSignature(host1PrivateKey, bytes32(uint256(123)), host1, 1000);
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), sig3, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), "QmProofCID", "");
 
         // Complete session
         vm.prank(user1);

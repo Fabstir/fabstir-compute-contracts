@@ -181,7 +181,6 @@ contract HostValidationE2ETest is Test {
             sessionId,
             1000, // tokens claimed
             proofHash,
-            _generateSignature(hostPrivateKey, proofHash, host, 1000),
             "QmProofCID123",
             ""
         );
@@ -347,7 +346,6 @@ contract HostValidationE2ETest is Test {
             sessionId,
             500,
             phABCD,
-            _generateSignature(hostPrivateKey, phABCD, host, 500),
             "QmProof1",
             ""
         );
@@ -366,7 +364,6 @@ contract HostValidationE2ETest is Test {
             sessionId,
             200, // Reduced to ensure within rate limit
             phEF01,
-            _generateSignature(hostPrivateKey, phEF01, host, 200),
             "QmProof2",
             ""
         );
@@ -403,7 +400,6 @@ contract HostValidationE2ETest is Test {
             sessionId,
             1000,
             ph1111,
-            _generateSignature(hostPrivateKey, ph1111, host, 1000),
             "QmProof",
             ""
         );

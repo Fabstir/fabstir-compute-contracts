@@ -251,7 +251,6 @@ contract BalanceSeparationTest is Test {
             sessionId,
             1000, // tokens used
             proofHash,
-            _generateSignature(hostPrivateKey, proofHash, host, 1000),
             "QmProof",
             ""
         );
@@ -290,7 +289,6 @@ contract BalanceSeparationTest is Test {
             sessionId,
             500,
             ph,
-            _generateSignature(hostPrivateKey, ph, host, 500),
             "QmProof",
             ""
         );
@@ -473,7 +471,7 @@ contract BalanceSeparationTest is Test {
         bytes32 ph3 = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId1, 100, ph3, _generateSignature(hostPrivateKey, ph3, host, 100), "QmProof", "");
+        marketplace.submitProofOfWork(sessionId1, 100, ph3, "QmProof", "");
         vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId1, "QmConversation");

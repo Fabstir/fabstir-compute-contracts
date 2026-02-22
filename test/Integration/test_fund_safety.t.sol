@@ -181,7 +181,7 @@ contract FundSafetyTest is Test {
         bytes32 proofHash1 = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensUsed, proofHash1, _generateSignature(hostPrivateKey, proofHash1, host, tokensUsed), "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, tokensUsed, proofHash1, "QmProof", "");
 
         // Complete session
         vm.warp(startTime + disputeWindow + 2);
@@ -235,7 +235,7 @@ contract FundSafetyTest is Test {
         bytes32 proofHash2 = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensUsed, proofHash2, _generateSignature(hostPrivateKey, proofHash2, host, tokensUsed), "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, tokensUsed, proofHash2, "QmProof", "");
 
         // Complete session
         vm.warp(startTime + disputeWindow + 2);
@@ -277,7 +277,7 @@ contract FundSafetyTest is Test {
         bytes32 ph1 = bytes32(uint256(0x1));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(s1, 100, ph1, _generateSignature(hostPrivateKey, ph1, host, 100), "QmProof1", "");
+        marketplace.submitProofOfWork(s1, 100, ph1, "QmProof1", "");
 
         // Complete session 1
         vm.warp(startTime + disputeWindow + 2);
@@ -291,7 +291,7 @@ contract FundSafetyTest is Test {
         bytes32 ph2 = bytes32(uint256(0x2));
         vm.warp(startTime + disputeWindow + 3);
         vm.prank(host);
-        marketplace.submitProofOfWork(s2, 150, ph2, _generateSignature(hostPrivateKey, ph2, host, 150), "QmProof2", "");
+        marketplace.submitProofOfWork(s2, 150, ph2, "QmProof2", "");
         vm.warp(startTime + 2*disputeWindow + 4);
         vm.prank(user);
         marketplace.completeSessionJob(s2, "QmConvo2");
@@ -299,7 +299,7 @@ contract FundSafetyTest is Test {
         bytes32 ph3 = bytes32(uint256(0x3));
         vm.warp(startTime + 2*disputeWindow + 5);
         vm.prank(host2);
-        marketplace.submitProofOfWork(s3, 200, ph3, _generateSignature(host2PrivateKey, ph3, host2, 200), "QmProof3", "");
+        marketplace.submitProofOfWork(s3, 200, ph3, "QmProof3", "");
         vm.warp(startTime + 3*disputeWindow + 6);
         vm.prank(user);
         marketplace.completeSessionJob(s3, "QmConvo3");
@@ -357,7 +357,7 @@ contract FundSafetyTest is Test {
         bytes32 phTimeout = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 200, phTimeout, _generateSignature(hostPrivateKey, phTimeout, host, 200), "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 200, phTimeout, "QmProof", "");
 
         // Session times out
         vm.warp(startTime + maxDuration + 1);
@@ -434,7 +434,7 @@ contract FundSafetyTest is Test {
         bytes32 phPartial = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 300, phPartial, _generateSignature(hostPrivateKey, phPartial, host, 300), "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 300, phPartial, "QmProof", "");
 
         // User completes session after some work done
         vm.warp(startTime + disputeWindow + 2);

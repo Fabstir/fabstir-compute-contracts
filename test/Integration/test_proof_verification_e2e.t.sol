@@ -12,14 +12,14 @@ import {ERC20Mock} from "../mocks/ERC20Mock.sol";
 
 /**
  * @title Proof Verification End-to-End Integration Tests
- * @dev Tests for Sub-phase 6.3: Integration Tests for Proof Verification
+ * @dev Tests for proof verification integration after signature removal (F202614998+F202614976).
  *
  * These tests verify the complete flow of:
- * - Host generating valid signatures off-chain
- * - Submitting signed proofs on-chain
- * - Proof verification and marking as verified
+ * - Host submitting proofs on-chain (msg.sender authentication)
+ * - Proof recording and marking as verified via ProofSystem.markProofUsed()
  * - Multiple proofs in sessions
- * - Non-transferability of signatures between hosts
+ * - Non-transferability of proofs between hosts (msg.sender check)
+ * - Replay protection
  */
 contract ProofVerificationE2ETest is Test {
     JobMarketplaceWithModelsUpgradeable public marketplace;
@@ -164,7 +164,7 @@ contract ProofVerificationE2ETest is Test {
     // ============================================================
 
     /**
-     * @notice Test complete flow: create session, submit signed proof, complete session
+     * @notice Test complete flow: create session, submit proof, complete session
      */
     function test_FullFlowWithSignedProof() public {
         // Step 1: User creates session with host1
@@ -181,14 +181,13 @@ contract ProofVerificationE2ETest is Test {
         // Step 2: Advance time for rate limiting
         vm.warp(block.timestamp + 10);
 
-        // Step 3: Host generates proof and signs it
+        // Step 3: Host generates proof hash
         bytes32 proofHash = keccak256("AI inference output batch 1");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensClaimed);
 
-        // Step 4: Host submits signed proof
+        // Step 4: Host submits proof (no signature needed)
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID1", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmProofCID1", "");
 
         // Step 5: Verify proof was accepted and marked as verified
         (bytes32 storedHash, uint256 storedTokens, , bool verified, ) = marketplace.getProofSubmission(sessionId, 0);
@@ -211,9 +210,9 @@ contract ProofVerificationE2ETest is Test {
     }
 
     /**
-     * @notice Test host generates valid signature off-chain and submits on-chain
+     * @notice Test host submits proof on-chain with msg.sender authentication
      */
-    function test_HostSignsProofOffChain() public {
+    function test_HostSubmitsProofOnChain() public {
         // Create session
         vm.prank(user);
         uint256 sessionId = marketplace.createSessionJob{value: 0.5 ether}(
@@ -226,27 +225,18 @@ contract ProofVerificationE2ETest is Test {
 
         vm.warp(block.timestamp + 5);
 
-        // Simulate off-chain signing process
-        // 1. Host computes hash of work done
+        // Host computes hash of work done
         bytes memory workData = abi.encodePacked("User prompt", "AI response with 500 tokens");
         bytes32 proofHash = keccak256(workData);
-
-        // 2. Host determines tokens claimed
         uint256 tokensClaimed = 500;
 
-        // 3. Host signs: keccak256(proofHash, hostAddress, tokensClaimed)
-        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, host1, tokensClaimed));
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(host1PrivateKey, ethSignedHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
-
-        // 4. Host submits on-chain
+        // Host submits on-chain (msg.sender == session.host)
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmProofCID", "");
 
         // Verify proof accepted
         (,,, bool verified, ) = marketplace.getProofSubmission(sessionId, 0);
-        assertTrue(verified, "Off-chain signed proof should be verified");
+        assertTrue(verified, "Proof should be verified");
     }
 
     /**
@@ -274,10 +264,9 @@ contract ProofVerificationE2ETest is Test {
         uint256 tokensPerProof = 100;
         for (uint256 i = 0; i < 5; i++) {
             bytes32 proofHash = keccak256(abi.encodePacked("proof batch ", i));
-            bytes memory signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensPerProof);
 
             vm.prank(host1);
-            marketplace.submitProofOfWork(sessionId, tokensPerProof, proofHash, signature, "QmProofCID", "");
+            marketplace.submitProofOfWork(sessionId, tokensPerProof, proofHash, "QmProofCID", "");
 
             // Advance time between proofs using explicit value
             baseTime += 1;
@@ -296,7 +285,7 @@ contract ProofVerificationE2ETest is Test {
     }
 
     /**
-     * @notice Test signatures are non-transferable between hosts
+     * @notice Test proofs are non-transferable between hosts (msg.sender check)
      */
     function test_ProofNotTransferableBetweenHosts() public {
         // Create session with host1
@@ -323,36 +312,30 @@ contract ProofVerificationE2ETest is Test {
 
         vm.warp(block.timestamp + 10);
 
-        // Host1 creates a valid signature for their proof
+        // Host1 submits proof for their session - should succeed
         bytes32 proofHash = keccak256("work done by host1");
         uint256 tokensClaimed = 500;
-        bytes memory host1Signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensClaimed);
 
-        // Host1 can use their own signature - should succeed
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId1, tokensClaimed, proofHash, host1Signature, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId1, tokensClaimed, proofHash, "QmProofCID", "");
 
         // Verify proof was accepted for host1's session
         (,,, bool verified, ) = marketplace.getProofSubmission(sessionId1, 0);
-        assertTrue(verified, "Host1's signature should work for host1's session");
+        assertTrue(verified, "Host1's proof should work for host1's session");
 
-        // Generate different proofHash for host2 (cannot reuse same proofHash)
-        bytes32 proofHash2 = keccak256("attempted replay by host2");
+        // Host1 tries to submit proof for host2's session - should fail (wrong host)
+        bytes32 proofHash2 = keccak256("attempted cross-session by host1");
 
-        // Host2 tries to use host1's signature format but for host2's session
-        // This should fail because the signature was made for host1's address
-        bytes memory host1SignatureForHost2 = _generateSignature(host1PrivateKey, proofHash2, host1, tokensClaimed);
-
-        vm.prank(host2);
-        vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId2, tokensClaimed, proofHash2, host1SignatureForHost2, "QmProofCID", "");
+        vm.prank(host1);
+        vm.expectRevert("Only host can submit proof");
+        marketplace.submitProofOfWork(sessionId2, tokensClaimed, proofHash2, "QmProofCID", "");
     }
 
     /**
-     * @notice Test that different hosts have completely independent signature spaces
-     * @dev Each host signs their own unique proof data (representing their work output)
+     * @notice Test that different hosts have completely independent proof spaces
+     * @dev Each host submits their own unique proof data (representing their work output)
      */
-    function test_DifferentHostsIndependentSignatures() public {
+    function test_DifferentHostsIndependentProofs() public {
         // Create sessions for both hosts
         vm.prank(user);
         uint256 sessionId1 = marketplace.createSessionJob{value: 1 ether}(
@@ -374,22 +357,18 @@ contract ProofVerificationE2ETest is Test {
 
         vm.warp(block.timestamp + 10);
 
-        // Each host signs their own unique proofHash (representing their work)
-        // In practice, each host's AI output would be different, thus different proofHashes
+        // Each host submits their own unique proofHash
         bytes32 proofHash1 = keccak256("host1 work output");
         bytes32 proofHash2 = keccak256("host2 work output");
         uint256 tokensClaimed = 500;
 
-        bytes memory sig1 = _generateSignature(host1PrivateKey, proofHash1, host1, tokensClaimed);
-        bytes memory sig2 = _generateSignature(host2PrivateKey, proofHash2, host2, tokensClaimed);
-
-        // Host1 uses their signature on their session
+        // Host1 submits proof on their session
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId1, tokensClaimed, proofHash1, sig1, "QmCID1", "");
+        marketplace.submitProofOfWork(sessionId1, tokensClaimed, proofHash1, "QmCID1", "");
 
-        // Host2 uses their signature on their session
+        // Host2 submits proof on their session
         vm.prank(host2);
-        marketplace.submitProofOfWork(sessionId2, tokensClaimed, proofHash2, sig2, "QmCID2", "");
+        marketplace.submitProofOfWork(sessionId2, tokensClaimed, proofHash2, "QmCID2", "");
 
         // Both proofs should be verified
         (,,, bool verified1, ) = marketplace.getProofSubmission(sessionId1, 0);
@@ -400,9 +379,9 @@ contract ProofVerificationE2ETest is Test {
     }
 
     /**
-     * @notice Test tampered signature is rejected
+     * @notice Test non-host cannot submit proof (msg.sender check)
      */
-    function test_TamperedSignatureRejected() public {
+    function test_NonHostCannotSubmitProof() public {
         vm.prank(user);
         uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
             host1,
@@ -416,21 +395,17 @@ contract ProofVerificationE2ETest is Test {
 
         bytes32 proofHash = keccak256("valid work");
         uint256 tokensClaimed = 500;
-        bytes memory validSignature = _generateSignature(host1PrivateKey, proofHash, host1, tokensClaimed);
 
-        // Tamper with the signature by modifying one byte
-        bytes memory tamperedSignature = validSignature;
-        tamperedSignature[0] = bytes1(uint8(tamperedSignature[0]) ^ 0xFF);
-
-        vm.prank(host1);
-        vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, tamperedSignature, "QmProofCID", "");
+        // Non-host tries to submit proof - should fail
+        vm.prank(user);
+        vm.expectRevert("Only host can submit proof");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmProofCID", "");
     }
 
     /**
-     * @notice Test claiming different token amount than signed fails
+     * @notice Test replay protection works without signatures
      */
-    function test_DifferentTokenAmountFails() public {
+    function test_ReplayProtectionWithoutSignatures() public {
         vm.prank(user);
         uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
             host1,
@@ -443,16 +418,19 @@ contract ProofVerificationE2ETest is Test {
         vm.warp(block.timestamp + 10);
 
         bytes32 proofHash = keccak256("work done");
-        uint256 signedTokens = 500;
-        uint256 claimedTokens = 600; // Different from signed amount
+        uint256 tokensClaimed = 500;
 
-        // Sign for 500 tokens
-        bytes memory signature = _generateSignature(host1PrivateKey, proofHash, host1, signedTokens);
-
-        // Try to claim 600 tokens - should fail because signature was for 500
+        // First submission succeeds
         vm.prank(host1);
-        vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, claimedTokens, proofHash, signature, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmProofCID", "");
+
+        // Advance time for rate limiting
+        vm.warp(block.timestamp + 5);
+
+        // Replay with same proofHash should fail
+        vm.prank(host1);
+        vm.expectRevert("Proof already used");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmProofCID2", "");
     }
 
     /**
@@ -484,13 +462,12 @@ contract ProofVerificationE2ETest is Test {
 
         vm.warp(block.timestamp + 10);
 
-        // Submit signed proof
+        // Submit proof
         bytes32 proofHash = keccak256("USDC payment work");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(host1PrivateKey, proofHash, host1, tokensClaimed);
 
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmProofCID", "");
 
         // Verify proof is verified
         (,,, bool verified, ) = marketplace.getProofSubmission(sessionId, 0);

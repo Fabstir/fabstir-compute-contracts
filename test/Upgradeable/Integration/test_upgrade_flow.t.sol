@@ -177,9 +177,8 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Step 3: Submit a proof (use explicit large timestamp to avoid rate limit issues)
         vm.warp(100);
-        bytes memory sigA1 = _generateSignature(host1PrivateKey, bytes32(uint256(1)), host1, 500);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), sigA1, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof1", "");
 
         // Step 4: UPGRADE NodeRegistry
         NodeRegistryWithModelsUpgradeableV2 newNodeRegistryImpl = new NodeRegistryWithModelsUpgradeableV2();
@@ -202,9 +201,8 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Step 7: Session operations still work (advance time for rate limit)
         vm.warp(200);
-        bytes memory sigA2 = _generateSignature(host1PrivateKey, bytes32(uint256(2)), host1, 500);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(2)), sigA2, "QmProof2", "");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(2)), "QmProof2", "");
 
         // Step 8: Complete session after upgrade
         vm.prank(user1);
@@ -232,9 +230,8 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Step 3: Submit a proof (use explicit large timestamp)
         vm.warp(100);
-        bytes memory sigB1 = _generateSignature(host1PrivateKey, bytes32(uint256(1)), host1, 500);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), sigB1, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof1", "");
 
         // Capture state before upgrade
         uint256 nextJobIdBefore = jobMarketplace.nextJobId();
@@ -291,9 +288,8 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Step 8: Continue session after upgrade (advance time for rate limit)
         vm.warp(200);
-        bytes memory sigB2 = _generateSignature(host1PrivateKey, bytes32(uint256(2)), host1, 500);
         vm.prank(host1);
-        jobMarketplaceV2.submitProofOfWork(sessionId, 500, bytes32(uint256(2)), sigB2, "QmProof2", "");
+        jobMarketplaceV2.submitProofOfWork(sessionId, 500, bytes32(uint256(2)), "QmProof2", "");
 
         // Step 9: Complete session
         vm.prank(user1);
@@ -320,9 +316,8 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Submit first proof with explicit large timestamp
         vm.warp(100);
-        bytes memory sigC1 = _generateSignature(host1PrivateKey, bytes32(uint256(1)), host1, 300);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 300, bytes32(uint256(1)), sigC1, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(sessionId, 300, bytes32(uint256(1)), "QmProof1", "");
 
         // Upgrade NodeRegistry
         NodeRegistryWithModelsUpgradeableV2 newNodeRegistryImpl = new NodeRegistryWithModelsUpgradeableV2();
@@ -350,9 +345,8 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Continue session - submit more proofs (advance time for rate limit)
         vm.warp(200);
-        bytes memory sigC2 = _generateSignature(host1PrivateKey, bytes32(uint256(2)), host1, 300);
         vm.prank(host1);
-        jobMarketplaceV2.submitProofOfWork(sessionId, 300, bytes32(uint256(2)), sigC2, "QmProof2", "");
+        jobMarketplaceV2.submitProofOfWork(sessionId, 300, bytes32(uint256(2)), "QmProof2", "");
 
         // Complete session
         vm.prank(user1);
@@ -398,9 +392,8 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Complete the session
         vm.warp(block.timestamp + 1);
-        bytes memory sigD = _generateSignature(host1PrivateKey, bytes32(uint256(1)), host1, 500);
         vm.prank(host1);
-        jobMarketplaceV2.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), sigD, "QmProof", "");
+        jobMarketplaceV2.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof", "");
 
         vm.prank(user1);
         jobMarketplaceV2.completeSessionJob(sessionId, "QmConv");

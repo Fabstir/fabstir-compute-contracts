@@ -442,7 +442,6 @@ contract DoubleSpendPreventionTest is Test {
             sessionId,
             1000,
             proofHash,
-            _generateSignature(hostPrivateKey, proofHash, host, 1000),
             "QmProof",
             ""
         );

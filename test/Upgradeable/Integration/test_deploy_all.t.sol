@@ -226,9 +226,8 @@ contract DeployAllUpgradeableTest is Test {
 
         // Step 4: Submit proof
         vm.warp(100);
-        bytes memory sig = _generateSignature(hostPrivateKey, bytes32(uint256(1)), host, 500);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), sig, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof", "");
 
         // Step 5: Complete session
         vm.prank(user);

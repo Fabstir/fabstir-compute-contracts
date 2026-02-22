@@ -160,7 +160,7 @@ contract FullSessionLifecycleTest is Test {
             totalTokensClaimed += tokensClaimed;
 
             vm.prank(host);
-            marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed), DUMMY_CID, "");
+            marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, DUMMY_CID, "");
         }
 
         // Verify tokens were tracked (tokensUsed is 7th field, 18 total excluding array)
@@ -211,7 +211,7 @@ contract FullSessionLifecycleTest is Test {
 
         bytes32 proofHash = keccak256("timeout_proof");
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, 100, proofHash, _generateSignature(hostPrivateKey, proofHash, host, 100), DUMMY_CID, "");
+        marketplace.submitProofOfWork(jobId, 100, proofHash, DUMMY_CID, "");
 
         // Step 3: Host goes offline (time passes beyond 3x proofInterval)
         vm.warp(block.timestamp + 400); // 4x proofInterval
@@ -268,7 +268,7 @@ contract FullSessionLifecycleTest is Test {
             vm.warp(block.timestamp + 1); // Allow enough tokens
             bytes32 proofHash = keccak256(abi.encodePacked("multi_proof", i));
             vm.prank(host);
-            marketplace.submitProofOfWork(jobIds[i], tokens[i], proofHash, _generateSignature(hostPrivateKey, proofHash, host, tokens[i]), DUMMY_CID, "");
+            marketplace.submitProofOfWork(jobIds[i], tokens[i], proofHash, DUMMY_CID, "");
         }
 
         // Wait for dispute window
@@ -306,7 +306,7 @@ contract FullSessionLifecycleTest is Test {
         // Host submits some proofs (MIN_PROVEN_TOKENS = 100)
         bytes32 proofHash = keccak256("early_proof");
         vm.prank(host);
-        marketplace.submitProofOfWork(jobId, 100, proofHash, _generateSignature(hostPrivateKey, proofHash, host, 100), DUMMY_CID, "");
+        marketplace.submitProofOfWork(jobId, 100, proofHash, DUMMY_CID, "");
 
         // Depositor decides to end early - NO dispute window needed for depositor
         uint256 depositorBalanceBefore = depositor.balance;

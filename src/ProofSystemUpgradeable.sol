@@ -162,6 +162,29 @@ contract ProofSystemUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrad
     }
 
     /**
+     * @notice Mark a proof as used (prevents replay) - called by authorized contracts
+     * @dev F202614998+F202614976: Replaces verifyAndMarkComplete for signature-free proof recording.
+     *      Authentication is handled by msg.sender == session.host in JobMarketplace.
+     * @param proofHash The hash of the proof to mark as used
+     * @param prover Address of the host that submitted the proof
+     * @param claimedTokens Number of tokens claimed in this proof
+     * @param modelId The model ID for the session (reserved for future per-model tracking)
+     * @return True if proof was successfully marked, false if already used
+     */
+    function markProofUsed(bytes32 proofHash, address prover, uint256 claimedTokens, bytes32 modelId)
+        external
+        returns (bool)
+    {
+        require(authorizedCallers[msg.sender] || msg.sender == owner(), "Unauthorized");
+        if (verifiedProofs[proofHash]) {
+            return false;
+        }
+        verifiedProofs[proofHash] = true;
+        emit ProofVerified(proofHash, prover, claimedTokens);
+        return true;
+    }
+
+    /**
      * @notice Register a model circuit (owner only)
      */
     function registerModelCircuit(address model, bytes32 circuitHash) external onlyOwner {

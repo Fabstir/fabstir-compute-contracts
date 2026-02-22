@@ -15,9 +15,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 // Proof system interface
 interface IProofSystemUpgradeable {
-    function verifyHostSignature(bytes calldata proof, address prover, uint256 claimedTokens) external view returns (bool);
-
-    function verifyAndMarkComplete(bytes calldata proof, address prover, uint256 claimedTokens)
+    function markProofUsed(bytes32 proofHash, address prover, uint256 claimedTokens, bytes32 modelId)
         external
         returns (bool);
 }
@@ -591,7 +589,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 jobId,
         uint256 tokensClaimed,
         bytes32 proofHash,
-        bytes calldata signature,
         string calldata proofCID,
         string calldata deltaCID
     ) external nonReentrant whenNotPaused {
@@ -600,7 +597,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(session.status == SessionStatus.Active, "Session not active");
         require(msg.sender == session.host, "Only host can submit proof");
         require(tokensClaimed >= MIN_PROVEN_TOKENS, "Must claim minimum tokens");
-        require(signature.length == 65, "Invalid signature length");
 
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
         // Rate limit: 1000 tokens/sec base * 2x buffer = 2000 tokens/sec max
@@ -612,17 +608,13 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 maxTokens = (session.deposit * PRICE_PRECISION) / session.pricePerToken;
         require(newTotal <= maxTokens, "Exceeds deposit");
 
-        // Verify proof via ProofSystem
-        bool verified = false;
-        if (address(proofSystem) != address(0)) {
-            // Construct 97-byte proof: proofHash (32) + signature (65)
-            bytes memory proof = abi.encodePacked(proofHash, signature);
-            require(
-                proofSystem.verifyAndMarkComplete(proof, msg.sender, tokensClaimed),
-                "Invalid proof signature"
-            );
-            verified = true;
-        }
+        // Mark proof as used via ProofSystem (replay protection)
+        bytes32 modelId = sessionModel[jobId];
+        require(
+            proofSystem.markProofUsed(proofHash, msg.sender, tokensClaimed, modelId),
+            "Proof already used"
+        );
+        bool verified = true;
 
         // S5: Store proof hash and CID instead of full proof
         session.lastProofHash = proofHash;
@@ -659,7 +651,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      *      conversationCID (S5 reference to conversation record).
      *
      *      PROOF-THEN-SETTLE ARCHITECTURE:
-     *      - Proof of work happens in submitProofOfWork() which requires host signature
+     *      - Proof of work happens in submitProofOfWork() which requires msg.sender == host
      *      - This function ONLY settles based on already-proven work (tokensUsed)
      *      - If no proofs were submitted, tokensUsed=0 and host receives $0
      *      - User receives refund of (deposit - payment to host)

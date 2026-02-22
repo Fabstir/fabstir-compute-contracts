@@ -444,9 +444,8 @@ contract JobMarketplaceUpgradeTest is Test {
         // Submit proof for existing session
         vm.warp(block.timestamp + 1);
 
-        bytes memory sig = _generateSignature(host1PrivateKey, bytes32(uint256(123)), host1, 100);
         vm.prank(host1);
-        marketplaceV2.submitProofOfWork(1, 100, bytes32(uint256(123)), sig, "QmProofCID", "");
+        marketplaceV2.submitProofOfWork(1, 100, bytes32(uint256(123)), "QmProofCID", "");
 
         // Verify tokens used updated (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 18 return values (all except ProofSubmission[] array)

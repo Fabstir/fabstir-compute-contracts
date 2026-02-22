@@ -168,24 +168,22 @@ contract DeltaCIDTest is Test {
         // Advance time for rate limiting
         vm.warp(block.timestamp + 10);
 
-        // Generate proof and signature
+        // Generate proof
         bytes32 proofHash = keccak256("AI inference output batch 1");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
         // Expect event with deltaCID
         vm.expectEmit(true, true, false, true);
         emit ProofSubmitted(sessionId, host, tokensClaimed, proofHash, "QmProofCID", "QmDeltaCID123");
 
-        // Submit proof with deltaCID (6 parameters)
+        // Submit proof with deltaCID (5 parameters)
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             tokensClaimed,
             proofHash,
-            signature,
             "QmProofCID",
-            "QmDeltaCID123"  // NEW: deltaCID parameter
+            "QmDeltaCID123"  // deltaCID parameter
         );
     }
 
@@ -211,14 +209,12 @@ contract DeltaCIDTest is Test {
         // Generate and submit proof with deltaCID
         bytes32 proofHash = keccak256("AI inference output");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             tokensClaimed,
             proofHash,
-            signature,
             "QmProofCID",
             "QmDeltaCID_Stored"  // deltaCID to store
         );
@@ -263,14 +259,12 @@ contract DeltaCIDTest is Test {
         for (uint256 i = 0; i < 3; i++) {
             bytes32 proofHash = keccak256(abi.encodePacked("proof batch ", i));
             uint256 tokensClaimed = 100;
-            bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
             vm.prank(host);
             marketplace.submitProofOfWork(
                 sessionId,
                 tokensClaimed,
                 proofHash,
-                signature,
                 "QmProofCID",
                 deltaCIDs[i]  // Different deltaCID for each
             );
@@ -308,7 +302,6 @@ contract DeltaCIDTest is Test {
         // Generate proof
         bytes32 proofHash = keccak256("AI inference output");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
         // Submit with empty deltaCID - should not revert
         vm.prank(host);
@@ -316,7 +309,6 @@ contract DeltaCIDTest is Test {
             sessionId,
             tokensClaimed,
             proofHash,
-            signature,
             "QmProofCID",
             ""  // Empty deltaCID
         );
@@ -348,7 +340,6 @@ contract DeltaCIDTest is Test {
         // Submit proof with specific deltaCID
         bytes32 proofHash = keccak256("test proof");
         uint256 tokensClaimed = 500;
-        bytes memory signature = _generateSignature(hostPrivateKey, proofHash, host, tokensClaimed);
 
         string memory expectedDeltaCID = "QmDeltaCID_GetterTest_12345";
 
@@ -357,7 +348,6 @@ contract DeltaCIDTest is Test {
             sessionId,
             tokensClaimed,
             proofHash,
-            signature,
             "QmProofCID",
             expectedDeltaCID
         );

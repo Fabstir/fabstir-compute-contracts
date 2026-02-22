@@ -12,16 +12,12 @@ import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
  * @title ProofSystem Integration Tests
- * @dev Tests for Sub-phase 6.2: Integrate ProofSystem Verification Call
+ * @dev Tests for ProofSystem integration with JobMarketplace.
  *
- * Issue: ProofSystem.verifyAndMarkComplete() exists but is NEVER CALLED
- * by JobMarketplace.submitProofOfWork(). This phase integrates the verification.
- *
- * After this phase:
- * - Valid signatures from host pass verification
- * - Invalid signatures revert
- * - Replay attacks are prevented
- * - ProofSubmission.verified reflects actual verification status
+ * After signature removal (F202614998+F202614976):
+ * - Authentication is via msg.sender == session.host
+ * - ProofSystem.markProofUsed() provides replay protection
+ * - ProofSubmission.verified reflects proof recording status
  */
 contract ProofSystemIntegrationTest is Test {
     JobMarketplaceWithModelsUpgradeable public marketplace;
@@ -165,17 +161,14 @@ contract ProofSystemIntegrationTest is Test {
     // ============================================================
 
     /**
-     * @notice Test that valid signature from host passes verification
+     * @notice Test that valid proof from host passes verification
      */
-    function test_ValidSignaturePassesVerification() public {
+    function test_ValidProofPassesVerification() public {
         bytes32 proofHash = keccak256("test proof data");
         uint256 tokensClaimed = 500;
 
-        // Generate valid signature from host
-        bytes memory signature = _generateHostSignature(proofHash, host, tokensClaimed);
-
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
 
         // Verify tokens were credited (proof was accepted)
         (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
@@ -186,59 +179,23 @@ contract ProofSystemIntegrationTest is Test {
     }
 
     /**
-     * @notice Test that invalid signature reverts
-     */
-    function test_InvalidSignatureReverts() public {
-        bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        // Create invalid signature (random bytes)
-        bytes memory invalidSignature = new bytes(65);
-        invalidSignature[0] = 0x12;
-        invalidSignature[64] = 0x1b; // v = 27
-
-        vm.prank(host);
-        vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, invalidSignature, "QmTestCID", "");
-    }
-
-    /**
-     * @notice Test that signature from wrong signer (not host) reverts
-     */
-    function test_WrongSignerReverts() public {
-        bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        // Generate signature from attacker (not the session host)
-        bytes memory attackerSignature = _generateHostSignature(proofHash, attacker, tokensClaimed);
-
-        // Host submits proof but with attacker's signature
-        vm.prank(host);
-        vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, attackerSignature, "QmTestCID", "");
-    }
-
-    /**
      * @notice Test that replay attack (same proofHash twice) reverts
      */
     function test_ReplayAttackReverts() public {
         bytes32 proofHash = keccak256("test proof data");
         uint256 tokensClaimed = 500;
 
-        // Generate valid signature
-        bytes memory signature = _generateHostSignature(proofHash, host, tokensClaimed);
-
         // First submission should succeed
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
 
         // Advance time for rate limiting
         vm.warp(block.timestamp + 5);
 
         // Second submission with same proofHash should fail (replay attack)
         vm.prank(host);
-        vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID2", "");
+        vm.expectRevert("Proof already used");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID2", "");
     }
 
     /**
@@ -280,13 +237,10 @@ contract ProofSystemIntegrationTest is Test {
         bytes32 proofHash = keccak256("test proof");
         uint256 tokensClaimed = 500;
 
-        bytes memory dummySignature = new bytes(65);
-        dummySignature[64] = 0x1b; // v = 27
-
         // Should revert when ProofSystem not set (F202614909)
         vm.prank(host);
         vm.expectRevert("ProofSystem not set");
-        marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, dummySignature, "QmTestCID", "");
+        marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, "QmTestCID", "");
     }
 
     /**
@@ -296,10 +250,8 @@ contract ProofSystemIntegrationTest is Test {
         bytes32 proofHash = keccak256("test proof data");
         uint256 tokensClaimed = 500;
 
-        bytes memory signature = _generateHostSignature(proofHash, host, tokensClaimed);
-
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
 
         // Get the proof submission and check verified flag
         (
@@ -348,13 +300,11 @@ contract ProofSystemIntegrationTest is Test {
         vm.warp(block.timestamp + 10);
 
         bytes32 proofHash = keccak256("test proof");
-        bytes memory dummySignature = new bytes(65);
-        dummySignature[64] = 0x1b;
 
         // Should revert when ProofSystem not set (F202614909)
         vm.prank(host);
         vm.expectRevert("ProofSystem not set");
-        marketplaceNoProof.submitProofOfWork(newSessionId, 500, proofHash, dummySignature, "QmTestCID", "");
+        marketplaceNoProof.submitProofOfWork(newSessionId, 500, proofHash, "QmTestCID", "");
     }
 
     // ============================================================
