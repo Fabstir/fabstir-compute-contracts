@@ -185,7 +185,7 @@ contract LegacyRemovalTest is Test {
         bytes32 proofHash = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, proofHash, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 1000, proofHash, "QmProof", "");
 
         vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
@@ -267,11 +267,11 @@ contract LegacyRemovalTest is Test {
         vm.prank(user);
         uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
-        // Submit proof
+        // Submit proof (first proof >= proofInterval=1000)
         bytes32 ph = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, ph, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 1000, ph, "QmProof", "");
 
         // Verify locked balance decreased
         uint256 lockedAfterProof = marketplace.getLockedBalanceNative(user);

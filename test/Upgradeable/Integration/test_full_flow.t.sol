@@ -319,10 +319,10 @@ contract FullFlowIntegrationTest is Test {
         vm.warp(block.timestamp + 1);
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(session1, 500, bytes32(uint256(1)), "QmProof1", "");
+        jobMarketplace.submitProofOfWork(session1, 1000, bytes32(uint256(1)), "QmProof1", "");
 
         vm.prank(host2);
-        jobMarketplace.submitProofOfWork(session2, 500, bytes32(uint256(2)), "QmProof2", "");
+        jobMarketplace.submitProofOfWork(session2, 1000, bytes32(uint256(2)), "QmProof2", "");
 
         // Complete both sessions
         vm.prank(user1);
@@ -365,7 +365,7 @@ contract FullFlowIntegrationTest is Test {
         // Complete flow
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");

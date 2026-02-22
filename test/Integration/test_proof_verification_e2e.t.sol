@@ -181,9 +181,9 @@ contract ProofVerificationE2ETest is Test {
         // Step 2: Advance time for rate limiting
         vm.warp(block.timestamp + 10);
 
-        // Step 3: Host generates proof hash
+        // Step 3: Host generates proof hash (first proof >= proofInterval=1000)
         bytes32 proofHash = keccak256("AI inference output batch 1");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // Step 4: Host submits proof (no signature needed)
         vm.prank(host1);
@@ -225,10 +225,10 @@ contract ProofVerificationE2ETest is Test {
 
         vm.warp(block.timestamp + 5);
 
-        // Host computes hash of work done
-        bytes memory workData = abi.encodePacked("User prompt", "AI response with 500 tokens");
+        // Host computes hash of work done (first proof >= proofInterval=1000)
+        bytes memory workData = abi.encodePacked("User prompt", "AI response with 1000 tokens");
         bytes32 proofHash = keccak256(workData);
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // Host submits on-chain (msg.sender == session.host)
         vm.prank(host1);
@@ -259,14 +259,14 @@ contract ProofVerificationE2ETest is Test {
         vm.warp(baseTime);
 
         // Submit 5 proofs with different proof hashes
-        // Rate limiting: tokensClaimable = timeSinceLastProof * 1000, and allows up to 2x
-        // Using 100 tokens with 1 second gap is well within limits (100 <= 2000)
+        // First proof must be >= proofInterval (1000), subsequent can be 100
         uint256 tokensPerProof = 100;
         for (uint256 i = 0; i < 5; i++) {
+            uint256 tokensThisProof = (i == 0) ? uint256(1000) : tokensPerProof;
             bytes32 proofHash = keccak256(abi.encodePacked("proof batch ", i));
 
             vm.prank(host1);
-            marketplace.submitProofOfWork(sessionId, tokensPerProof, proofHash, "QmProofCID", "");
+            marketplace.submitProofOfWork(sessionId, tokensThisProof, proofHash, "QmProofCID", "");
 
             // Advance time between proofs using explicit value
             baseTime += 1;
@@ -279,9 +279,9 @@ contract ProofVerificationE2ETest is Test {
             assertTrue(verified, "All proofs should be verified");
         }
 
-        // Verify total tokens credited
+        // Verify total tokens credited (1000 + 4*100 = 1400)
         (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
-        assertEq(tokensUsed, tokensPerProof * 5, "All tokens should be credited");
+        assertEq(tokensUsed, 1000 + tokensPerProof * 4, "All tokens should be credited");
     }
 
     /**
@@ -312,9 +312,9 @@ contract ProofVerificationE2ETest is Test {
 
         vm.warp(block.timestamp + 10);
 
-        // Host1 submits proof for their session - should succeed
+        // Host1 submits proof for their session - should succeed (first proof >= proofInterval)
         bytes32 proofHash = keccak256("work done by host1");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host1);
         marketplace.submitProofOfWork(sessionId1, tokensClaimed, proofHash, "QmProofCID", "");
@@ -357,10 +357,10 @@ contract ProofVerificationE2ETest is Test {
 
         vm.warp(block.timestamp + 10);
 
-        // Each host submits their own unique proofHash
+        // Each host submits their own unique proofHash (first proof >= proofInterval=1000)
         bytes32 proofHash1 = keccak256("host1 work output");
         bytes32 proofHash2 = keccak256("host2 work output");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // Host1 submits proof on their session
         vm.prank(host1);
@@ -418,7 +418,7 @@ contract ProofVerificationE2ETest is Test {
         vm.warp(block.timestamp + 10);
 
         bytes32 proofHash = keccak256("work done");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // First submission succeeds
         vm.prank(host1);
@@ -462,9 +462,9 @@ contract ProofVerificationE2ETest is Test {
 
         vm.warp(block.timestamp + 10);
 
-        // Submit proof
+        // Submit proof (first proof >= proofInterval=1000)
         bytes32 proofHash = keccak256("USDC payment work");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host1);
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmProofCID", "");

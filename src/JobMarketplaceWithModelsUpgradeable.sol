@@ -147,8 +147,11 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Chain configuration storage
     ChainConfig public chainConfig;
 
+    /// @notice Min tokens charged on early cancel (before first proof)
+    uint256 public minTokensFee;
+
     // Storage gap for future upgrades
-    uint256[35] private __gap;
+    uint256[34] private __gap;
 
     // Events
     event SessionJobCreated(uint256 indexed jobId, address indexed depositor, address indexed host, uint256 deposit);
@@ -294,6 +297,11 @@ contract JobMarketplaceWithModelsUpgradeable is
         acceptedTokens[_usdc] = true;
         tokenMinDeposits[_usdc] = USDC_MIN_DEPOSIT;
         tokenMaxDeposits[_usdc] = USDC_MAX_DEPOSIT;
+    }
+
+    /// @notice Set min token fee for early cancellation
+    function setMinTokensFee(uint256 _fee) external onlyOwner {
+        minTokensFee = _fee;
     }
 
     // Initialize chain configuration
@@ -598,6 +606,11 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(msg.sender == session.host, "Only host can submit proof");
         require(tokensClaimed >= MIN_PROVEN_TOKENS, "Must claim minimum tokens");
 
+        // First proof must meet proofInterval for minimum billing
+        if (session.tokensUsed == 0) {
+            require(tokensClaimed >= session.proofInterval, "First proof below proofInterval");
+        }
+
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
         // Per-model rate limit (default 2000 tokens/sec for non-model sessions)
         bytes32 modelId = sessionModel[jobId];
@@ -687,31 +700,43 @@ contract JobMarketplaceWithModelsUpgradeable is
     function _settleSessionPayments(uint256 jobId, address completedBy) internal {
         SessionJob storage session = sessionJobs[jobId];
 
-        // With PRICE_PRECISION: hostPayment = (tokensUsed * pricePerToken) / PRICE_PRECISION
-        uint256 hostPayment = (session.tokensUsed * session.pricePerToken) / PRICE_PRECISION;
-        uint256 userRefund = session.deposit > hostPayment ? session.deposit - hostPayment : 0;
+        // Enforce minimum billing at completion (fallback for edge cases)
+        uint256 billableTokens = session.tokensUsed;
+        if (billableTokens < session.proofInterval && session.proofs.length > 0) {
+            billableTokens = session.proofInterval;
+        }
 
-        if (hostPayment > 0) {
-            // Calculate fees based on feeBasisPoints
+        uint256 hostPayment = (billableTokens * session.pricePerToken) / PRICE_PRECISION;
+        uint256 earlyFee;
+        // Early cancel fee: depositor cancels before any proofs
+        if (completedBy == session.depositor && session.proofs.length == 0 && minTokensFee > 0) {
+            earlyFee = (minTokensFee * session.pricePerToken) / PRICE_PRECISION;
+            if (hostPayment >= session.deposit) {
+                earlyFee = 0;
+            } else if (earlyFee > session.deposit - hostPayment) {
+                earlyFee = session.deposit - hostPayment;
+            }
+        }
+        uint256 totalHostAmount = hostPayment + earlyFee;
+        uint256 userRefund = session.deposit > totalHostAmount ? session.deposit - totalHostAmount : 0;
+
+        if (totalHostAmount > 0) {
+            // Treasury fee only on proven work, not on early cancel fee
             uint256 treasuryFee = (hostPayment * feeBasisPoints) / 10000;
-            uint256 netHostPayment = hostPayment - treasuryFee;
+            uint256 netToHost = totalHostAmount - treasuryFee;
 
             if (session.paymentToken == address(0)) {
                 accumulatedTreasuryNative += treasuryFee;
-                // Send ETH to HostEarnings contract
-                (bool sent,) = payable(address(hostEarnings)).call{value: netHostPayment}("");
+                (bool sent,) = payable(address(hostEarnings)).call{value: netToHost}("");
                 require(sent, "ETH transfer to HostEarnings failed");
-                // Credit the host's earnings
-                hostEarnings.creditEarnings(session.host, netHostPayment, address(0));
+                hostEarnings.creditEarnings(session.host, netToHost, address(0));
             } else {
                 accumulatedTreasuryTokens[session.paymentToken] += treasuryFee;
-                // Transfer tokens to HostEarnings
-                IERC20(session.paymentToken).safeTransfer(address(hostEarnings), netHostPayment);
-                // Credit the host's earnings
-                hostEarnings.creditEarnings(session.host, netHostPayment, session.paymentToken);
+                IERC20(session.paymentToken).safeTransfer(address(hostEarnings), netToHost);
+                hostEarnings.creditEarnings(session.host, netToHost, session.paymentToken);
             }
 
-            session.withdrawnByHost = netHostPayment;
+            session.withdrawnByHost = netToHost;
         }
 
         if (userRefund > 0) {

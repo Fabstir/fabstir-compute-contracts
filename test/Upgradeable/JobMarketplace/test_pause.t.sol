@@ -317,14 +317,14 @@ contract JobMarketplacePauseTest is Test {
         // Advance time
         vm.warp(block.timestamp + 1);
 
-        // Submit proof should work
+        // Submit proof should work (first proof >= proofInterval=1000)
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), "QmProofCID", "");
 
         // Verify tokens used (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
         // Total 18 return values (all except ProofSubmission[] array)
         (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
-        assertEq(tokensUsed, 100);
+        assertEq(tokensUsed, 1000);
     }
 
     // ============================================================

@@ -165,7 +165,7 @@ contract ProofSystemIntegrationTest is Test {
      */
     function test_ValidProofPassesVerification() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host);
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
@@ -183,7 +183,7 @@ contract ProofSystemIntegrationTest is Test {
      */
     function test_ReplayAttackReverts() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // First submission should succeed
         vm.prank(host);
@@ -248,7 +248,7 @@ contract ProofSystemIntegrationTest is Test {
      */
     function test_ProofSubmissionMarkedAsVerified() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host);
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");

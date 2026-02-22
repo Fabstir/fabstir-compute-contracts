@@ -168,9 +168,9 @@ contract DeltaCIDTest is Test {
         // Advance time for rate limiting
         vm.warp(block.timestamp + 10);
 
-        // Generate proof
+        // Generate proof (first proof must be >= proofInterval=1000)
         bytes32 proofHash = keccak256("AI inference output batch 1");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // Expect event with deltaCID
         vm.expectEmit(true, true, false, true);
@@ -206,9 +206,9 @@ contract DeltaCIDTest is Test {
         // Advance time
         vm.warp(block.timestamp + 10);
 
-        // Generate and submit proof with deltaCID
+        // Generate and submit proof with deltaCID (first proof >= proofInterval=1000)
         bytes32 proofHash = keccak256("AI inference output");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host);
         marketplace.submitProofOfWork(
@@ -258,7 +258,7 @@ contract DeltaCIDTest is Test {
 
         for (uint256 i = 0; i < 3; i++) {
             bytes32 proofHash = keccak256(abi.encodePacked("proof batch ", i));
-            uint256 tokensClaimed = 100;
+            uint256 tokensClaimed = (i == 0) ? uint256(1000) : uint256(100);
 
             vm.prank(host);
             marketplace.submitProofOfWork(
@@ -299,9 +299,9 @@ contract DeltaCIDTest is Test {
         // Advance time
         vm.warp(block.timestamp + 10);
 
-        // Generate proof
+        // Generate proof (first proof must be >= proofInterval=1000)
         bytes32 proofHash = keccak256("AI inference output");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // Submit with empty deltaCID - should not revert
         vm.prank(host);
@@ -337,9 +337,9 @@ contract DeltaCIDTest is Test {
         // Advance time
         vm.warp(block.timestamp + 10);
 
-        // Submit proof with specific deltaCID
+        // Submit proof with specific deltaCID (first proof >= proofInterval=1000)
         bytes32 proofHash = keccak256("test proof");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         string memory expectedDeltaCID = "QmDeltaCID_GetterTest_12345";
 

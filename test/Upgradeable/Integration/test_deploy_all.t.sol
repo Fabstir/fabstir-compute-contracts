@@ -224,10 +224,10 @@ contract DeployAllUpgradeableTest is Test {
         uint256 sessionId = marketplace.createSessionJob{value: 0.1 ether}(host, 227_273, 1 days, 1000, 300);
         assertEq(sessionId, 1, "Session created");
 
-        // Step 4: Submit proof
+        // Step 4: Submit proof (first proof >= proofInterval=1000)
         vm.warp(100);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), "QmProof", "");
 
         // Step 5: Complete session
         vm.prank(user);

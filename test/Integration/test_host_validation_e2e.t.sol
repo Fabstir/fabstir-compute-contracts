@@ -338,13 +338,13 @@ contract HostValidationE2ETest is Test {
             300
         );
 
-        // Host submits some proof (wait 1 second, can claim up to 2000 tokens)
+        // Host submits some proof (first proof >= proofInterval=1000)
         vm.warp(startTime + 1);
         bytes32 phABCD = bytes32(uint256(0xABCD));
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
-            500,
+            1000,
             phABCD,
             "QmProof1",
             ""

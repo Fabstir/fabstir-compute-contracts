@@ -154,7 +154,7 @@ contract ProofNoSignatureTest is Test {
      */
     function test_SubmitProofWithoutSignature_AcceptsNewFormat() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host);
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
@@ -180,9 +180,9 @@ contract ProofNoSignatureTest is Test {
      * @notice Test that multiple proofs can be submitted without signatures
      */
     function test_SubmitMultipleProofs_WithoutSignatures() public {
-        // Submit first proof
+        // Submit first proof (>= proofInterval=1000)
         bytes32 proofHash1 = keccak256("proof 1");
-        uint256 tokens1 = 200;
+        uint256 tokens1 = 1000;
 
         vm.prank(host);
         marketplace.submitProofOfWork(sessionId, tokens1, proofHash1, "QmCID1", "");
@@ -207,7 +207,7 @@ contract ProofNoSignatureTest is Test {
      */
     function test_ReplayAttackStillPrevented() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         // First submission succeeds
         vm.prank(host);
@@ -227,7 +227,7 @@ contract ProofNoSignatureTest is Test {
      */
     function test_ProofMarkedAsVerified() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host);
         marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
