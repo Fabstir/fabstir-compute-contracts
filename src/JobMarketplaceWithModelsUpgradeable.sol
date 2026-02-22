@@ -703,7 +703,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         // Dispute window only waived for the original depositor
         if (msg.sender != session.depositor) {
-            require(block.timestamp >= session.startTime + disputeWindow, "Must wait dispute window");
+            require(block.timestamp >= session.lastProofTime + disputeWindow, "Must wait dispute window");
         }
 
         session.status = SessionStatus.Completed;
