@@ -599,9 +599,11 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(tokensClaimed >= MIN_PROVEN_TOKENS, "Must claim minimum tokens");
 
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
-        // Rate limit: 1000 tokens/sec base * 2x buffer = 2000 tokens/sec max
-        uint256 expectedTokens = timeSinceLastProof * 1000;
-        require(tokensClaimed <= expectedTokens * 2, "Excessive tokens claimed");
+        // Per-model rate limit (default 2000 tokens/sec for non-model sessions)
+        bytes32 modelId = sessionModel[jobId];
+        uint256 maxRate = nodeRegistry.modelRegistry().getModelRateLimit(modelId);
+        uint256 expectedTokens = timeSinceLastProof * maxRate;
+        require(tokensClaimed <= expectedTokens, "Excessive tokens claimed");
 
         uint256 newTotal = session.tokensUsed + tokensClaimed;
         // With PRICE_PRECISION: maxTokens = deposit * PRICE_PRECISION / pricePerToken
@@ -609,7 +611,6 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(newTotal <= maxTokens, "Exceeds deposit");
 
         // Mark proof as used via ProofSystem (replay protection)
-        bytes32 modelId = sessionModel[jobId];
         require(
             proofSystem.markProofUsed(proofHash, msg.sender, tokensClaimed, modelId),
             "Proof already used"
