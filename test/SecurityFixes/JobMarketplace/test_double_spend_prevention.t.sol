@@ -158,6 +158,8 @@ contract DoubleSpendPreventionTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        vm.prank(hostAddr);
+        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
     }
 
     // ============================================================

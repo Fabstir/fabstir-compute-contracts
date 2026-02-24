@@ -104,6 +104,7 @@ contract SessionCreationRefactorTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("Test Host", "http://test.local", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
+        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         // Fund user

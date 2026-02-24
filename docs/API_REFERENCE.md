@@ -1,8 +1,7 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** January 16, 2026
+**Last Updated:** February 24, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
-**PRICE_PRECISION:** 1000 (all prices multiplied by 1000 for sub-$1/million support)
 
 ---
 
@@ -10,16 +9,16 @@
 
 ### Contract Addresses (Upgradeable - UUPS Proxy Pattern)
 
-> **NEW (December 14, 2025):** All contracts have been upgraded to UUPS proxy pattern for future upgradeability. Use the **proxy addresses** for all interactions.
+> **POST-AUDIT REMEDIATION (February 22-24, 2026):** All contracts upgraded with 20 security audit findings addressed, per-token pricing fix, delegated sessions, early cancellation fees, pull-pattern refunds, and per-model rate limits.
 
 ```javascript
-// UPGRADEABLE CONTRACTS (UUPS Proxies) - Use these addresses
+// POST-AUDIT REMEDIATION CONTRACTS (Feb 22-24, 2026) - Use these addresses
 const contracts = {
   // Proxy addresses (interact with these)
-  jobMarketplace: "0x3CaCbf3f448B420918A93a88706B26Ab27a3523E", // ⚠️ NEW - Jan 9, 2026
-  nodeRegistry: "0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22",
-  modelRegistry: "0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2",
-  proofSystem: "0x5afB91977e69Cc5003288849059bc62d47E7deeb",
+  jobMarketplace: "0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4", // FRESH PROXY — All 20 audit findings (Feb 22, 2026)
+  nodeRegistry: "0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22",   // Per-token pricing fix (Feb 24, 2026)
+  modelRegistry: "0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2",   // Per-model rate limits (Feb 22, 2026)
+  proofSystem: "0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31",     // markProofUsed (Feb 22, 2026)
   hostEarnings: "0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0",
 
   // Tokens (unchanged)
@@ -27,23 +26,23 @@ const contracts = {
   usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
 };
 
-// Implementation addresses (for verification only) - Updated Jan 16, 2026
+// Implementation addresses (for verification only) - Updated Feb 24, 2026
 const implementations = {
-  jobMarketplace: "0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c", // deltaCID support (Jan 14)
-  nodeRegistry: "0xF2D98D38B2dF95f4e8e4A49750823C415E795377", // Stake slashing (Jan 16)
-  modelRegistry: "0x8491af1f0D47f6367b56691dCA0F4996431fB0A5", // Voting improvements (Jan 11)
-  proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9", // Phase 12 (Jan 9)
-  hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a", // Phase 12 (Jan 9)
+  jobMarketplace: "0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba", // Full audit remediation (Feb 22)
+  nodeRegistry: "0xeeB3ABad9d27Bb3a5D7ACA3c282CDD8C80aAD24b",   // Per-token pricing revert (Feb 24)
+  modelRegistry: "0xF12a0A07d4230E0b045dB22057433a9826d21652",   // Rate limits + rejected fee (Feb 22)
+  proofSystem: "0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963",    // markProofUsed + dead code removal (Feb 22)
+  hostEarnings: "0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0",    // Unchanged
 };
 ```
 
 ### Approved Models
 
-| Model              | Repo                                   | File                          | Model ID (bytes32)                                                   |
-| ------------------ | -------------------------------------- | ----------------------------- | -------------------------------------------------------------------- |
+| Model              | Repo                                    | File                           | Model ID (bytes32)                                                   |
+| ------------------ | --------------------------------------- | ------------------------------ | -------------------------------------------------------------------- |
 | TinyVicuna-1B      | CohereForAI/TinyVicuna-1B-32k-GGUF     | tiny-vicuna-1b.q4_k_m.gguf    | `0x0b75a2061e70e736924a30c0a327db7ab719402129f76f631adbd7b7a5a5bced` |
 | TinyLlama-1.1B     | TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF | tinyllama-1b.Q4_K_M.gguf      | `0x14843424179fbcb9aeb7fd446fa97143300609757bd49ffb3ec7fb2f75aed1ca` |
-| OpenAI GPT-OSS-20B | bartowski/openai_gpt-oss-20b-GGUF      | openai_gpt-oss-20b-MXFP4.gguf | `0x7583557c14f71d2bf21d48ffb7cde9329f9494090869d2d311ea481b26e7e06c` |
+| OpenAI GPT-OSS-20B | bartowski/openai_gpt-oss-20b-GGUF       | openai_gpt-oss-20b-MXFP4.gguf | `0x7583557c14f71d2bf21d48ffb7cde9329f9494090869d2d311ea481b26e7e06c` |
 
 ```javascript
 // Model IDs (use these exact values)
@@ -55,7 +54,7 @@ const GPT_OSS_20B =
   "0x7583557c14f71d2bf21d48ffb7cde9329f9494090869d2d311ea481b26e7e06c";
 ```
 
-> **Note:** Model IDs are derived from the model's on-chain registration, not simple keccak256 hashes of names. Always use the exact bytes32 values above.
+> **Note:** 5 models are currently approved. The 3 IDs listed above are commonly used. For the full set (including GPT-OSS-120B and GLM-4.7-Flash), query the ModelRegistry on-chain via `isModelApproved(bytes32)`.
 
 ---
 
@@ -64,21 +63,21 @@ const GPT_OSS_20B =
 Host registration and pricing management.
 
 **Proxy Address:** `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22`
-**Implementation:** `0xF2D98D38B2dF95f4e8e4A49750823C415E795377` (Stake slashing - Jan 16, 2026)
+**Implementation:** `0xeeB3ABad9d27Bb3a5D7ACA3c282CDD8C80aAD24b` (Per-token pricing revert - Feb 24, 2026)
 
 ### Constants
 
-| Constant                     | Value                  | Description                           |
-| ---------------------------- | ---------------------- | ------------------------------------- |
-| `MIN_STAKE`                  | 1000 FAB               | Minimum stake to register             |
-| `PRICE_PRECISION`            | 1000                   | Prices stored with 1000x multiplier   |
-| `MIN_PRICE_PER_TOKEN_NATIVE` | 227,273                | ~$0.001/million @ $4400 ETH           |
-| `MAX_PRICE_PER_TOKEN_NATIVE` | 22,727,272,727,273,000 | ~$100,000/million @ $4400 ETH         |
-| `MIN_PRICE_PER_TOKEN_STABLE` | 1                      | $0.001 per million tokens             |
-| `MAX_PRICE_PER_TOKEN_STABLE` | 100,000,000            | $100,000 per million tokens           |
-| `MAX_SLASH_PERCENTAGE`       | 50                     | Max 50% stake slashed per action      |
-| `MIN_STAKE_AFTER_SLASH`      | 100 FAB                | Auto-unregister threshold             |
-| `SLASH_COOLDOWN`             | 24 hours               | Cooldown between slashes on same host |
+| Constant                     | Value                 | Description                           |
+| ---------------------------- | --------------------- | ------------------------------------- |
+| `MIN_STAKE`                  | 1000 FAB              | Minimum stake to register             |
+| `PRICE_PRECISION`            | 1000                  | Prices stored with 1000x multiplier   |
+| `MIN_PRICE_PER_TOKEN_NATIVE` | 2,272,727,273         | ~$0.00001 @ $4400 ETH                |
+| `MAX_PRICE_PER_TOKEN_NATIVE` | 22,727,272,727,273    | ~$0.1 @ $4400 ETH                    |
+| `MIN_PRICE_PER_TOKEN_STABLE` | 10                    | $0.00001 per token                    |
+| `MAX_PRICE_PER_TOKEN_STABLE` | 100,000               | $0.1 per token                        |
+| `MAX_SLASH_PERCENTAGE`       | 50                    | Max 50% stake slashed per action      |
+| `MIN_STAKE_AFTER_SLASH`      | 100 FAB               | Auto-unregister threshold             |
+| `SLASH_COOLDOWN`             | 24 hours              | Cooldown between slashes on same host |
 
 > **IMPORTANT: PRICE_PRECISION**
 >
@@ -88,9 +87,9 @@ Host registration and pricing management.
 >
 > Examples:
 >
-> - $0.06/million (Llama 3.2 3B) → `pricePerToken = 60`
-> - $5/million → `pricePerToken = 5000`
-> - $10/million → `pricePerToken = 10000`
+> - $0.06/million (Llama 3.2 3B) -> `pricePerToken = 60`
+> - $5/million -> `pricePerToken = 5000`
+> - $10/million -> `pricePerToken = 10000`
 >
 > See [BREAKING_CHANGES.md](./BREAKING_CHANGES.md) for migration details.
 
@@ -126,11 +125,11 @@ const nodeRegistry = new ethers.Contract(
 );
 const fabToken = new ethers.Contract(contracts.fabToken, ERC20ABI, signer);
 
-// Approve FAB tokens for staking
+// 1. Approve FAB tokens for staking
 const stakeAmount = ethers.parseEther("1000");
 await fabToken.approve(contracts.nodeRegistry, stakeAmount);
 
-// Register node
+// 2. Register node
 const metadata = JSON.stringify({
   name: "My GPU Node",
   description: "RTX 4090 inference server",
@@ -151,6 +150,12 @@ await nodeRegistry.registerNode(
   modelIds,
   nativePrice,
   stablePrice
+);
+
+// 3. Set per-token pricing for USDC (REQUIRED since Feb 24, 2026)
+await nodeRegistry.setTokenPricing(
+  contracts.usdcToken,
+  5000  // $5/million tokens (with PRICE_PRECISION=1000)
 );
 ```
 
@@ -245,7 +250,7 @@ function clearModelPricing(bytes32 modelId) external
 
 #### `setTokenPricing`
 
-Set custom pricing for a specific stablecoin token.
+Set custom pricing for a specific ERC20 token.
 
 ```solidity
 function setTokenPricing(
@@ -253,6 +258,8 @@ function setTokenPricing(
     uint256 price     // Price per token for this stablecoin
 ) external
 ```
+
+> **REQUIRED (Feb 24, 2026):** Hosts MUST call this for each ERC20 token they accept (e.g., USDC). Without it, `getNodePricing()` and `getModelPricing()` will revert and session creation will fail.
 
 **Events:**
 
@@ -268,7 +275,7 @@ event TokenPricingUpdated(
 
 #### `getNodePricing`
 
-Get host's minimum price for a token (with fallbacks).
+Get host's minimum price for a token.
 
 ```solidity
 function getNodePricing(
@@ -277,11 +284,13 @@ function getNodePricing(
 ) external view returns (uint256)
 ```
 
-**Fallback Logic:**
+**Pricing Resolution (F202614977 - Feb 24, 2026):**
 
-1. If token-specific price is set → return it
-2. Else if token is native → return `minPricePerTokenNative`
-3. Else → return `minPricePerTokenStable`
+1. If `token == address(0)` (native) -> return `minPricePerTokenNative`
+2. If `customTokenPricing[operator][token] > 0` -> return it
+3. Otherwise -> **reverts with `"No token pricing"`**
+
+> **BREAKING CHANGE (Feb 24, 2026):** Hosts MUST call `setTokenPricing(token, price)` for each ERC20 token they accept. The previous silent fallback to `minPricePerTokenStable` has been removed. Queries for unconfigured tokens now revert.
 
 #### `getModelPricing`
 
@@ -295,10 +304,17 @@ function getModelPricing(
 ) external view returns (uint256)
 ```
 
-**Fallback Logic:**
+**Pricing Resolution (F202614977 - Feb 24, 2026):**
 
-1. If model-specific price is set → return it
-2. Else → return default price for that token type
+1. If `token == address(0)` (native):
+   - If model-specific native price set -> return it
+   - Else -> return `minPricePerTokenNative`
+2. If ERC20 token:
+   - If model-specific stable price set -> return it
+   - If `customTokenPricing[operator][token] > 0` -> return it
+   - Otherwise -> **reverts with `"No token pricing"`**
+
+> **BREAKING CHANGE (Feb 24, 2026):** Same as `getNodePricing` -- ERC20 token pricing must be explicitly set via `setTokenPricing()`.
 
 **Example:**
 
@@ -389,7 +405,7 @@ Check if a node is currently active.
 function isActiveNode(address operator) external view returns (bool)
 ```
 
-### Stake Slashing (NEW - January 16, 2026)
+### Stake Slashing
 
 Slashing allows penalizing hosts for proven misbehavior. Owner-controlled at MVP with future DAO upgrade path.
 
@@ -517,8 +533,8 @@ function lastSlashTime(address host) external view returns (uint256)
 
 Session management and payments.
 
-**Proxy Address:** `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E`
-**Implementation:** `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` (deltaCID support - Jan 14, 2026)
+**Proxy Address:** `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4`
+**Implementation:** `0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba` (Full audit remediation - Feb 22, 2026)
 
 ### Constants
 
@@ -546,10 +562,11 @@ Create a session with native ETH payment (uses default pricing).
 
 ```solidity
 function createSessionJob(
-    address host,           // Host address
-    uint256 pricePerToken,  // Agreed price per token
-    uint256 maxDuration,    // Max session duration in seconds
-    uint256 proofInterval   // Tokens between proofs (min 100)
+    address host,              // Host address
+    uint256 pricePerToken,     // Agreed price per token
+    uint256 maxDuration,       // Max session duration in seconds
+    uint256 proofInterval,     // Tokens between proofs (min 100)
+    uint256 proofTimeoutWindow // Seconds before proof times out
 ) external payable returns (uint256 jobId)
 ```
 
@@ -580,6 +597,7 @@ const tx = await marketplace.createSessionJob(
   hostPrice, // Must meet host's minimum
   3600, // 1 hour max duration
   1000, // Proof every 1000 tokens
+  300,  // 5 minute proof timeout window
   { value: ethers.parseEther("0.01") }
 );
 
@@ -604,11 +622,12 @@ Create a session for a specific model with model-specific pricing validation.
 
 ```solidity
 function createSessionJobForModel(
-    address host,           // Host address
-    bytes32 modelId,        // Model to use
-    uint256 pricePerToken,  // Agreed price per token
-    uint256 maxDuration,    // Max session duration
-    uint256 proofInterval   // Tokens between proofs
+    address host,              // Host address
+    bytes32 modelId,           // Model to use
+    uint256 pricePerToken,     // Agreed price per token
+    uint256 maxDuration,       // Max session duration
+    uint256 proofInterval,     // Tokens between proofs
+    uint256 proofTimeoutWindow // Seconds before proof times out
 ) external payable returns (uint256 jobId)
 ```
 
@@ -634,6 +653,7 @@ const tx = await marketplace.createSessionJobForModel(
   modelPrice, // Model-specific minimum
   3600,
   1000,
+  300,  // 5 minute proof timeout window
   { value: ethers.parseEther("0.01") }
 );
 ```
@@ -657,11 +677,12 @@ Create a session with ERC20 token payment (USDC).
 ```solidity
 function createSessionJobWithToken(
     address host,
-    address token,          // Payment token (e.g., USDC)
-    uint256 deposit,        // Amount to deposit
+    address token,             // Payment token (e.g., USDC)
+    uint256 deposit,           // Amount to deposit
     uint256 pricePerToken,
     uint256 maxDuration,
-    uint256 proofInterval
+    uint256 proofInterval,
+    uint256 proofTimeoutWindow // Seconds before proof times out
 ) external returns (uint256 jobId)
 ```
 
@@ -670,7 +691,7 @@ function createSessionJobWithToken(
 - Token must be accepted (`acceptedTokens[token] == true`)
 - Caller must have approved tokens for transfer
 - `deposit >= tokenMinDeposits[token]`
-- `pricePerToken >= host's minPricePerTokenStable`
+- `pricePerToken >= host's token-specific pricing (set via setTokenPricing)`
 
 **Example:**
 
@@ -694,7 +715,8 @@ const tx = await marketplace.createSessionJobWithToken(
   depositAmount,
   hostPrice,
   3600,
-  1000
+  1000,
+  300  // 5 minute proof timeout window
 );
 ```
 
@@ -710,7 +732,8 @@ function createSessionJobForModelWithToken(
     uint256 deposit,
     uint256 pricePerToken,
     uint256 maxDuration,
-    uint256 proofInterval
+    uint256 proofInterval,
+    uint256 proofTimeoutWindow // Seconds before proof times out
 ) external returns (uint256 jobId)
 ```
 
@@ -718,55 +741,39 @@ function createSessionJobForModelWithToken(
 
 #### `submitProofOfWork`
 
-Submit signed proof of work for tokens generated.
+Submit proof of work for tokens generated. Authentication is via `msg.sender == session.host` (no signature required).
 
 ```solidity
 function submitProofOfWork(
     uint256 jobId,          // Session ID
     uint256 tokensClaimed,  // Number of tokens in this proof
     bytes32 proofHash,      // SHA256 hash of STARK proof
-    bytes calldata signature,  // Host's ECDSA signature (65 bytes)
     string calldata proofCID,  // S5 CID where full proof is stored
-    string calldata deltaCID   // S5 CID for delta since last proof (NEW - Jan 14, 2026)
+    string calldata deltaCID   // S5 CID for delta since last proof
 ) external
 ```
 
 **Requirements:**
 
-- Only the session host can submit proofs
+- Only the session host can submit proofs (`msg.sender == session.host`)
 - `tokensClaimed >= MIN_PROVEN_TOKENS` (100)
-- `signature.length == 65` bytes (r, s, v format)
-- Signature must be from the session host
 - Session must be Active
 
 **Example:**
 
 ```javascript
-import { keccak256, solidityPacked, getBytes } from "ethers";
-
-// Host submits signed proof after generating tokens
+// Host submits proof (no signature needed -- msg.sender authentication)
 const proofHash = keccak256(proofBytes);
-const proofCID = "bafyreib..."; // S5 storage CID for full proof
-const deltaCID = "bafyreic..."; // S5 storage CID for delta changes
+const proofCID = "bafyreib...";
+const deltaCID = "bafyreic...";
 const tokensClaimed = 1000;
 
-// 1. Generate signature
-const dataHash = keccak256(
-  solidityPacked(
-    ["bytes32", "address", "uint256"],
-    [proofHash, hostAddress, tokensClaimed]
-  )
-);
-const signature = await hostWallet.signMessage(getBytes(dataHash));
-
-// 2. Submit with signature and CIDs
 await marketplace.submitProofOfWork(
   sessionId,
   tokensClaimed,
   proofHash,
-  signature,
   proofCID,
-  deltaCID // Can be "" if not tracking incremental changes
+  deltaCID
 );
 ```
 
@@ -783,7 +790,7 @@ function getProofSubmission(
     uint256 tokensClaimed,
     uint256 timestamp,
     bool verified,
-    string memory deltaCID    // NEW - Jan 14, 2026
+    string memory deltaCID
 )
 ```
 
@@ -804,7 +811,7 @@ event ProofSubmitted(
     uint256 tokensClaimed,
     bytes32 proofHash,
     string proofCID,
-    string deltaCID    // NEW - Jan 14, 2026
+    string deltaCID
 );
 ```
 
@@ -829,9 +836,9 @@ function completeSessionJob(
 
 **Payment Distribution:**
 
-- 90% of earned amount → Host (via HostEarnings)
-- 10% of earned amount → Treasury
-- Remaining deposit → Refunded to user
+- 90% of earned amount -> Host (via HostEarnings)
+- 10% of earned amount -> Treasury
+- Remaining deposit -> Refunded to user
 
 **Example:**
 
@@ -851,6 +858,10 @@ event SessionCompleted(
     uint256 refundAmount
 );
 ```
+
+### Early Cancellation
+
+Sessions that are completed by the depositor before the dispute window elapses may incur an early cancellation fee. This is computed as the minimum billing amount (1 proof interval worth of tokens) to prevent abuse of free session creation.
 
 ### Query Functions
 
@@ -967,13 +978,60 @@ Create session from pre-deposited funds.
 ```solidity
 function createSessionFromDeposit(
     address host,
-    address paymentToken,   // address(0) for native
+    address paymentToken,      // address(0) for native
     uint256 deposit,
     uint256 pricePerToken,
     uint256 maxDuration,
-    uint256 proofInterval
+    uint256 proofInterval,
+    uint256 proofTimeoutWindow // Seconds before proof times out
 ) external returns (uint256 jobId)
 ```
+
+### Delegated Sessions (Smart Wallet Sub-Account Support)
+
+Enables Coinbase Smart Wallet sub-accounts to create sessions using the primary account's pre-deposited funds without popups.
+
+#### `authorizeDelegate`
+
+Authorize or revoke a delegate sub-account.
+
+```solidity
+function authorizeDelegate(address delegate, bool authorized) external
+```
+
+#### `isDelegateAuthorized`
+
+Check if a delegate is authorized.
+
+```solidity
+function isDelegateAuthorized(address depositor, address delegate) external view returns (bool)
+```
+
+#### `createSessionForModelAsDelegate`
+
+Create a model-specific session using another account's deposits.
+
+```solidity
+function createSessionForModelAsDelegate(
+    address payer,              // Primary account with deposits
+    bytes32 modelId,
+    address host,
+    address paymentToken,       // Must be ERC20 (not native)
+    uint256 amount,
+    uint256 pricePerToken,
+    uint256 maxDuration,
+    uint256 proofInterval,
+    uint256 proofTimeoutWindow
+) external returns (uint256 sessionId)
+```
+
+**Requirements:**
+
+- `msg.sender` must be authorized delegate of `payer`
+- `paymentToken` must be ERC20 (native not supported for delegation)
+- Session ownership stays with `payer` (refunds go to payer)
+- Delegate cannot access other users' deposits
+- Works with pause mechanism
 
 ### Admin Functions
 
@@ -1038,7 +1096,13 @@ await nodeRegistry.registerNode(
   1000 // 0.001 USDC/token
 );
 
-// 3. Optionally set premium pricing for specific models
+// 3. Set per-token pricing for USDC (REQUIRED since Feb 24, 2026)
+await nodeRegistry.setTokenPricing(
+  contracts.usdcToken,
+  5000  // $5/million tokens (with PRICE_PRECISION=1000)
+);
+
+// 4. Optionally set premium pricing for specific models
 await nodeRegistry.setModelPricing(
   TINY_VICUNA,
   ethers.parseUnits("0.0005", 18), // 5x for TinyVicuna
@@ -1069,6 +1133,7 @@ const tx = await marketplace.createSessionJobForModel(
   chosenHostPrice,
   3600,
   1000,
+  300,  // 5 minute proof timeout window
   { value: ethers.parseEther("0.01") }
 );
 const { jobId } = (await tx.wait()).logs[0].args;
@@ -1082,8 +1147,6 @@ const { jobId } = (await tx.wait()).logs[0].args;
 ### 3. Host Inference Flow
 
 ```javascript
-import { keccak256, solidityPacked, getBytes } from "ethers";
-
 // 1. Listen for new sessions
 marketplace.on("SessionJobCreated", async (jobId, requester, host, deposit) => {
   if (host === myAddress) {
@@ -1092,18 +1155,9 @@ marketplace.on("SessionJobCreated", async (jobId, requester, host, deposit) => {
   }
 });
 
-// 2. Submit signed proofs periodically with CID evidence
+// 2. Submit proofs periodically with CID evidence (no signature needed)
 const tokensClaimed = 1000;
 const proofHash = keccak256(proofBytes);
-
-// Generate host signature
-const dataHash = keccak256(
-  solidityPacked(
-    ["bytes32", "address", "uint256"],
-    [proofHash, hostAddress, tokensClaimed]
-  )
-);
-const signature = await hostWallet.signMessage(getBytes(dataHash));
 
 // Upload proof data to S5
 const proofCID = await s5Client.upload(proofData);
@@ -1113,9 +1167,8 @@ await marketplace.submitProofOfWork(
   sessionId,
   tokensClaimed,
   proofHash,
-  signature, // Host's ECDSA signature
   proofCID, // Full proof CID
-  deltaCID // Delta CID (can be "" if not tracking)
+  deltaCID  // Delta CID (can be "" if not tracking)
 );
 
 // 3. Complete session when done with conversation record
@@ -1169,48 +1222,54 @@ await hostEarningsContract.withdrawNative();
 
 ## Error Messages
 
+> **Note (Feb 22, 2026):** Error messages have been shortened for EVM contract size compliance (F202615067). The messages below show the current terse versions.
+
 ### NodeRegistryWithModels
 
-| Error                            | Cause                                     |
-| -------------------------------- | ----------------------------------------- |
-| `"Not registered"`               | Caller is not a registered host           |
-| `"Node not active"`              | Host is registered but not active         |
-| `"Model not supported"`          | Model not in host's supported list        |
-| `"Native price below minimum"`   | Price < MIN_PRICE_PER_TOKEN_NATIVE        |
-| `"Native price above maximum"`   | Price > MAX_PRICE_PER_TOKEN_NATIVE        |
-| `"Stable price below minimum"`   | Price < MIN_PRICE_PER_TOKEN_STABLE        |
-| `"Stable price above maximum"`   | Price > MAX_PRICE_PER_TOKEN_STABLE        |
-| `"Invalid model"`                | Model not approved in ModelRegistry       |
-| `"Not slashing authority"`       | Caller is not the slashing authority      |
-| `"Host not active"`              | Host is not active or not registered      |
-| `"No stake to slash"`            | Host has no stake                         |
-| `"Amount exceeds stake"`         | Slash amount > host's stake               |
-| `"Exceeds max slash percentage"` | Slash > 50% of stake                      |
-| `"Cooldown active"`              | 24h cooldown not elapsed since last slash |
-| `"Evidence required"`            | evidenceCID is empty                      |
-| `"Reason required"`              | reason string is empty                    |
-| `"Slashing already initialized"` | initializeSlashing called twice           |
-| `"Zero address"`                 | Treasury or authority set to address(0)   |
+| Error                            | Cause                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| `"Not registered"`               | Caller is not a registered host                                          |
+| `"Node not active"`              | Host is registered but not active                                        |
+| `"Model not supported"`          | Model not in host's supported list                                       |
+| `"Native price below minimum"`   | Price < MIN_PRICE_PER_TOKEN_NATIVE                                       |
+| `"Native price above maximum"`   | Price > MAX_PRICE_PER_TOKEN_NATIVE                                       |
+| `"Stable price below minimum"`   | Price < MIN_PRICE_PER_TOKEN_STABLE                                       |
+| `"Stable price above maximum"`   | Price > MAX_PRICE_PER_TOKEN_STABLE                                       |
+| `"Invalid model"`                | Model not approved in ModelRegistry                                      |
+| `"No token pricing"`             | Host has not set pricing for this ERC20 token via `setTokenPricing()`    |
+| `"Not slashing authority"`       | Caller is not the slashing authority                                     |
+| `"Host not active"`              | Host is not active or not registered                                     |
+| `"No stake to slash"`            | Host has no stake                                                        |
+| `"Amount exceeds stake"`         | Slash amount > host's stake                                              |
+| `"Exceeds max slash percentage"` | Slash > 50% of stake                                                     |
+| `"Cooldown active"`              | 24h cooldown not elapsed since last slash                                |
+| `"Evidence required"`            | evidenceCID is empty                                                     |
+| `"Reason required"`              | reason string is empty                                                   |
+| `"Slashing already initialized"` | initializeSlashing called twice                                          |
+| `"Zero address"`                 | Treasury or authority set to address(0)                                   |
 
 ### JobMarketplaceWithModels
 
-| Error                                   | Cause                                  |
-| --------------------------------------- | -------------------------------------- |
-| `"Insufficient deposit"`                | Deposit below minimum                  |
-| `"Deposit too large"`                   | Deposit > 1000 ETH                     |
-| `"Invalid price"`                       | pricePerToken is 0                     |
-| `"Invalid duration"`                    | Duration is 0 or > 365 days            |
-| `"Invalid proof interval"`              | proofInterval is 0                     |
-| `"Invalid host"`                        | Host address is zero                   |
-| `"Host does not support model"`         | Host doesn't support requested model   |
-| `"Price below host minimum for model"`  | Price < host's model-specific minimum  |
-| `"Price below host minimum (native)"`   | Price < host's native minimum          |
-| `"Price below host minimum (stable)"`   | Price < host's stable minimum          |
-| `"Token not accepted"`                  | Payment token not in accepted list     |
-| `"Token not configured"`                | Token has no minimum deposit set       |
-| `"Only host can submit proof"`          | Non-host trying to submit proof        |
-| `"Only depositor or host can complete"` | Third party trying to complete session |
-| `"Session not active"`                  | Session is not in Active status        |
+| Error                      | Cause                                             |
+| -------------------------- | ------------------------------------------------- |
+| `"Insufficient deposit"`   | Deposit below minimum                             |
+| `"Deposit too large"`      | Deposit > 1000 ETH                                |
+| `"Invalid price"`          | pricePerToken is 0                                |
+| `"Invalid duration"`       | Duration is 0 or > 365 days                       |
+| `"Invalid proof interval"` | proofInterval is 0                                |
+| `"Invalid host"`           | Host address is zero                              |
+| `"Model unsupported"`      | Host doesn't support requested model              |
+| `"Price < model min"`      | Price < host's model-specific minimum             |
+| `"Price < host min"`       | Price < host's native minimum                     |
+| `"Price < host min (stable)"` | Price < host's stable minimum                  |
+| `"Token not accepted"`     | Payment token not in accepted list                |
+| `"Token not configured"`   | Token has no minimum deposit set                  |
+| `"Only host can submit proof"` | Non-host trying to submit proof               |
+| `"Only host/depositor"`    | Third party trying to complete session            |
+| `"Session not active"`     | Session is not in Active status                   |
+| `"Not authorized"`         | Delegate not authorized by depositor              |
+| `"ERC20 only"`             | Delegated sessions only support ERC20 tokens      |
+| `"Proof timeout"`          | Proof was not submitted within the timeout window |
 
 ---
 
@@ -1218,11 +1277,11 @@ await hostEarningsContract.withdrawNative();
 
 ABIs are available in `/client-abis/`:
 
-- `NodeRegistryWithModels-CLIENT-ABI.json`
-- `JobMarketplaceWithModels-CLIENT-ABI.json`
-- `ModelRegistry-CLIENT-ABI.json`
-- `HostEarnings-CLIENT-ABI.json`
-- `ProofSystem-CLIENT-ABI.json`
+- `NodeRegistryWithModelsUpgradeable-CLIENT-ABI.json`
+- `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json`
+- `ModelRegistryUpgradeable-CLIENT-ABI.json`
+- `HostEarningsUpgradeable-CLIENT-ABI.json`
+- `ProofSystemUpgradeable-CLIENT-ABI.json`
 
 ---
 
@@ -1234,24 +1293,24 @@ const config = {
   rpcUrl: "https://sepolia.base.org",
   explorer: "https://sepolia.basescan.org",
 
-  // UPGRADEABLE CONTRACTS (UUPS Proxies) - January 16, 2026
+  // POST-AUDIT REMEDIATION CONTRACTS (Feb 22-24, 2026)
   contracts: {
-    jobMarketplace: "0x3CaCbf3f448B420918A93a88706B26Ab27a3523E",
+    jobMarketplace: "0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4",
     nodeRegistry: "0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22",
     modelRegistry: "0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2",
-    proofSystem: "0x5afB91977e69Cc5003288849059bc62d47E7deeb",
+    proofSystem: "0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31",
     hostEarnings: "0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0",
     fabToken: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
     usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
   },
 
-  // Implementation addresses (for contract verification) - January 16, 2026
+  // Implementation addresses (for contract verification) - Feb 24, 2026
   implementations: {
-    jobMarketplace: "0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c", // deltaCID support (Jan 14)
-    nodeRegistry: "0xF2D98D38B2dF95f4e8e4A49750823C415E795377", // Stake slashing (Jan 16)
-    modelRegistry: "0x8491af1f0D47f6367b56691dCA0F4996431fB0A5", // Voting improvements (Jan 11)
-    proofSystem: "0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9", // Phase 12 (Jan 9)
-    hostEarnings: "0x8584AeAC9687613095D13EF7be4dE0A796F84D7a", // Phase 12 (Jan 9)
+    jobMarketplace: "0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba", // Full audit remediation (Feb 22)
+    nodeRegistry: "0xeeB3ABad9d27Bb3a5D7ACA3c282CDD8C80aAD24b",   // Per-token pricing revert (Feb 24)
+    modelRegistry: "0xF12a0A07d4230E0b045dB22057433a9826d21652",   // Rate limits + rejected fee (Feb 22)
+    proofSystem: "0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963",    // markProofUsed + dead code removal (Feb 22)
+    hostEarnings: "0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0",    // Unchanged
   },
 };
 ```

@@ -1,19 +1,19 @@
 # CONTRACT_ADDRESSES.md
 
-**Last Updated:** February 22, 2026
+**Last Updated:** February 24, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 
 ---
 
-## Active Contracts (Post-Audit Remediation - Feb 22, 2026)
+## Active Contracts (Post-Audit Remediation - Feb 24, 2026)
 
-> **USE THESE FOR SDK DEVELOPMENT.** All 20 audit findings addressed. Fresh JM proxy deployed for clean storage layout.
+> **USE THESE FOR SDK DEVELOPMENT.** All 20 audit findings addressed + F202614977 per-token pricing fix. Breaking change: hosts must call `setTokenPricing(token, price)` for each ERC20 they accept.
 
 | Contract | Proxy Address | Implementation | Status |
 |----------|---------------|----------------|--------|
 | **JobMarketplaceWithModelsUpgradeable** | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba` | FRESH PROXY (Feb 22, 2026) |
 | **ProofSystemUpgradeable** | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` | Upgraded (Feb 22, 2026) |
-| **NodeRegistryWithModelsUpgradeable** | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | unchanged | Unchanged |
+| **NodeRegistryWithModelsUpgradeable** | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xeeB3ABad9d27Bb3a5D7ACA3c282CDD8C80aAD24b` | Upgraded — F202614977 per-token pricing (Feb 24, 2026) |
 | **HostEarningsUpgradeable** | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | unchanged | Unchanged |
 | **ModelRegistryUpgradeable** | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xF12a0A07d4230E0b045dB22057433a9826d21652` | Upgraded (Feb 22, 2026) |
 

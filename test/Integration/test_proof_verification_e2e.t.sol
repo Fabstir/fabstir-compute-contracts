@@ -130,7 +130,7 @@ contract ProofVerificationE2ETest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
 
-        vm.prank(host1);
+        vm.startPrank(host1);
         nodeRegistry.registerNode(
             '{"hardware": "GPU"}',
             "https://api.host1.com",
@@ -138,13 +138,15 @@ contract ProofVerificationE2ETest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        vm.stopPrank();
 
         // Register host2 in NodeRegistry
         fabToken.mint(host2, 10000 * 10**18);
         vm.prank(host2);
         fabToken.approve(address(nodeRegistry), type(uint256).max);
 
-        vm.prank(host2);
+        vm.startPrank(host2);
         nodeRegistry.registerNode(
             '{"hardware": "GPU"}',
             "https://api.host2.com",
@@ -152,6 +154,8 @@ contract ProofVerificationE2ETest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        vm.stopPrank();
 
         // Setup user with ETH
         vm.deal(user, 100 ether);

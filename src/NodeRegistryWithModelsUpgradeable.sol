@@ -457,10 +457,8 @@ contract NodeRegistryWithModelsUpgradeable is
             return nodes[operator].minPricePerTokenNative;
         } else {
             uint256 customPrice = customTokenPricing[operator][token];
-            if (customPrice > 0) {
-                return customPrice;
-            }
-            return nodes[operator].minPricePerTokenStable;
+            require(customPrice > 0, "No token pricing");
+            return customPrice;
         }
     }
 
@@ -475,7 +473,10 @@ contract NodeRegistryWithModelsUpgradeable is
             return modelPrice > 0 ? modelPrice : nodes[operator].minPricePerTokenNative;
         } else {
             uint256 modelPrice = modelPricingStable[operator][modelId];
-            return modelPrice > 0 ? modelPrice : nodes[operator].minPricePerTokenStable;
+            if (modelPrice > 0) return modelPrice;
+            uint256 customPrice = customTokenPricing[operator][token];
+            require(customPrice > 0, "No token pricing");
+            return customPrice;
         }
     }
 

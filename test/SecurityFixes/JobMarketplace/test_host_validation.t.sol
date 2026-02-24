@@ -107,6 +107,8 @@ contract HostValidationTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        vm.prank(registeredHost);
+        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
 
         // Setup user with ETH
         vm.deal(user, 100 ether);

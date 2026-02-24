@@ -285,10 +285,9 @@ contract NodeRegistryBoundaryConditionsTest is Test {
         nodeRegistry.setTokenPricing(address(fabToken), 0);
         vm.stopPrank();
 
-        // Should fall back to default stable price
-        uint256 result = nodeRegistry.getNodePricing(host1, address(fabToken));
-        (,,,,,,, uint256 defaultStable) = nodeRegistry.getNodeFullInfo(host1);
-        assertEq(result, defaultStable);
+        // Should revert since custom pricing was cleared
+        vm.expectRevert("No token pricing");
+        nodeRegistry.getNodePricing(host1, address(fabToken));
     }
 
     // ============ getHostModelPrices ============
@@ -341,13 +340,16 @@ contract NodeRegistryBoundaryConditionsTest is Test {
     function test_GetModelPricing_FallsBackToDefault() public {
         _registerHost1();
 
-        // Native pricing
+        // Native pricing — falls back to default native price
         uint256 nativeResult = nodeRegistry.getModelPricing(host1, modelId, address(0));
         assertEq(nativeResult, MIN_PRICE_PER_TOKEN_NATIVE);
 
-        // Stable pricing
-        uint256 stableResult = nodeRegistry.getModelPricing(host1, modelId, address(fabToken));
-        assertEq(stableResult, MIN_PRICE_PER_TOKEN_STABLE);
+        // Stable pricing — clear custom token pricing so it reverts
+        vm.prank(host1);
+        nodeRegistry.setTokenPricing(address(fabToken), 0);
+
+        vm.expectRevert("No token pricing");
+        nodeRegistry.getModelPricing(host1, modelId, address(fabToken));
     }
 
     // ============ Helper Functions ============
@@ -365,6 +367,7 @@ contract NodeRegistryBoundaryConditionsTest is Test {
             MIN_PRICE_PER_TOKEN_NATIVE,
             MIN_PRICE_PER_TOKEN_STABLE
         );
+        nodeRegistry.setTokenPricing(address(fabToken), MIN_PRICE_PER_TOKEN_STABLE);
         vm.stopPrank();
     }
 }

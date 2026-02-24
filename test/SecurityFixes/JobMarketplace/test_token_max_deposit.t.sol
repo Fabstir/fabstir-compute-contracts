@@ -108,6 +108,7 @@ contract TokenMaxDepositTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         // Setup user

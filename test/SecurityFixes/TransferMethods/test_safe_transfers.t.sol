@@ -132,6 +132,7 @@ contract SafeTransferMethodsTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("host-metadata", "https://api.host.com", models, 1e9, 100);
+        nodeRegistry.setTokenPricing(address(usdc), 100);
         vm.stopPrank();
     }
 

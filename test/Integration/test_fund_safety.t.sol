@@ -132,7 +132,7 @@ contract FundSafetyTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
 
-        vm.prank(hostAddr);
+        vm.startPrank(hostAddr);
         nodeRegistry.registerNode(
             '{"hardware": "GPU"}',
             "https://api.host.example.com",
@@ -140,6 +140,8 @@ contract FundSafetyTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        vm.stopPrank();
     }
 
     function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal pure returns (bytes memory) {

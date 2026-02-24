@@ -97,7 +97,7 @@ contract NodeRegistryUpgradeTest is Test {
         models2[0] = modelId1;
         models2[1] = modelId2;
 
-        vm.prank(host1);
+        vm.startPrank(host1);
         nodeRegistry.registerNode(
             '{"hardware": "GPU A100"}',
             "https://api.host1.com",
@@ -105,8 +105,10 @@ contract NodeRegistryUpgradeTest is Test {
             MIN_PRICE_NATIVE * 2,
             MIN_PRICE_STABLE * 50
         );
+        nodeRegistry.setTokenPricing(address(fabToken), MIN_PRICE_STABLE * 50);
+        vm.stopPrank();
 
-        vm.prank(host2);
+        vm.startPrank(host2);
         nodeRegistry.registerNode(
             '{"hardware": "GPU H100"}',
             "https://api.host2.com",
@@ -114,6 +116,8 @@ contract NodeRegistryUpgradeTest is Test {
             MIN_PRICE_NATIVE * 3,
             MIN_PRICE_STABLE * 100
         );
+        nodeRegistry.setTokenPricing(address(fabToken), MIN_PRICE_STABLE * 100);
+        vm.stopPrank();
     }
 
     // ============================================================

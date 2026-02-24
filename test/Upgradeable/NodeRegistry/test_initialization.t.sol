@@ -302,7 +302,7 @@ contract NodeRegistryInitializationTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId1;
 
-        vm.prank(host1);
+        vm.startPrank(host1);
         nodeRegistry.registerNode(
             '{"hardware": "GPU"}',
             "https://api.host1.com",
@@ -310,6 +310,8 @@ contract NodeRegistryInitializationTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE * 100
         );
+        nodeRegistry.setTokenPricing(address(fabToken), MIN_PRICE_STABLE * 100);
+        vm.stopPrank();
 
         assertEq(nodeRegistry.getNodePricing(host1, address(fabToken)), MIN_PRICE_STABLE * 100);
     }
