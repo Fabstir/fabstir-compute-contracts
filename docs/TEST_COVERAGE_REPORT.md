@@ -1,8 +1,8 @@
 # Test Coverage Report
 
-**Generated:** January 15, 2026
+**Generated:** February 26, 2026
 **Test Framework:** Foundry/Forge
-**Total Tests:** 640 passing
+**Total Tests:** 812 passing
 
 ---
 
@@ -55,16 +55,14 @@
 |----------|-------|------------|-------------|
 | `updateMetadata()` | 223-229 | MEDIUM | Metadata update validation |
 | `updateApiUrl()` | 234-240 | MEDIUM | API URL update validation |
-| `updatePricingStable()` | 259-268 | HIGH | Stablecoin pricing updates |
-| `setModelPricing()` | 273-291 | HIGH | Per-model pricing overrides |
-| `clearModelPricing()` | 296-303 | MEDIUM | Clear pricing overrides |
-| `setTokenPricing()` | 308-321 | HIGH | Token-specific pricing |
+| `setModelTokenPricing()` | — | HIGH | Per-model per-token pricing |
+| `clearModelTokenPricing()` | — | MEDIUM | Clear model+token pricing |
 | `stake()` | 371-377 | HIGH | Additional stake deposits |
 | `isActiveNode()` | 382-384 | LOW | Active status check |
 | `getNodeApiUrl()` | 389-391 | LOW | View function |
 | `getNodeFullInfo()` | 396-417 | LOW | View function |
-| `getModelPricing()` | 437-447 | MEDIUM | Pricing with fallback |
-| `getHostModelPrices()` | 452-480 | MEDIUM | Batch pricing query |
+| `getModelPricing()` | — | MEDIUM | Per-model per-token pricing query (no fallback) |
+| `getHostModelPrices()` | — | MEDIUM | Batch pricing query (2-arg signature) |
 | `getAllActiveNodes()` | 485-487 | LOW | View function |
 | `updateModelRegistry()` | 492-496 | HIGH | Admin function |
 
@@ -74,20 +72,19 @@
 // Access control violations
 test_UpdateMetadata_RejectsUnregistered()
 test_UpdateApiUrl_RejectsUnregistered()
-test_SetModelPricing_RejectsUnsupportedModel()
+test_SetModelTokenPricing_RejectsUnsupportedModel()
 test_UpdateModelRegistry_RejectsNonOwner()
 
 // Boundary conditions
-test_SetModelPricing_RejectsBelowMinimum()
-test_SetModelPricing_RejectsAboveMaximum()
+test_SetModelTokenPricing_RejectsBelowMinimum()
+test_SetModelTokenPricing_RejectsAboveMaximum()
 test_Stake_RejectsZeroAmount()
 test_RegisterNode_RejectsPriceBelowMinimum()
 test_RegisterNode_RejectsPriceAboveMaximum()
 
 // State validations
-test_UpdatePricingNative_RejectsInactiveNode()
-test_UpdatePricingStable_RejectsInactiveNode()
-test_SetTokenPricing_RejectsInactiveNode()
+test_SetModelTokenPricing_RejectsInactiveNode()
+test_ClearModelTokenPricing_RejectsInactiveNode()
 ```
 
 ---
@@ -176,9 +173,9 @@ Branch coverage is critically low across all contracts (14.92% overall).
 - Fee calculation paths - needs coverage
 
 **NodeRegistryWithModelsUpgradeable.sol (8.16%)**
-- Pricing type branching (native vs stable) - untested
-- Model pricing overrides vs defaults - untested
-- Custom token pricing fallbacks - untested
+- Per-model per-token pricing (modelTokenPricing) - covered in Phase 18 tests
+- getModelPricing no-fallback behavior - covered
+- getHostModelPrices with token parameter - covered
 
 **HostEarningsUpgradeable.sol (8.57%)**
 - Token type branching in credits - partial
@@ -196,9 +193,9 @@ Branch coverage is critically low across all contracts (14.92% overall).
 
 ### P0: Critical (Must Fix)
 
-1. **NodeRegistry pricing functions** - HIGH risk, untested
-   - `setModelPricing()`, `setTokenPricing()`, `updatePricingStable()`
-   - Estimated: 15-20 new tests
+1. **NodeRegistry pricing functions** - Covered by Phase 18 tests
+   - `setModelTokenPricing()`, `clearModelTokenPricing()`, `getModelPricing()` (no fallback)
+   - Phase 18 added comprehensive pricing tests
 
 2. **NodeRegistry stake function** - Funds at risk
    - `stake()` additional stake deposits
@@ -264,7 +261,7 @@ test/Upgradeable/NodeRegistry/test_initialization.t.sol
   + Add: updateMetadata, updateApiUrl, stake tests
 
 test/Upgradeable/NodeRegistry/test_pricing.t.sol (NEW)
-  + Add: setModelPricing, clearModelPricing, setTokenPricing tests
+  + Add: setModelTokenPricing, clearModelTokenPricing tests
 
 test/Integration/test_full_lifecycle.t.sol (NEW)
   + Add: Complete session with all edge cases

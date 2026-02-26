@@ -147,7 +147,9 @@ contract BalanceSeparationTest is Test {
             MIN_PRICE_STABLE
         );
         vm.prank(hostAddr);
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        vm.prank(hostAddr);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
     }
 
     // ============================================================
@@ -172,8 +174,9 @@ contract BalanceSeparationTest is Test {
     function test_GetLockedBalanceReturnsSessionFunds_ETH() public {
         // Create inline session with 2 ETH
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(
+        marketplace.createSessionJobForModel{value: 2 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -197,7 +200,8 @@ contract BalanceSeparationTest is Test {
 
         // Create session from pre-deposit with 1 ETH
         vm.prank(user);
-        marketplace.createSessionFromDeposit(
+        marketplace.createSessionFromDepositForModel(
+            modelId,
             host,
             address(0), // native
             1 ether,
@@ -209,8 +213,9 @@ contract BalanceSeparationTest is Test {
 
         // Create inline session with 2 ETH
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(
+        marketplace.createSessionJobForModel{value: 2 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -234,8 +239,9 @@ contract BalanceSeparationTest is Test {
         // Create session with 1 ETH at very high price
         uint256 pricePerToken = 1e12; // 1e12 wei per token = 1e6 tokens per ETH
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host,
+            modelId,
             pricePerToken,
             1 days,
             1000,
@@ -272,8 +278,9 @@ contract BalanceSeparationTest is Test {
 
         // Create session with 1 ETH
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -330,8 +337,9 @@ contract BalanceSeparationTest is Test {
 
         // Create inline session with USDC
         vm.prank(user);
-        marketplace.createSessionJobWithToken(
+        marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             sessionDeposit,
             MIN_PRICE_STABLE,
@@ -361,7 +369,8 @@ contract BalanceSeparationTest is Test {
 
         // Create session from pre-deposit with 10 USDC
         vm.prank(user);
-        marketplace.createSessionFromDeposit(
+        marketplace.createSessionFromDepositForModel(
+            modelId,
             host,
             address(usdcToken),
             sessionFromDeposit,
@@ -373,8 +382,9 @@ contract BalanceSeparationTest is Test {
 
         // Create inline session with 15 USDC
         vm.prank(user);
-        marketplace.createSessionJobWithToken(
+        marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             inlineSession,
             MIN_PRICE_STABLE,
@@ -400,9 +410,9 @@ contract BalanceSeparationTest is Test {
     function test_LockedBalanceAcrossMultipleSessions_ETH() public {
         // Create 3 sessions with different amounts
         vm.startPrank(user);
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
-        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 3 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.stopPrank();
 
         // Total locked should be 6 ETH
@@ -422,11 +432,11 @@ contract BalanceSeparationTest is Test {
 
         // Create session from deposit (5 ETH)
         vm.prank(user);
-        marketplace.createSessionFromDeposit(host, address(0), 5 ether, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionFromDepositForModel(modelId, host, address(0), 5 ether, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Create inline session (3 ETH)
         vm.prank(user);
-        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 3 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Pre-deposit more (2 ETH)
         vm.prank(user);
@@ -462,9 +472,9 @@ contract BalanceSeparationTest is Test {
 
         // Create 2 sessions
         vm.prank(user);
-        uint256 sessionId1 = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 sessionId1 = marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Locked should be 3 ETH
         assertEq(marketplace.getLockedBalanceNative(user), 3 ether, "Locked should be 3 ETH");

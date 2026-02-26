@@ -336,41 +336,6 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Session Creation Functions
     // ============================================================
 
-    function createSessionJob(
-        address host,
-        uint256 pricePerToken,
-        uint256 maxDuration,
-        uint256 proofInterval,
-        uint256 proofTimeoutWindow
-    ) external payable nonReentrant whenNotPaused returns (uint256 jobId) {
-        require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
-
-        SessionParams memory params = SessionParams({
-            host: host,
-            paymentToken: address(0),
-            deposit: msg.value,
-            pricePerToken: pricePerToken,
-            maxDuration: maxDuration,
-            proofInterval: proofInterval,
-            proofTimeoutWindow: proofTimeoutWindow,
-            modelId: bytes32(0)
-        });
-
-        _validateSessionParams(params);
-
-        // Validate price meets host's minimum for native token (ETH/BNB)
-        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, address(0));
-        require(pricePerToken >= hostMinPrice, "Price too low");
-
-        jobId = nextJobId++;
-        _initializeSession(jobId, params);
-
-        emit SessionJobCreated(jobId, msg.sender, host, msg.value);
-        emit SessionCreatedByDepositor(jobId, msg.sender, host, msg.value);
-
-        return jobId;
-    }
-
     /// @notice Create a session job for a specific model with native token payment
     function createSessionJobForModel(
         address host,
@@ -410,51 +375,6 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
         emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, msg.value);
-
-        return jobId;
-    }
-
-    function createSessionJobWithToken(
-        address host,
-        address token,
-        uint256 deposit,
-        uint256 pricePerToken,
-        uint256 maxDuration,
-        uint256 proofInterval,
-        uint256 proofTimeoutWindow
-    ) external nonReentrant whenNotPaused returns (uint256 jobId) {
-        // Token-specific validations
-        require(acceptedTokens[token], "Token not accepted");
-        uint256 minRequired = tokenMinDeposits[token];
-        require(minRequired > 0, "Token not set");
-        require(deposit >= minRequired, "Insufficient deposit");
-        require(deposit > 0, "Zero deposit");
-
-        SessionParams memory params = SessionParams({
-            host: host,
-            paymentToken: token,
-            deposit: deposit,
-            pricePerToken: pricePerToken,
-            maxDuration: maxDuration,
-            proofInterval: proofInterval,
-            proofTimeoutWindow: proofTimeoutWindow,
-            modelId: bytes32(0)
-        });
-
-        _validateSessionParams(params);
-
-        // Validate price meets host's minimum for the specified token (USDC or other stablecoin)
-        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, token);
-        require(pricePerToken >= hostMinPrice, "Price too low");
-
-        // Transfer tokens after all validations pass
-        IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
-
-        jobId = nextJobId++;
-        _initializeSession(jobId, params);
-
-        emit SessionJobCreated(jobId, msg.sender, host, deposit);
-        emit SessionCreatedByDepositor(jobId, msg.sender, host, deposit);
 
         return jobId;
     }
@@ -614,7 +534,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     /**
      * @notice Deduct deposit from user's pre-deposited balance with validation
-     * @dev AUDIT-F18: Shared helper to eliminate duplication in createSessionFromDeposit functions
+     * @dev AUDIT-F18: Shared helper for createSessionFromDepositForModel functions
      * @param depositor Address of the depositor
      * @param paymentToken address(0) for ETH, token address for ERC20
      * @param deposit Amount to deduct
@@ -1133,49 +1053,6 @@ contract JobMarketplaceWithModelsUpgradeable is
     // ============================================================
     // Create Session From Deposit
     // ============================================================
-
-    function createSessionFromDeposit(
-        address host,
-        address paymentToken,
-        uint256 deposit,
-        uint256 pricePerToken,
-        uint256 maxDuration,
-        uint256 proofInterval,
-        uint256 proofTimeoutWindow
-    ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
-        // Deposit-specific early checks (before _validateSessionParams)
-        require(deposit > 0, "Zero deposit");
-        if (paymentToken != address(0)) {
-            require(acceptedTokens[paymentToken], "Token not accepted");
-        }
-
-        SessionParams memory params = SessionParams({
-            host: host,
-            paymentToken: paymentToken,
-            deposit: deposit,
-            pricePerToken: pricePerToken,
-            maxDuration: maxDuration,
-            proofInterval: proofInterval,
-            proofTimeoutWindow: proofTimeoutWindow,
-            modelId: bytes32(0)
-        });
-
-        _validateSessionParams(params);
-
-        // Validate price meets host's minimum for the specified payment token
-        uint256 hostMinPrice = nodeRegistry.getNodePricing(host, paymentToken);
-        require(pricePerToken >= hostMinPrice, "Price too low");
-
-        _deductFromDeposit(msg.sender, paymentToken, deposit);
-
-        sessionId = nextJobId++;
-        _initializeSession(sessionId, params);
-
-        emit SessionJobCreated(sessionId, msg.sender, host, deposit);
-        emit SessionCreatedByDepositor(sessionId, msg.sender, host, deposit);
-
-        return sessionId;
-    }
 
     // ============================================================
     // Create Session From Deposit For Model (F202614916)

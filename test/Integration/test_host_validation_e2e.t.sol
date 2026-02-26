@@ -131,7 +131,7 @@ contract HostValidationE2ETest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
 
-        vm.prank(hostAddr);
+        vm.startPrank(hostAddr);
         nodeRegistry.registerNode(
             '{"hardware": "GPU", "memory": "16GB"}',
             "https://api.host.example.com",
@@ -139,6 +139,8 @@ contract HostValidationE2ETest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        vm.stopPrank();
     }
 
     function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal pure returns (bytes memory) {
@@ -159,8 +161,9 @@ contract HostValidationE2ETest is Test {
 
         // Step 2: User creates session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000, // proof interval
@@ -206,8 +209,9 @@ contract HostValidationE2ETest is Test {
 
         vm.prank(user);
         vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 1 ether}(
+        marketplace.createSessionJobForModel{value: 1 ether}(
             randomAddress,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -226,8 +230,9 @@ contract HostValidationE2ETest is Test {
         for (uint i = 0; i < fakeHosts.length; i++) {
             vm.prank(user);
             vm.expectRevert("Host not registered");
-            marketplace.createSessionJob{value: 0.1 ether}(
+            marketplace.createSessionJobForModel{value: 0.1 ether}(
                 fakeHosts[i],
+                modelId,
                 MIN_PRICE_NATIVE,
                 1 days,
                 1000,
@@ -247,8 +252,9 @@ contract HostValidationE2ETest is Test {
 
         // Create first session (should succeed)
         vm.prank(user);
-        uint256 sessionId1 = marketplace.createSessionJob{value: 0.5 ether}(
+        uint256 sessionId1 = marketplace.createSessionJobForModel{value: 0.5 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -264,8 +270,9 @@ contract HostValidationE2ETest is Test {
         // Attempt to create new session (should fail)
         vm.prank(user);
         vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.5 ether}(
+        marketplace.createSessionJobForModel{value: 0.5 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -279,8 +286,9 @@ contract HostValidationE2ETest is Test {
 
         // Create first session (should succeed)
         vm.prank(user);
-        uint256 sessionId1 = marketplace.createSessionJob{value: 0.5 ether}(
+        uint256 sessionId1 = marketplace.createSessionJobForModel{value: 0.5 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -307,8 +315,9 @@ contract HostValidationE2ETest is Test {
         // Attempt to create new session (should fail with "Host not active")
         vm.prank(user);
         vm.expectRevert("Host not active");
-        marketplace.createSessionJob{value: 0.5 ether}(
+        marketplace.createSessionJobForModel{value: 0.5 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -330,8 +339,9 @@ contract HostValidationE2ETest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -384,8 +394,9 @@ contract HostValidationE2ETest is Test {
 
         // Create session with significant deposit
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -428,8 +439,9 @@ contract HostValidationE2ETest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId1 = marketplace.createSessionJob{value: 0.1 ether}(
+        uint256 sessionId1 = marketplace.createSessionJobForModel{value: 0.1 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -444,8 +456,9 @@ contract HostValidationE2ETest is Test {
         // Cannot create new session
         vm.prank(user);
         vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.1 ether}(
+        marketplace.createSessionJobForModel{value: 0.1 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -458,8 +471,9 @@ contract HostValidationE2ETest is Test {
 
         // Can now create new session
         vm.prank(user);
-        uint256 sessionId2 = marketplace.createSessionJob{value: 0.1 ether}(
+        uint256 sessionId2 = marketplace.createSessionJobForModel{value: 0.1 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -482,9 +496,9 @@ contract HostValidationE2ETest is Test {
 
         // Sessions with registered hosts succeed
         vm.prank(user);
-        uint256 s1 = marketplace.createSessionJob{value: 0.1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s1 = marketplace.createSessionJobForModel{value: 0.1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.prank(user);
-        uint256 s2 = marketplace.createSessionJob{value: 0.1 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s2 = marketplace.createSessionJobForModel{value: 0.1 ether}(host2, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         assertEq(s1, 1);
         assertEq(s2, 2);
@@ -492,6 +506,6 @@ contract HostValidationE2ETest is Test {
         // Session with unregistered host3 fails
         vm.prank(user);
         vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.1 ether}(host3, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 0.1 ether}(host3, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
     }
 }

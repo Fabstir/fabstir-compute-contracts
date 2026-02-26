@@ -159,7 +159,9 @@ contract DoubleSpendPreventionTest is Test {
             MIN_PRICE_STABLE
         );
         vm.prank(hostAddr);
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        vm.prank(hostAddr);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
     }
 
     // ============================================================
@@ -171,8 +173,9 @@ contract DoubleSpendPreventionTest is Test {
 
         // User creates session with ETH
         vm.prank(user);
-        marketplace.createSessionJob{value: depositAmount}(
+        marketplace.createSessionJobForModel{value: depositAmount}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -220,8 +223,9 @@ contract DoubleSpendPreventionTest is Test {
 
         // User creates session with USDC
         vm.prank(user);
-        marketplace.createSessionJobWithToken(
+        marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             depositAmount,
             MIN_PRICE_STABLE,
@@ -281,7 +285,8 @@ contract DoubleSpendPreventionTest is Test {
 
         // Create session from pre-deposit
         vm.prank(user);
-        marketplace.createSessionFromDeposit(
+        marketplace.createSessionFromDepositForModel(
+            modelId,
             host,
             address(0), // native
             sessionAmount,
@@ -315,7 +320,8 @@ contract DoubleSpendPreventionTest is Test {
 
         // Create session from pre-deposit
         vm.prank(user);
-        marketplace.createSessionFromDeposit(
+        marketplace.createSessionFromDepositForModel(
+            modelId,
             host,
             address(usdcToken),
             sessionAmount,
@@ -347,8 +353,9 @@ contract DoubleSpendPreventionTest is Test {
 
         // Attacker creates session
         vm.prank(attacker);
-        marketplace.createSessionJob{value: attackAmount}(
+        marketplace.createSessionJobForModel{value: attackAmount}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -379,8 +386,9 @@ contract DoubleSpendPreventionTest is Test {
 
         // Attacker creates session
         vm.prank(attacker);
-        marketplace.createSessionJobWithToken(
+        marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             attackAmount,
             MIN_PRICE_STABLE,
@@ -409,9 +417,9 @@ contract DoubleSpendPreventionTest is Test {
         // Create multiple sessions
         vm.startPrank(user);
 
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.stopPrank();
 
@@ -428,8 +436,9 @@ contract DoubleSpendPreventionTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: depositAmount}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: depositAmount}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,

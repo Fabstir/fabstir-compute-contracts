@@ -171,9 +171,12 @@ contract UpgradeFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Step 2: Create active session
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 1 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Step 3: Submit a proof (use explicit large timestamp to avoid rate limit issues)
         vm.warp(100);
@@ -224,9 +227,12 @@ contract UpgradeFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Step 2: Create active session
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 1 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Step 3: Submit a proof (use explicit large timestamp)
         vm.warp(100);
@@ -311,8 +317,11 @@ contract UpgradeFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 1 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Submit first proof with explicit large timestamp (>= proofInterval)
         vm.warp(100);
@@ -374,6 +383,9 @@ contract UpgradeFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Upgrade JobMarketplace
         JobMarketplaceWithModelsUpgradeableV2 newJobMarketplaceImpl = new JobMarketplaceWithModelsUpgradeableV2();
         vm.prank(deployer);
@@ -386,7 +398,7 @@ contract UpgradeFlowIntegrationTest is Test {
 
         // Create new session on V2
         vm.prank(user1);
-        uint256 sessionId = jobMarketplaceV2.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 sessionId = jobMarketplaceV2.createSessionJobForModel{value: 0.5 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         assertEq(sessionId, 1, "First session on V2");
 

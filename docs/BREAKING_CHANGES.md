@@ -2,6 +2,120 @@
 
 ---
 
+## February 2026: Phase 18 — Per-Model Per-Token Pricing Migration
+
+**Contracts Affected**: NodeRegistryWithModelsUpgradeable, JobMarketplaceWithModelsUpgradeable
+**Impact Level**: HIGH - Multiple functions removed, new pricing architecture
+
+### Summary
+
+Phase 18 replaced the multi-layer pricing architecture (legacy dual pricing + token pricing + model pricing) with a single `modelTokenPricing[operator][modelId][token]` mapping. This simplifies pricing from 3 layers of fallback to a single source of truth.
+
+Contract sizes reduced: JM 23,279 bytes (was 24,573), NR 14,043 bytes (was 15,160). Test count: 812 passing.
+
+| Change | Impact | Action Required |
+|--------|--------|-----------------|
+| NR functions removed (6) | HIGH | Replace with `setModelTokenPricing` |
+| JM functions removed (3) | HIGH | Use model-specific session creation |
+| `getModelPricing` no fallback | HIGH | Ensure host has set pricing |
+| `getHostModelPrices` signature change | MEDIUM | Update to 2-arg version |
+| New `ModelTokenPricingUpdated` event | LOW | Update event listeners |
+
+### 1. Removed NodeRegistry Functions (BREAKING)
+
+The following functions have been removed:
+
+| Removed Function | Replacement |
+|-----------------|-------------|
+| `getNodePricing(address, address)` | `getModelPricing(address, bytes32, address)` |
+| `setTokenPricing(address, uint256)` | `setModelTokenPricing(bytes32, address, uint256)` |
+| `updatePricingNative(uint256)` | `setModelTokenPricing(modelId, address(0), price)` |
+| `updatePricingStable(uint256)` | `setModelTokenPricing(modelId, token, price)` |
+| `setModelPricing(bytes32, uint256, uint256)` | `setModelTokenPricing(bytes32, address, uint256)` |
+| `clearModelPricing(bytes32)` | `clearModelTokenPricing(bytes32, address)` |
+
+**Removed Events:** `PricingUpdated`, `ModelPricingUpdated`, `TokenPricingUpdated`
+**New Event:** `ModelTokenPricingUpdated(address indexed operator, bytes32 indexed modelId, address indexed token, uint256 price)`
+
+### 2. Removed JobMarketplace Functions (BREAKING)
+
+| Removed Function | Replacement |
+|-----------------|-------------|
+| `createSessionJob(...)` | `createSessionJobForModel(...)` |
+| `createSessionJobWithToken(...)` | `createSessionJobForModelWithToken(...)` |
+| `createSessionFromDeposit(...)` | `createSessionFromDepositForModel(...)` |
+
+### 3. `getModelPricing` No Longer Has Fallback (BREAKING)
+
+**Before (Phase 17):** Falls back to `modelPricingNative/Stable`, then `customTokenPricing`, then reverts.
+**After (Phase 18):** Reads only from `modelTokenPricing[operator][modelId][token]`. Reverts with `"No model pricing"` if not set.
+
+**Migration:**
+```javascript
+// Before - host sets token pricing as a fallback
+await nodeRegistry.setTokenPricing(usdcAddress, 5000);
+
+// After - host sets pricing per model per token (no fallback)
+await nodeRegistry.setModelTokenPricing(TINY_VICUNA, usdcAddress, 5000);
+await nodeRegistry.setModelTokenPricing(TINY_LLAMA, usdcAddress, 5000);
+```
+
+### 4. `getHostModelPrices` Signature Change (BREAKING)
+
+**Before:**
+```solidity
+function getHostModelPrices(address operator) returns (bytes32[] modelIds, uint256[] nativePrices, uint256[] stablePrices)
+```
+
+**After:**
+```solidity
+function getHostModelPrices(address operator, address token) returns (bytes32[] modelIds, uint256[] prices)
+```
+
+**Migration:**
+```javascript
+// Before
+const [modelIds, nativePrices, stablePrices] = await nodeRegistry.getHostModelPrices(host);
+
+// After
+const [modelIds, prices] = await nodeRegistry.getHostModelPrices(host, usdcAddress);
+```
+
+### 5. New Functions
+
+```solidity
+// Set pricing for a model+token combo
+function setModelTokenPricing(bytes32 modelId, address token, uint256 price) external
+
+// Clear pricing for a model+token combo
+function clearModelTokenPricing(bytes32 modelId, address token) external
+```
+
+### 6. Storage Changes
+
+- Legacy mappings `modelPricingNative`, `modelPricingStable`, `customTokenPricing` kept as storage placeholders (slots 9-11)
+- New mapping `modelTokenPricing[operator][modelId][token]` at slot 13 (repurposed from `slashingAuthority`)
+
+### Migration Checklist
+
+#### For SDK Developers
+
+- [ ] Replace `getNodePricing()` calls with `getModelPricing(host, modelId, token)`
+- [ ] Replace `setTokenPricing()` calls with `setModelTokenPricing(modelId, token, price)` per model
+- [ ] Replace `createSessionJob()` with `createSessionJobForModel()`
+- [ ] Replace `createSessionJobWithToken()` with `createSessionJobForModelWithToken()`
+- [ ] Replace `createSessionFromDeposit()` with `createSessionFromDepositForModel()`
+- [ ] Update `getHostModelPrices()` calls to include `token` parameter and use 2-array return
+- [ ] Update event listeners: `PricingUpdated`/`ModelPricingUpdated`/`TokenPricingUpdated` replaced by `ModelTokenPricingUpdated`
+- [ ] Update cached ABIs from `client-abis/`
+
+#### For Node Operators (Hosts)
+
+- [ ] Call `setModelTokenPricing(modelId, token, price)` for each model+token combo you support
+- [ ] Remove calls to `setTokenPricing()`, `updatePricingNative()`, `updatePricingStable()`
+
+---
+
 ## January 14, 2026: deltaCID Proof Tracking & conversationCID
 
 **Contracts Affected**: JobMarketplaceWithModelsUpgradeable

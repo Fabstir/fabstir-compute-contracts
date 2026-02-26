@@ -126,6 +126,9 @@ contract ProofNoSignatureTest is Test {
             MIN_PRICE_STABLE
         );
 
+        vm.prank(host);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+
         // Setup user with ETH
         vm.deal(user, 100 ether);
         vm.deal(host, 100 ether);

@@ -90,7 +90,8 @@ contract EarlyCancellationFeeTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("http://host.example.com", "metadata", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         vm.deal(user, 100 ether);
@@ -217,7 +218,7 @@ contract EarlyCancellationFeeTest is Test {
         assertGt(hostEarningsAfter, hostEarningsBefore, "Host should receive USDC fee");
     }
 
-    /// @notice Early cancel on non-model session also charges fee
+    /// @notice Early cancel on model session also charges fee
     function test_EarlyComplete_NonModelSession() public {
         vm.prank(owner);
         marketplace.setMinTokensFee(1000);
@@ -225,8 +226,8 @@ contract EarlyCancellationFeeTest is Test {
         uint256 deposit = 1 ether;
         vm.deal(user, deposit);
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
-            host, MIN_PRICE_NATIVE, 3600, 100, 300
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
+            host, modelId, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         uint256 hostEarningsBefore = hostEarnings.getBalance(host, address(0));

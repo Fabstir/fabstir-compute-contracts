@@ -108,7 +108,8 @@ contract TokenMaxDepositTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         // Setup user
@@ -187,8 +188,9 @@ contract TokenMaxDepositTest is Test {
 
         vm.prank(user);
         vm.expectRevert("Deposit too large");
-        marketplace.createSessionJob{value: tooMuchDeposit}(
+        marketplace.createSessionJobForModel{value: tooMuchDeposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -214,8 +216,9 @@ contract TokenMaxDepositTest is Test {
         usdcToken.approve(address(marketplace), tooMuchDeposit);
 
         vm.expectRevert("Deposit too large");
-        marketplace.createSessionJobWithToken(
+        marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             tooMuchDeposit,
             MIN_PRICE_STABLE,
@@ -259,8 +262,9 @@ contract TokenMaxDepositTest is Test {
         uint256 validDeposit = 100 * 10**6;
 
         vm.startPrank(user);
-        uint256 sessionId = marketplace.createSessionJobWithToken(
+        uint256 sessionId = marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             validDeposit,
             MIN_PRICE_STABLE,

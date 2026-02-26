@@ -136,6 +136,9 @@ contract JobMarketplacePauseTest is Test {
             MIN_PRICE_STABLE
         );
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Setup user with ETH
         vm.deal(user1, 100 ether);
     }
@@ -224,8 +227,9 @@ contract JobMarketplacePauseTest is Test {
 
         vm.prank(user1);
         vm.expectRevert();
-        marketplace.createSessionJob{value: 0.01 ether}(
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -241,8 +245,9 @@ contract JobMarketplacePauseTest is Test {
         marketplace.unpause();
 
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -275,8 +280,9 @@ contract JobMarketplacePauseTest is Test {
     function test_SubmitProofBlockedWhenPaused() public {
         // Create session first
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -299,8 +305,9 @@ contract JobMarketplacePauseTest is Test {
     function test_SubmitProofWorksWhenUnpaused() public {
         // Create session first
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -360,8 +367,9 @@ contract JobMarketplacePauseTest is Test {
     function test_CompleteSessionNotBlockedWhenPaused() public {
         // Create session
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -404,8 +412,9 @@ contract JobMarketplacePauseTest is Test {
     function test_TreasuryWithdrawalNotBlockedWhenPaused() public {
         // Create and complete a session to accumulate treasury fees
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,

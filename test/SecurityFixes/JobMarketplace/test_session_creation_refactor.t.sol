@@ -104,7 +104,8 @@ contract SessionCreationRefactorTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("Test Host", "http://test.local", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         // Fund user
@@ -132,8 +133,8 @@ contract SessionCreationRefactorTest is Test {
 
     function test_CreateSessionJob_CreatesValidSession() public {
         vm.prank(user);
-        uint256 jobId = marketplace.createSessionJob{value: DEPOSIT_ETH}(
-            host, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300
+        uint256 jobId = marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(
+            host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300
         );
 
         (uint256 id, address depositor, address sessionHost, address paymentToken, uint256 deposit,
@@ -167,8 +168,8 @@ contract SessionCreationRefactorTest is Test {
 
     function test_CreateSessionJobWithToken_CreatesValidSession() public {
         vm.prank(user);
-        uint256 jobId = marketplace.createSessionJobWithToken(
-            host, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300
+        uint256 jobId = marketplace.createSessionJobForModelWithToken(
+            host, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300
         );
 
         (uint256 id, address depositor, address sessionHost, address paymentToken, uint256 deposit,
@@ -231,50 +232,50 @@ contract SessionCreationRefactorTest is Test {
     function test_CreateSessionJob_RejectsZeroPrice() public {
         vm.prank(user);
         vm.expectRevert("Invalid price");
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(host, 0, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, 0, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsZeroDuration() public {
         vm.prank(user);
         vm.expectRevert("Invalid duration");
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(host, PRICE_PER_TOKEN, 0, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, 0, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsExcessiveDuration() public {
         vm.prank(user);
         vm.expectRevert("Invalid duration");
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(host, PRICE_PER_TOKEN, 366 days, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, 366 days, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsZeroProofInterval() public {
         vm.prank(user);
         vm.expectRevert("Invalid proof interval");
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(host, PRICE_PER_TOKEN, MAX_DURATION, 0, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, 0, 300);
     }
 
     function test_CreateSessionJob_RejectsZeroHost() public {
         vm.prank(user);
         vm.expectRevert("Invalid host");
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(address(0), PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(address(0), modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsUnregisteredHost() public {
         vm.prank(user);
         vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(address(0x999), PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(address(0x999), modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsInsufficientDeposit() public {
         vm.prank(user);
         vm.expectRevert("Insufficient deposit");
-        marketplace.createSessionJob{value: 0.00001 ether}(host, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: 0.00001 ether}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJobWithToken_RejectsUnapprovedToken() public {
         address badToken = address(0x123);
         vm.prank(user);
         vm.expectRevert("Token not accepted");
-        marketplace.createSessionJobWithToken(host, badToken, DEPOSIT_USDC, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModelWithToken(host, modelId, badToken, DEPOSIT_USDC, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJobForModel_RejectsUnsupportedModel() public {
@@ -295,9 +296,9 @@ contract SessionCreationRefactorTest is Test {
         uint256 initialJobId = marketplace.nextJobId();
 
         vm.startPrank(user);
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(host, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
-        marketplace.createSessionJobWithToken(host, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModelWithToken(host, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
         marketplace.createSessionJobForModelWithToken(host, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
         vm.stopPrank();
 
@@ -307,9 +308,9 @@ contract SessionCreationRefactorTest is Test {
     function test_AllMethods_TrackUserSessions() public {
         vm.startPrank(user);
 
-        uint256 jobId1 = marketplace.createSessionJob{value: DEPOSIT_ETH}(host, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        uint256 jobId1 = marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
         uint256 jobId2 = marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
-        uint256 jobId3 = marketplace.createSessionJobWithToken(host, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
+        uint256 jobId3 = marketplace.createSessionJobForModelWithToken(host, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
         uint256 jobId4 = marketplace.createSessionJobForModelWithToken(host, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
 
         vm.stopPrank();
@@ -324,9 +325,9 @@ contract SessionCreationRefactorTest is Test {
     function test_AllMethods_TrackHostSessions() public {
         vm.startPrank(user);
 
-        uint256 jobId1 = marketplace.createSessionJob{value: DEPOSIT_ETH}(host, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        uint256 jobId1 = marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
         uint256 jobId2 = marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
-        uint256 jobId3 = marketplace.createSessionJobWithToken(host, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
+        uint256 jobId3 = marketplace.createSessionJobForModelWithToken(host, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
         uint256 jobId4 = marketplace.createSessionJobForModelWithToken(host, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
 
         vm.stopPrank();
@@ -345,9 +346,9 @@ contract SessionCreationRefactorTest is Test {
     function test_CreateSessionJob_EmitsEvents() public {
         vm.prank(user);
         vm.expectEmit(true, true, true, true);
-        emit JobMarketplaceWithModelsUpgradeable.SessionJobCreated(1, user, host, DEPOSIT_ETH);
+        emit JobMarketplaceWithModelsUpgradeable.SessionJobCreatedForModel(1, user, host, modelId, DEPOSIT_ETH);
 
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(host, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJobForModel_EmitsModelEvent() public {
@@ -365,13 +366,13 @@ contract SessionCreationRefactorTest is Test {
     function test_GasUsage_CreateSessionJob() public {
         vm.prank(user);
         uint256 gasBefore = gasleft();
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(host, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
         uint256 gasUsed = gasBefore - gasleft();
 
         // Log gas for comparison - should be similar before and after refactoring
-        // Acceptable increase is ~500 gas for internal function calls
+        // Model pricing lookup adds gas vs old non-model path
         emit log_named_uint("createSessionJob gas", gasUsed);
-        assertTrue(gasUsed < 400000, "Gas usage too high");
+        assertTrue(gasUsed < 430000, "Gas usage too high");
     }
 
     function test_GasUsage_CreateSessionJobForModel() public {
@@ -387,7 +388,7 @@ contract SessionCreationRefactorTest is Test {
     function test_GasUsage_CreateSessionJobWithToken() public {
         vm.prank(user);
         uint256 gasBefore = gasleft();
-        marketplace.createSessionJobWithToken(host, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModelWithToken(host, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
         uint256 gasUsed = gasBefore - gasleft();
 
         emit log_named_uint("createSessionJobWithToken gas", gasUsed);
@@ -412,7 +413,7 @@ contract SessionCreationRefactorTest is Test {
 
     function test_InlineDeposit_NotWithdrawable_Native() public {
         vm.prank(user);
-        marketplace.createSessionJob{value: DEPOSIT_ETH}(host, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
 
         // User should NOT be able to withdraw the deposit (it's locked in session)
         uint256 withdrawable = marketplace.userDepositsNative(user);
@@ -421,7 +422,7 @@ contract SessionCreationRefactorTest is Test {
 
     function test_InlineDeposit_NotWithdrawable_Token() public {
         vm.prank(user);
-        marketplace.createSessionJobWithToken(host, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
+        marketplace.createSessionJobForModelWithToken(host, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN_STABLE, MAX_DURATION, PROOF_INTERVAL, 300);
 
         // User should NOT be able to withdraw the deposit (it's locked in session)
         uint256 withdrawable = marketplace.userDepositsToken(user, address(usdcToken));

@@ -107,6 +107,7 @@ contract ProofSystemRequiredTest is Test {
         models[0] = modelId;
 
         nodeRegistry.registerNode("http://host.example.com", "metadata", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
         vm.stopPrank();
     }
 
@@ -117,7 +118,7 @@ contract ProofSystemRequiredTest is Test {
 
         // Create a session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100, 300);
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(host, modelId, MIN_PRICE_NATIVE, 1 hours, 100, 300);
 
         // Advance time so rate limit passes
         vm.warp(block.timestamp + 1);
@@ -150,7 +151,7 @@ contract ProofSystemRequiredTest is Test {
 
         // Create a session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100, 300);
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(host, modelId, MIN_PRICE_NATIVE, 1 hours, 100, 300);
 
         // Advance time so rate limit passes
         vm.warp(block.timestamp + 1);
@@ -171,7 +172,7 @@ contract ProofSystemRequiredTest is Test {
         assertEq(address(marketplace.proofSystem()), address(0), "ProofSystem should be address(0)");
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100, 300);
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(host, modelId, MIN_PRICE_NATIVE, 1 hours, 100, 300);
 
         assertGt(sessionId, 0, "Session should be created");
 

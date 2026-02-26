@@ -140,7 +140,8 @@ contract FundSafetyTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
         vm.stopPrank();
     }
 
@@ -166,8 +167,9 @@ contract FundSafetyTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -220,8 +222,9 @@ contract FundSafetyTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJobWithToken(
+        uint256 sessionId = marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             deposit,
             MIN_PRICE_STABLE,
@@ -267,9 +270,9 @@ contract FundSafetyTest is Test {
 
         // User creates 3 sessions with different amounts
         vm.startPrank(user);
-        uint256 s1 = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
-        uint256 s2 = marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
-        uint256 s3 = marketplace.createSessionJob{value: 3 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s1 = marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s2 = marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s3 = marketplace.createSessionJobForModel{value: 3 ether}(host2, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.stopPrank();
 
         // Verify locked balance = 6 ETH
@@ -320,11 +323,11 @@ contract FundSafetyTest is Test {
 
         // User1 creates session
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // User2 creates session
         vm.prank(user2);
-        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 3 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Verify independent locked balances
         assertEq(marketplace.getLockedBalanceNative(user), 2 ether, "User1 locked should be 2 ETH");
@@ -347,8 +350,9 @@ contract FundSafetyTest is Test {
 
         // Create session with 1 hour max duration
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             maxDuration,
             1000,
@@ -397,8 +401,9 @@ contract FundSafetyTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -424,8 +429,9 @@ contract FundSafetyTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -471,7 +477,7 @@ contract FundSafetyTest is Test {
 
         // Create session from pre-deposit
         vm.prank(user);
-        marketplace.createSessionFromDeposit(host, address(0), sessionAmount, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionFromDepositForModel(modelId, host, address(0), sessionAmount, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Verify balance deducted from pre-deposit, added to locked
         assertEq(marketplace.userDepositsNative(user), preDeposit - sessionAmount, "Pre-deposit should be reduced");
@@ -522,7 +528,7 @@ contract FundSafetyTest is Test {
 
         // Create inline session
         vm.prank(user);
-        marketplace.createSessionJob{value: sessionDeposit}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: sessionDeposit}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Pre-deposit balance should be 0 (not credited)
         assertEq(marketplace.userDepositsNative(user), 0, "Pre-deposit should NOT be credited for inline session");
@@ -551,7 +557,7 @@ contract FundSafetyTest is Test {
             uint256 deposit = ((seed / (i + 1)) % 3 + 1) * 0.5 ether; // 0.5-1.5 ETH
             deposits[i] = deposit;
             totalDeposited += deposit;
-            sessionIds[i] = marketplace.createSessionJob{value: deposit}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+            sessionIds[i] = marketplace.createSessionJobForModel{value: deposit}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         }
         vm.stopPrank();
 
@@ -577,10 +583,10 @@ contract FundSafetyTest is Test {
         vm.prank(user);
         marketplace.depositNative{value: 3 ether}();
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.prank(user2);
-        marketplace.createSessionJob{value: 4 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 4 ether}(host2, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Contract balance should equal sum of all deposits and sessions
         uint256 expectedBalance = 3 ether + 2 ether + 4 ether; // 9 ETH total

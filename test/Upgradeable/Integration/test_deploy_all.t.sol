@@ -212,6 +212,7 @@ contract DeployAllUpgradeableTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host.com", models, 227_273, 1);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), 227_273);
         vm.stopPrank();
 
         assertTrue(nodeRegistry.isActiveNode(host), "Host registered");
@@ -221,7 +222,7 @@ contract DeployAllUpgradeableTest is Test {
         vm.deal(user, 10 ether);
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.1 ether}(host, 227_273, 1 days, 1000, 300);
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.1 ether}(host, modelId, 227_273, 1 days, 1000, 300);
         assertEq(sessionId, 1, "Session created");
 
         // Step 4: Submit proof (first proof >= proofInterval=1000)

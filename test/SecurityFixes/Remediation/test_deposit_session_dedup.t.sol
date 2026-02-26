@@ -131,7 +131,8 @@ contract DepositSessionDedupTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("http://host.example.com", "metadata", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
         vm.stopPrank();
     }
 
@@ -144,8 +145,8 @@ contract DepositSessionDedupTest is Test {
         uint256 balanceBefore = marketplace.userDepositsNative(user);
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionFromDeposit(
-            host, address(0), depositAmount, MIN_PRICE_NATIVE, 1 hours, 100, 300
+        uint256 sessionId = marketplace.createSessionFromDepositForModel(
+            modelId, host, address(0), depositAmount, MIN_PRICE_NATIVE, 1 hours, 100, 300
         );
 
         assertGt(sessionId, 0, "Session ID should be > 0");
@@ -171,8 +172,8 @@ contract DepositSessionDedupTest is Test {
         uint256 balanceBefore = marketplace.userDepositsToken(user, address(usdcToken));
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionFromDeposit(
-            host, address(usdcToken), depositAmount, MIN_PRICE_STABLE, 1 hours, 100, 300
+        uint256 sessionId = marketplace.createSessionFromDepositForModel(
+            modelId, host, address(usdcToken), depositAmount, MIN_PRICE_STABLE, 1 hours, 100, 300
         );
 
         assertGt(sessionId, 0);
@@ -187,7 +188,7 @@ contract DepositSessionDedupTest is Test {
     function test_CreateFromDeposit_ZeroDeposit_Reverts() public {
         vm.prank(user);
         vm.expectRevert("Zero deposit");
-        marketplace.createSessionFromDeposit(host, address(0), 0, MIN_PRICE_NATIVE, 1 hours, 100, 300);
+        marketplace.createSessionFromDepositForModel(modelId, host, address(0), 0, MIN_PRICE_NATIVE, 1 hours, 100, 300);
     }
 
     // ============================================================
@@ -199,7 +200,7 @@ contract DepositSessionDedupTest is Test {
 
         vm.prank(user);
         vm.expectRevert("Insufficient balance");
-        marketplace.createSessionFromDeposit(host, address(0), tooMuch, MIN_PRICE_NATIVE, 1 hours, 100, 300);
+        marketplace.createSessionFromDepositForModel(modelId, host, address(0), tooMuch, MIN_PRICE_NATIVE, 1 hours, 100, 300);
     }
 
     // ============================================================
@@ -211,7 +212,7 @@ contract DepositSessionDedupTest is Test {
 
         vm.prank(user);
         vm.expectRevert("Insufficient balance");
-        marketplace.createSessionFromDeposit(host, address(usdcToken), tooMuch, MIN_PRICE_STABLE, 1 hours, 100, 300);
+        marketplace.createSessionFromDepositForModel(modelId, host, address(usdcToken), tooMuch, MIN_PRICE_STABLE, 1 hours, 100, 300);
     }
 
     // ============================================================
@@ -221,7 +222,7 @@ contract DepositSessionDedupTest is Test {
     function test_CreateFromDeposit_InvalidHost_Reverts() public {
         vm.prank(user);
         vm.expectRevert("Invalid host");
-        marketplace.createSessionFromDeposit(address(0), address(0), 0.1 ether, MIN_PRICE_NATIVE, 1 hours, 100, 300);
+        marketplace.createSessionFromDepositForModel(modelId, address(0), address(0), 0.1 ether, MIN_PRICE_NATIVE, 1 hours, 100, 300);
     }
 
     // ============================================================
@@ -231,7 +232,7 @@ contract DepositSessionDedupTest is Test {
     function test_CreateFromDeposit_InvalidDuration_Reverts() public {
         vm.prank(user);
         vm.expectRevert("Invalid duration");
-        marketplace.createSessionFromDeposit(host, address(0), 0.1 ether, MIN_PRICE_NATIVE, 0, 100, 300);
+        marketplace.createSessionFromDepositForModel(modelId, host, address(0), 0.1 ether, MIN_PRICE_NATIVE, 0, 100, 300);
     }
 
     // ============================================================
@@ -243,8 +244,8 @@ contract DepositSessionDedupTest is Test {
 
         vm.prank(user);
         vm.expectRevert("Token not accepted");
-        marketplace.createSessionFromDeposit(
-            host, address(randomToken), 100_000_000, MIN_PRICE_STABLE, 1 hours, 100, 300
+        marketplace.createSessionFromDepositForModel(
+            modelId, host, address(randomToken), 100_000_000, MIN_PRICE_STABLE, 1 hours, 100, 300
         );
     }
 

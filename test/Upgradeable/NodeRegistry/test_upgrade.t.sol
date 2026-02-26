@@ -28,7 +28,7 @@ contract NodeRegistryWithModelsUpgradeableV2 is NodeRegistryWithModelsUpgradeabl
 }
 
 /**
- * @title NodeRegistryWithModelsUpgradeable Upgrade Tests
+ * @title NodeRegistryWithModelsUpgradeable Upgrade Tests (Phase 18)
  */
 contract NodeRegistryUpgradeTest is Test {
     NodeRegistryWithModelsUpgradeable public implementation;
@@ -105,7 +105,8 @@ contract NodeRegistryUpgradeTest is Test {
             MIN_PRICE_NATIVE * 2,
             MIN_PRICE_STABLE * 50
         );
-        nodeRegistry.setTokenPricing(address(fabToken), MIN_PRICE_STABLE * 50);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE * 2);
+        nodeRegistry.setModelTokenPricing(modelId1, address(fabToken), MIN_PRICE_STABLE * 50);
         vm.stopPrank();
 
         vm.startPrank(host2);
@@ -116,7 +117,10 @@ contract NodeRegistryUpgradeTest is Test {
             MIN_PRICE_NATIVE * 3,
             MIN_PRICE_STABLE * 100
         );
-        nodeRegistry.setTokenPricing(address(fabToken), MIN_PRICE_STABLE * 100);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE * 3);
+        nodeRegistry.setModelTokenPricing(modelId2, address(0), MIN_PRICE_NATIVE * 3);
+        nodeRegistry.setModelTokenPricing(modelId1, address(fabToken), MIN_PRICE_STABLE * 100);
+        nodeRegistry.setModelTokenPricing(modelId2, address(fabToken), MIN_PRICE_STABLE * 100);
         vm.stopPrank();
     }
 
@@ -129,9 +133,9 @@ contract NodeRegistryUpgradeTest is Test {
         assertTrue(nodeRegistry.isActiveNode(host1));
         assertTrue(nodeRegistry.isActiveNode(host2));
 
-        // Verify pricing
-        assertEq(nodeRegistry.getNodePricing(host1, address(0)), MIN_PRICE_NATIVE * 2);
-        assertEq(nodeRegistry.getNodePricing(host2, address(0)), MIN_PRICE_NATIVE * 3);
+        // Verify model-token pricing
+        assertEq(nodeRegistry.getModelPricing(host1, modelId1, address(0)), MIN_PRICE_NATIVE * 2);
+        assertEq(nodeRegistry.getModelPricing(host2, modelId1, address(0)), MIN_PRICE_NATIVE * 3);
 
         // Verify models
         assertTrue(nodeRegistry.nodeSupportsModel(host1, modelId1));
@@ -214,7 +218,7 @@ contract NodeRegistryUpgradeTest is Test {
         assertEq(nodeRegistryV2.getActiveNodeCount(), 2);
     }
 
-    function test_UpgradePreservesNodePricing() public {
+    function test_UpgradePreservesModelTokenPricing() public {
         NodeRegistryWithModelsUpgradeableV2 implementationV2 = new NodeRegistryWithModelsUpgradeableV2();
 
         vm.prank(owner);
@@ -222,11 +226,12 @@ contract NodeRegistryUpgradeTest is Test {
 
         NodeRegistryWithModelsUpgradeableV2 nodeRegistryV2 = NodeRegistryWithModelsUpgradeableV2(address(nodeRegistry));
 
-        // Verify pricing preserved
-        assertEq(nodeRegistryV2.getNodePricing(host1, address(0)), MIN_PRICE_NATIVE * 2);
-        assertEq(nodeRegistryV2.getNodePricing(host2, address(0)), MIN_PRICE_NATIVE * 3);
-        assertEq(nodeRegistryV2.getNodePricing(host1, address(fabToken)), MIN_PRICE_STABLE * 50);
-        assertEq(nodeRegistryV2.getNodePricing(host2, address(fabToken)), MIN_PRICE_STABLE * 100);
+        // Verify native pricing preserved (falls back to default node pricing)
+        assertEq(nodeRegistryV2.getModelPricing(host1, modelId1, address(0)), MIN_PRICE_NATIVE * 2);
+        assertEq(nodeRegistryV2.getModelPricing(host2, modelId1, address(0)), MIN_PRICE_NATIVE * 3);
+        // Verify model-token pricing preserved for fabToken
+        assertEq(nodeRegistryV2.getModelPricing(host1, modelId1, address(fabToken)), MIN_PRICE_STABLE * 50);
+        assertEq(nodeRegistryV2.getModelPricing(host2, modelId1, address(fabToken)), MIN_PRICE_STABLE * 100);
     }
 
     function test_UpgradePreservesNodeModels() public {
@@ -354,7 +359,7 @@ contract NodeRegistryUpgradeTest is Test {
         assertEq(nodeRegistryV2.getActiveNodeCount(), 1);
     }
 
-    function test_CanUpdatePricingAfterUpgrade() public {
+    function test_CanSetModelTokenPricingAfterUpgrade() public {
         NodeRegistryWithModelsUpgradeableV2 implementationV2 = new NodeRegistryWithModelsUpgradeableV2();
 
         vm.prank(owner);
@@ -363,9 +368,9 @@ contract NodeRegistryUpgradeTest is Test {
         NodeRegistryWithModelsUpgradeableV2 nodeRegistryV2 = NodeRegistryWithModelsUpgradeableV2(address(nodeRegistry));
 
         vm.prank(host1);
-        nodeRegistryV2.updatePricingNative(MIN_PRICE_NATIVE * 10);
+        nodeRegistryV2.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE * 10);
 
-        assertEq(nodeRegistryV2.getNodePricing(host1, address(0)), MIN_PRICE_NATIVE * 10);
+        assertEq(nodeRegistryV2.getModelPricing(host1, modelId1, address(0)), MIN_PRICE_NATIVE * 10);
     }
 
     // ============================================================

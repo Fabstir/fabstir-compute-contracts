@@ -151,14 +151,18 @@ contract JobMarketplaceUpgradeTest is Test {
             MIN_PRICE_STABLE
         );
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Setup users with ETH
         vm.deal(user1, 100 ether);
         vm.deal(user2, 100 ether);
 
         // Create some sessions before upgrade
         vm.prank(user1);
-        marketplace.createSessionJob{value: 0.01 ether}(
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -166,8 +170,9 @@ contract JobMarketplaceUpgradeTest is Test {
         );
 
         vm.prank(user2);
-        marketplace.createSessionJob{value: 0.02 ether}(
+        marketplace.createSessionJobForModel{value: 0.02 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE * 2,
             2 days,
             1000,
@@ -420,8 +425,9 @@ contract JobMarketplaceUpgradeTest is Test {
         vm.deal(newUser, 10 ether);
 
         vm.prank(newUser);
-        uint256 sessionId = marketplaceV2.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplaceV2.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,

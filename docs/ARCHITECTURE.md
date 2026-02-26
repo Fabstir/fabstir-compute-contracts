@@ -43,7 +43,7 @@
                           │  ─────────────────    │
                           │  • Host registration  │
                           │  • FAB staking        │
-                          │  • Dual pricing       │
+                          │  • Per-model pricing  │
                           │  • Model support      │
                           │  • Stake slashing     │
                           └───────────┬───────────┘
@@ -144,10 +144,11 @@
 │Depositor│                  │  JobMarketplace │                  │ NodeRegistry │
 └────┬────┘                  └────────┬────────┘                  └──────┬───────┘
      │                                │                                  │
-     │  1. getNodePricing(host)       │                                  │
+     │  1. getModelPricing(host,      │                                  │
+     │     modelId, token)            │                                  │
      │ ──────────────────────────────────────────────────────────────────>
      │                                │                                  │
-     │  2. (minNative, minStable)     │                                  │
+     │  2. (modelTokenPrice)          │                                  │
      │ <──────────────────────────────────────────────────────────────────
      │                                │                                  │
      │  3. createSessionJobForModel() │                                  │
@@ -350,14 +351,15 @@ mapping(address => uint256) public activeNodesIndex;  // Slot 6
 mapping(bytes32 => address[]) public modelToNodes;    // Slot 7
 mapping(bytes32 => mapping(address => uint256)) private modelNodeIndex;  // Slot 8
 
-mapping(address => mapping(bytes32 => uint256)) public modelPricingNative;   // Slot 9
-mapping(address => mapping(bytes32 => uint256)) public modelPricingStable;   // Slot 10
-mapping(address => mapping(address => uint256)) public customTokenPricing;   // Slot 11
+mapping(address => mapping(bytes32 => uint256)) public modelPricingNative;   // Slot 9 (deprecated placeholder)
+mapping(address => mapping(bytes32 => uint256)) public modelPricingStable;   // Slot 10 (deprecated placeholder)
+mapping(address => mapping(address => uint256)) public customTokenPricing;   // Slot 11 (deprecated placeholder)
 
 address[] public activeNodesList;                 // Slot 12
 
-// Slot 13-15: Slashing state (NEW - Jan 16, 2026)
-address public slashingAuthority;                 // Slot 13
+// Slot 13: Per-model per-token pricing (Phase 18 - repurposed from slashingAuthority)
+mapping(address => mapping(bytes32 => mapping(address => uint256))) public modelTokenPricing; // Slot 13
+
 address public treasury;                          // Slot 14
 mapping(address => uint256) public lastSlashTime; // Slot 15
 
@@ -549,7 +551,7 @@ function _removeNodeFromModel(bytes32 modelId, address node) private {
 | JobMarketplace | `SessionCompleted` | Track completions, payments |
 | JobMarketplace | `ProofSubmitted` | Track proof history (includes deltaCID) |
 | NodeRegistry | `NodeRegistered` | Track host onboarding |
-| NodeRegistry | `PricingUpdated` | Track price changes |
+| NodeRegistry | `ModelTokenPricingUpdated` | Track per-model per-token price changes |
 | ModelRegistry | `ModelProposed` | Track governance |
 | HostEarnings | `EarningsCredited` | Track host income |
 

@@ -116,12 +116,13 @@ contract SubmitProofNoSignatureTest is Test {
         models[0] = modelId;
 
         nodeRegistry.registerNode("http://host.example.com", "metadata", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
         vm.stopPrank();
     }
 
     function _createSession() internal returns (uint256) {
         vm.prank(user);
-        return marketplace.createSessionJob{value: 0.01 ether}(host, MIN_PRICE_NATIVE, 1 hours, 100, 300);
+        return marketplace.createSessionJobForModel{value: 0.01 ether}(host, modelId, MIN_PRICE_NATIVE, 1 hours, 100, 300);
     }
 
     /// @notice F202614998+F202614976: Proof submission succeeds with new 5-param signature (no signature bytes)

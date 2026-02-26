@@ -64,11 +64,11 @@ contract NodeRegistryWithModelsUpgradeable is
     // Index mapping for O(1) node removal from model arrays
     mapping(bytes32 => mapping(address => uint256)) private modelNodeIndex;
 
-    // Per-model pricing overrides
+    // DEPRECATED: Kept as storage placeholders for upgrade safety. Superseded by modelTokenPricing.
     mapping(address => mapping(bytes32 => uint256)) public modelPricingNative;
     mapping(address => mapping(bytes32 => uint256)) public modelPricingStable;
 
-    // Per-token pricing overrides
+    // DEPRECATED: Kept as storage placeholder for upgrade safety. Superseded by modelTokenPricing.
     mapping(address => mapping(address => uint256)) public customTokenPricing;
 
     address[] public activeNodesList;
@@ -85,9 +85,6 @@ contract NodeRegistryWithModelsUpgradeable is
     event ApiUrlUpdated(address indexed operator, string newApiUrl);
     event ModelsUpdated(address indexed operator, bytes32[] newModels);
     event ModelRegistryUpdated(address indexed newRegistry);
-    event PricingUpdated(address indexed operator, uint256 newMinPrice);
-    event ModelPricingUpdated(address indexed operator, bytes32 indexed modelId, uint256 nativePrice, uint256 stablePrice);
-    event TokenPricingUpdated(address indexed operator, address indexed token, uint256 price);
     event CorruptNodeRepaired(address indexed operator, uint256 stakeReturned);
 
     // Slashing events
@@ -111,9 +108,13 @@ contract NodeRegistryWithModelsUpgradeable is
         address indexed newAuthority
     );
     event TreasuryUpdated(address indexed newTreasury);
+    event ModelTokenPricingUpdated(address indexed operator, bytes32 indexed modelId, address indexed token, uint256 price);
 
-    // Storage gap for future upgrades (40 - 1 for modelNodeIndex - 3 for slashing vars)
-    uint256[36] private __gap;
+    // Per-model per-token pricing (replaces modelPricingNative, modelPricingStable, customTokenPricing)
+    mapping(address => mapping(bytes32 => mapping(address => uint256))) public modelTokenPricing;
+
+    // Storage gap for future upgrades (40 - 1 for modelNodeIndex - 3 for slashing vars - 1 for modelTokenPricing)
+    uint256[35] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -149,6 +150,8 @@ contract NodeRegistryWithModelsUpgradeable is
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
+    // NOTE: minPricePerTokenNative/minPricePerTokenStable params retained for storage layout
+    // safety but no longer used for session pricing. Hosts must call setModelTokenPricing() after registration.
     /**
      * @notice Register a node with supported models and dual pricing
      */
@@ -281,84 +284,37 @@ contract NodeRegistryWithModelsUpgradeable is
     }
 
     /**
-     * @notice Update minimum price per token for native tokens
+     * @notice Set per-model per-token pricing
+     * @param modelId The model to set pricing for
+     * @param token The payment token address (address(0) for native ETH)
+     * @param price The price per token
      */
-    function updatePricingNative(uint256 newMinPrice) external {
+    function setModelTokenPricing(bytes32 modelId, address token, uint256 price) external {
         require(nodes[msg.sender].operator != address(0), "Not registered");
-        require(nodes[msg.sender].active, "Node not active");
-        require(newMinPrice >= MIN_PRICE_PER_TOKEN_NATIVE, "Price below minimum");
-        require(newMinPrice <= MAX_PRICE_PER_TOKEN_NATIVE, "Price above maximum");
-
-        nodes[msg.sender].minPricePerTokenNative = newMinPrice;
-
-        emit PricingUpdated(msg.sender, newMinPrice);
-    }
-
-    /**
-     * @notice Update minimum price per token for stablecoins
-     */
-    function updatePricingStable(uint256 newMinPrice) external {
-        require(nodes[msg.sender].operator != address(0), "Not registered");
-        require(nodes[msg.sender].active, "Node not active");
-        require(newMinPrice >= MIN_PRICE_PER_TOKEN_STABLE, "Price below minimum");
-        require(newMinPrice <= MAX_PRICE_PER_TOKEN_STABLE, "Price above maximum");
-
-        nodes[msg.sender].minPricePerTokenStable = newMinPrice;
-
-        emit PricingUpdated(msg.sender, newMinPrice);
-    }
-
-    /**
-     * @notice Set per-model pricing overrides
-     */
-    function setModelPricing(bytes32 modelId, uint256 nativePrice, uint256 stablePrice) external {
-        require(nodes[msg.sender].operator != address(0), "Not registered");
-        require(nodes[msg.sender].active, "Node not active");
         require(_nodeSupportsModel(msg.sender, modelId), "Model not supported");
 
-        if (nativePrice > 0) {
-            require(nativePrice >= MIN_PRICE_PER_TOKEN_NATIVE, "Native price below minimum");
-            require(nativePrice <= MAX_PRICE_PER_TOKEN_NATIVE, "Native price above maximum");
-        }
-        if (stablePrice > 0) {
-            require(stablePrice >= MIN_PRICE_PER_TOKEN_STABLE, "Stable price below minimum");
-            require(stablePrice <= MAX_PRICE_PER_TOKEN_STABLE, "Stable price above maximum");
+        if (token == address(0)) {
+            require(price >= MIN_PRICE_PER_TOKEN_NATIVE, "Native price below minimum");
+            require(price <= MAX_PRICE_PER_TOKEN_NATIVE, "Native price above maximum");
+        } else {
+            require(price >= MIN_PRICE_PER_TOKEN_STABLE, "Stable price below minimum");
+            require(price <= MAX_PRICE_PER_TOKEN_STABLE, "Stable price above maximum");
         }
 
-        modelPricingNative[msg.sender][modelId] = nativePrice;
-        modelPricingStable[msg.sender][modelId] = stablePrice;
-
-        emit ModelPricingUpdated(msg.sender, modelId, nativePrice, stablePrice);
+        modelTokenPricing[msg.sender][modelId][token] = price;
+        emit ModelTokenPricingUpdated(msg.sender, modelId, token, price);
     }
 
     /**
-     * @notice Clear per-model pricing overrides
+     * @notice Clear per-model per-token pricing
+     * @param modelId The model to clear pricing for
+     * @param token The payment token address (address(0) for native ETH)
      */
-    function clearModelPricing(bytes32 modelId) external {
+    function clearModelTokenPricing(bytes32 modelId, address token) external {
         require(nodes[msg.sender].operator != address(0), "Not registered");
 
-        modelPricingNative[msg.sender][modelId] = 0;
-        modelPricingStable[msg.sender][modelId] = 0;
-
-        emit ModelPricingUpdated(msg.sender, modelId, 0, 0);
-    }
-
-    /**
-     * @notice Set token-specific pricing for a stablecoin
-     */
-    function setTokenPricing(address token, uint256 price) external {
-        require(nodes[msg.sender].operator != address(0), "Not registered");
-        require(nodes[msg.sender].active, "Node not active");
-        require(token != address(0), "Use updatePricingNative for native token");
-
-        if (price > 0) {
-            require(price >= MIN_PRICE_PER_TOKEN_STABLE, "Price below minimum");
-            require(price <= MAX_PRICE_PER_TOKEN_STABLE, "Price above maximum");
-        }
-
-        customTokenPricing[msg.sender][token] = price;
-
-        emit TokenPricingUpdated(msg.sender, token, price);
+        modelTokenPricing[msg.sender][modelId][token] = 0;
+        emit ModelTokenPricingUpdated(msg.sender, modelId, token, 0);
     }
 
     /**
@@ -450,67 +406,40 @@ contract NodeRegistryWithModelsUpgradeable is
     }
 
     /**
-     * @notice Get node's minimum price per token for a specific payment token
-     */
-    function getNodePricing(address operator, address token) external view returns (uint256) {
-        if (token == address(0)) {
-            return nodes[operator].minPricePerTokenNative;
-        } else {
-            uint256 customPrice = customTokenPricing[operator][token];
-            require(customPrice > 0, "No token pricing");
-            return customPrice;
-        }
-    }
-
-    /**
-     * @notice Get model-specific pricing with fallback to default
+     * @notice Get model-specific pricing for a given token
      */
     function getModelPricing(address operator, bytes32 modelId, address token) external view returns (uint256) {
         if (nodes[operator].operator == address(0)) return 0;
 
-        if (token == address(0)) {
-            uint256 modelPrice = modelPricingNative[operator][modelId];
-            return modelPrice > 0 ? modelPrice : nodes[operator].minPricePerTokenNative;
-        } else {
-            uint256 modelPrice = modelPricingStable[operator][modelId];
-            if (modelPrice > 0) return modelPrice;
-            uint256 customPrice = customTokenPricing[operator][token];
-            require(customPrice > 0, "No token pricing");
-            return customPrice;
-        }
+        uint256 price = modelTokenPricing[operator][modelId][token];
+        require(price > 0, "No model pricing");
+        return price;
     }
 
     /**
-     * @notice Get all model prices for a host in a single batch query
+     * @notice Get all model prices for a host for a specific token
      */
-    function getHostModelPrices(address operator) external view returns (
+    function getHostModelPrices(address operator, address token) external view returns (
         bytes32[] memory modelIds,
-        uint256[] memory nativePrices,
-        uint256[] memory stablePrices
+        uint256[] memory prices
     ) {
         if (nodes[operator].operator == address(0)) {
-            return (new bytes32[](0), new uint256[](0), new uint256[](0));
+            return (new bytes32[](0), new uint256[](0));
         }
 
         Node storage node = nodes[operator];
         uint256 modelCount = node.supportedModels.length;
 
         modelIds = new bytes32[](modelCount);
-        nativePrices = new uint256[](modelCount);
-        stablePrices = new uint256[](modelCount);
+        prices = new uint256[](modelCount);
 
         for (uint256 i = 0; i < modelCount; i++) {
-            bytes32 modelId = node.supportedModels[i];
-            modelIds[i] = modelId;
-
-            uint256 nativeOverride = modelPricingNative[operator][modelId];
-            nativePrices[i] = nativeOverride > 0 ? nativeOverride : node.minPricePerTokenNative;
-
-            uint256 stableOverride = modelPricingStable[operator][modelId];
-            stablePrices[i] = stableOverride > 0 ? stableOverride : node.minPricePerTokenStable;
+            bytes32 mid = node.supportedModels[i];
+            modelIds[i] = mid;
+            prices[i] = modelTokenPricing[operator][mid][token];
         }
 
-        return (modelIds, nativePrices, stablePrices);
+        return (modelIds, prices);
     }
 
     /**

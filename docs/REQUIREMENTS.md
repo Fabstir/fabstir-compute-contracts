@@ -103,15 +103,12 @@ Fabstir Compute solves these problems by:
 | `updateSupportedModels()` | - | ✓ | - | - |
 | `updateMetadata()` | - | ✓ | - | - |
 | `updateApiUrl()` | - | ✓ | - | - |
-| `updatePricingNative()` | - | ✓ | - | - |
-| `updatePricingStable()` | - | ✓ | - | - |
-| `setModelPricing()` | - | ✓ | - | - |
-| `clearModelPricing()` | - | ✓ | - | - |
-| `setTokenPricing()` | - | ✓ | - | - |
+| `setModelTokenPricing()` | - | ✓ | - | - |
+| `clearModelTokenPricing()` | - | ✓ | - | - |
 | `stake()` | - | ✓ | - | - |
 | `updateModelRegistry()` | ✓ | - | - | - |
 | `upgradeToAndCall()` | ✓ | - | - | - |
-| `getNodePricing()` | - | - | - | ✓ |
+| `getModelPricing()` | - | - | - | ✓ |
 | `getNodeFullInfo()` | - | - | - | ✓ |
 | `isActiveNode()` | - | - | - | ✓ |
 
@@ -202,7 +199,7 @@ Fabstir Compute solves these problems by:
 | ID | Invariant | Enforcement |
 |----|-----------|-------------|
 | **EC-1** | Host must stake MIN_STAKE (1000 FAB) to register | `require` in `registerNode()` |
-| **EC-2** | Session price ≥ host minimum price | Price validation in session creation |
+| **EC-2** | Session price ≥ host model-token price | Price validation via `getModelPricing()` in session creation |
 | **EC-3** | Model proposal requires PROPOSAL_FEE (100 FAB) | Transfer in `proposeModel()` |
 | **EC-4** | Approval requires APPROVAL_THRESHOLD (100k FAB votes) | Check in `executeProposal()` |
 
@@ -268,8 +265,8 @@ Fabstir Compute solves these problems by:
 | FR-HOST-1 | Host must stake minimum 1000 FAB tokens | NodeRegistry | `registerNode()` |
 | FR-HOST-2 | Host must specify at least one approved model | NodeRegistry | `registerNode()` |
 | FR-HOST-3 | Host must provide non-empty metadata and API URL | NodeRegistry | `registerNode()` |
-| FR-HOST-4 | Host must set valid dual pricing (native + stable) | NodeRegistry | `registerNode()` |
-| FR-HOST-5 | Host can update pricing while active | NodeRegistry | `updatePricing*()` |
+| FR-HOST-4 | Host must set per-model per-token pricing for each model+token combo | NodeRegistry | `setModelTokenPricing()` |
+| FR-HOST-5 | Host can update pricing per model per token while active | NodeRegistry | `setModelTokenPricing()` |
 | FR-HOST-6 | Host can unregister and reclaim stake | NodeRegistry | `unregisterNode()` |
 
 ### 6.2 Session Management (FR-SESSION)
@@ -348,7 +345,7 @@ Fabstir Compute solves these problems by:
 | JobMarketplace | `submitProofOfWork()` | FR-SESSION-5, FR-SESSION-6 |
 | JobMarketplace | `completeSessionJob()` | FR-SESSION-7, FR-SESSION-8, FR-PAYMENT-1-3 |
 | NodeRegistry | `registerNode()` | FR-HOST-1-4 |
-| NodeRegistry | `updatePricingNative()` | FR-HOST-5 |
+| NodeRegistry | `setModelTokenPricing()` | FR-HOST-4, FR-HOST-5 |
 | ModelRegistry | `proposeModel()` | FR-MODEL-2 |
 | ModelRegistry | `executeProposal()` | FR-MODEL-4-5 |
 | HostEarnings | `withdraw()` | FR-PAYMENT-5 |

@@ -132,8 +132,9 @@ contract FullSessionLifecycleTest is Test {
         uint256 pricePerToken = MIN_PRICE_NATIVE;
 
         vm.prank(depositor);
-        uint256 jobId = marketplace.createSessionJob{value: deposit}(
+        uint256 jobId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             pricePerToken,
             3600, // maxDuration
             100,  // proofInterval
@@ -198,8 +199,9 @@ contract FullSessionLifecycleTest is Test {
         uint256 deposit = 1 ether;
 
         vm.prank(depositor);
-        uint256 jobId = marketplace.createSessionJob{value: deposit}(
+        uint256 jobId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             3600,
             100,  // proofInterval
@@ -244,18 +246,18 @@ contract FullSessionLifecycleTest is Test {
         uint256[] memory jobIds = new uint256[](3);
 
         vm.prank(depositor);
-        jobIds[0] = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100, 300
+        jobIds[0] = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         vm.prank(depositor2);
-        jobIds[1] = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100, 300
+        jobIds[1] = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         vm.prank(depositor3);
-        jobIds[2] = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100, 300
+        jobIds[2] = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         // Host serves all sessions with different token amounts
@@ -296,8 +298,8 @@ contract FullSessionLifecycleTest is Test {
     function test_DepositorCanCompleteEarly() public {
         // Create session
         vm.prank(depositor);
-        uint256 jobId = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 3600, 100, 300
+        uint256 jobId = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 3600, 100, 300
         );
 
         // Warp time to allow token claims
@@ -363,6 +365,7 @@ contract FullSessionLifecycleTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
         vm.stopPrank();
     }
 

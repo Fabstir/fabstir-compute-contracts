@@ -92,7 +92,8 @@ contract MinimumBillingTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("http://host.example.com", "metadata", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         vm.deal(user, 100 ether);
@@ -266,13 +267,13 @@ contract MinimumBillingTest is Test {
         assertEq(tokensUsed, MIN_PROVEN_TOKENS);
     }
 
-    /// @notice Non-model sessions enforce proofInterval on first proof too
+    /// @notice Model sessions enforce proofInterval on first proof too
     function test_NonModelSession_FirstProofEnforcement() public {
         uint256 deposit = 10 ether;
         vm.deal(user, deposit);
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
-            host, MIN_PRICE_NATIVE, 3600, PROOF_INTERVAL, 300
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
+            host, modelId, MIN_PRICE_NATIVE, 3600, PROOF_INTERVAL, 300
         );
 
         vm.warp(block.timestamp + 1);
@@ -296,8 +297,8 @@ contract MinimumBillingTest is Test {
         uint256 highPrice = 1_000_000; // high pricePerToken
         vm.deal(user, deposit);
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
-            host, highPrice, 3600, PROOF_INTERVAL, 300
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
+            host, modelId, highPrice, 3600, PROOF_INTERVAL, 300
         );
 
         // Depositor cancels immediately (no proofs) — must not revert

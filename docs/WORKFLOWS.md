@@ -134,9 +134,9 @@ console.log('Node info:', {
 ┌─────────────────────────────────────────────────────────────┐
 │              SESSION CREATION FLOW (ETH)                     │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Query host pricing: getNodePricing(host, address(0))    │
+│  1. Query pricing: getModelPricing(host, modelId, addr(0))  │
 │  2. Verify model support: nodeSupportsModel(host, modelId)  │
-│  3. Calculate deposit: estimatedTokens × pricePerToken      │
+│  3. Calculate deposit: estimatedTokens x pricePerToken      │
 │  4. Call createSessionJobForModel() with ETH value          │
 │  5. Receive jobId from SessionJobCreated event              │
 └─────────────────────────────────────────────────────────────┘
@@ -144,7 +144,7 @@ console.log('Node info:', {
 ┌─────────────────────────────────────────────────────────────┐
 │              SESSION CREATION FLOW (USDC)                    │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Query host pricing: getNodePricing(host, USDC_ADDRESS)  │
+│  1. Query pricing: getModelPricing(host, modelId, USDC)     │
 │  2. Verify model support: nodeSupportsModel(host, modelId)  │
 │  3. Approve USDC for JobMarketplace                         │
 │  4. Call createSessionJobForModelWithToken()                │
@@ -161,10 +161,10 @@ const NODE_REGISTRY = '0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22';
 const marketplace = new ethers.Contract(JOB_MARKETPLACE, JobMarketplaceABI, signer);
 const nodeRegistry = new ethers.Contract(NODE_REGISTRY, NodeRegistryABI, signer);
 
-// Step 1: Query host pricing
+// Step 1: Query model pricing
 const hostAddress = '0x...'; // Host you want to use
-const nativePrice = await nodeRegistry.getNodePricing(hostAddress, ethers.ZeroAddress);
-console.log('Host native price:', nativePrice.toString());
+const nativePrice = await nodeRegistry.getModelPricing(hostAddress, modelId, ethers.ZeroAddress);
+console.log('Host model price (native):', nativePrice.toString());
 
 // Step 2: Verify model support
 const modelId = ethers.keccak256(ethers.toUtf8Bytes('TinyVicuna-1B'));
@@ -208,8 +208,8 @@ console.log('✅ Session created, jobId:', jobId.toString());
 ```javascript
 const USDC_TOKEN = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 
-// Step 1: Query host pricing for USDC
-const stablePrice = await nodeRegistry.getNodePricing(hostAddress, USDC_TOKEN);
+// Step 1: Query model pricing for USDC
+const stablePrice = await nodeRegistry.getModelPricing(hostAddress, modelId, USDC_TOKEN);
 
 // Step 2: Verify model support (same as ETH)
 
@@ -242,8 +242,7 @@ const receipt = await createTx.wait();
 |-------|-------|----------|
 | `Host not active` | Host is not registered or inactive | Choose active host |
 | `Host does not support model` | Model not in host's supportedModels | Choose supported model |
-| `Price below host minimum (native)` | Offered price too low | Use host's minPricePerTokenNative |
-| `Price below host minimum (stable)` | Offered price too low | Use host's minPricePerTokenStable |
+| `No model pricing` | Host has not set pricing for this model+token combo | Host must call `setModelTokenPricing(modelId, token, price)` |
 | `Deposit below minimum` | Deposit too small | Increase deposit amount |
 | `Paused` | Contract is paused | Wait for unpause |
 
@@ -701,9 +700,13 @@ async function validateSessionCreation(host, modelId, price, deposit) {
   const supportsModel = await nodeRegistry.nodeSupportsModel(host, modelId);
   if (!supportsModel) errors.push('Host does not support this model');
 
-  // Check price meets minimum
-  const hostPrice = await nodeRegistry.getNodePricing(host, ethers.ZeroAddress);
-  if (price < hostPrice) errors.push(`Price ${price} below host minimum ${hostPrice}`);
+  // Check price meets minimum for this model+token combo
+  try {
+    const modelPrice = await nodeRegistry.getModelPricing(host, modelId, ethers.ZeroAddress);
+    if (price < modelPrice) errors.push(`Price ${price} below host model minimum ${modelPrice}`);
+  } catch (e) {
+    errors.push('Host has not set pricing for this model+token combo');
+  }
 
   // Check deposit meets minimum
   const minDeposit = await marketplace.tokenMinDeposits(ethers.ZeroAddress);

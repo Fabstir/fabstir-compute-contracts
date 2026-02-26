@@ -102,6 +102,8 @@ contract ProofSubmissionRateLimitTest is Test {
         vm.startPrank(host);
         fabToken.approve(address(nodeRegistry), MIN_STAKE);
         nodeRegistry.registerNode("Test Host", "http://test.api", models, MIN_PRICE_NATIVE, 10);
+        nodeRegistry.setModelTokenPricing(TINY_LLAMA_MODEL_ID, address(0), MIN_PRICE_NATIVE);
+        nodeRegistry.setModelTokenPricing(TINY_VICUNA_MODEL_ID, address(0), MIN_PRICE_NATIVE);
         vm.stopPrank();
     }
 
@@ -204,6 +206,6 @@ contract ProofSubmissionRateLimitTest is Test {
     function _createNonModelSession(uint256 deposit) internal returns (uint256) {
         vm.deal(user, deposit);
         vm.prank(user);
-        return marketplace.createSessionJob{value: deposit}(host, MIN_PRICE_NATIVE, 3600, 100, 300);
+        return marketplace.createSessionJobForModel{value: deposit}(host, TINY_LLAMA_MODEL_ID, MIN_PRICE_NATIVE, 3600, 100, 300);
     }
 }

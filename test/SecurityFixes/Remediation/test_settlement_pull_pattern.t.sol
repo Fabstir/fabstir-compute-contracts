@@ -114,7 +114,8 @@ contract SettlementPullPatternTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("http://host.example.com", "metadata", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
-        nodeRegistry.setTokenPricing(address(blockToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(blockToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
         vm.stopPrank();
     }
 
@@ -128,8 +129,8 @@ contract SettlementPullPatternTest is Test {
         vm.deal(rejecter, 10 ether);
 
         vm.prank(rejecter);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
         );
 
         // Host submits proof for partial amount
@@ -170,8 +171,8 @@ contract SettlementPullPatternTest is Test {
 
         uint256 stablePrice = 1000;
         vm.prank(depositor);
-        uint256 sessionId = marketplace.createSessionJobWithToken(
-            host, address(blockToken), USDC_MIN_DEPOSIT * 2, stablePrice, 1 days, MIN_PROVEN_TOKENS, 300
+        uint256 sessionId = marketplace.createSessionJobForModelWithToken(
+            host, modelId, address(blockToken), USDC_MIN_DEPOSIT * 2, stablePrice, 1 days, MIN_PROVEN_TOKENS, 300
         );
 
         // Blocklist depositor AFTER session creation (simulates USDC compliance action)
@@ -208,8 +209,8 @@ contract SettlementPullPatternTest is Test {
         vm.deal(rejecter, 10 ether);
 
         vm.prank(rejecter);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
         );
 
         vm.warp(block.timestamp + 10);
@@ -238,8 +239,8 @@ contract SettlementPullPatternTest is Test {
         vm.deal(rejecter, 10 ether);
 
         vm.prank(rejecter);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
         );
 
         vm.warp(block.timestamp + 10);
@@ -267,8 +268,8 @@ contract SettlementPullPatternTest is Test {
     /// @notice F202614898: Normal ETH refund still works directly
     function test_NormalRefundStillWorksDirect() public {
         vm.prank(normalUser);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
         );
 
         vm.warp(block.timestamp + 10);
@@ -300,8 +301,8 @@ contract SettlementPullPatternTest is Test {
         vm.deal(rejecter, 10 ether);
 
         vm.prank(rejecter);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
-            host, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
         );
 
         vm.warp(block.timestamp + 10);

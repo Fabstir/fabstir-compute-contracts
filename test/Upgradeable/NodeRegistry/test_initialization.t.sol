@@ -8,7 +8,7 @@ import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.so
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
- * @title NodeRegistryWithModelsUpgradeable Initialization Tests
+ * @title NodeRegistryWithModelsUpgradeable Initialization Tests (Phase 18)
  * @dev Tests initialization, re-initialization protection, and basic proxy functionality
  */
 contract NodeRegistryInitializationTest is Test {
@@ -16,6 +16,7 @@ contract NodeRegistryInitializationTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     ERC20Mock public fabToken;
+    ERC20Mock public usdcToken;
 
     address public owner = address(0x1);
     address public host1 = address(0x2);
@@ -29,8 +30,9 @@ contract NodeRegistryInitializationTest is Test {
     uint256 constant MIN_PRICE_STABLE = 1;
 
     function setUp() public {
-        // Deploy mock FAB token
+        // Deploy mock FAB token and USDC
         fabToken = new ERC20Mock("FAB Token", "FAB");
+        usdcToken = new ERC20Mock("USDC", "USDC");
 
         // Deploy ModelRegistry as proxy
         vm.startPrank(owner);
@@ -282,11 +284,11 @@ contract NodeRegistryInitializationTest is Test {
     // Pricing Tests
     // ============================================================
 
-    function test_GetNodePricingNative() public {
+    function test_GetModelPricingNative() public {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId1;
 
-        vm.prank(host1);
+        vm.startPrank(host1);
         nodeRegistry.registerNode(
             '{"hardware": "GPU"}',
             "https://api.host1.com",
@@ -294,11 +296,14 @@ contract NodeRegistryInitializationTest is Test {
             MIN_PRICE_NATIVE * 2,
             MIN_PRICE_STABLE
         );
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE * 2);
+        vm.stopPrank();
 
-        assertEq(nodeRegistry.getNodePricing(host1, address(0)), MIN_PRICE_NATIVE * 2);
+        // Explicit model-token pricing for native
+        assertEq(nodeRegistry.getModelPricing(host1, modelId1, address(0)), MIN_PRICE_NATIVE * 2);
     }
 
-    function test_GetNodePricingStable() public {
+    function test_GetModelPricingStable() public {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId1;
 
@@ -310,13 +315,13 @@ contract NodeRegistryInitializationTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE * 100
         );
-        nodeRegistry.setTokenPricing(address(fabToken), MIN_PRICE_STABLE * 100);
+        nodeRegistry.setModelTokenPricing(modelId1, address(usdcToken), MIN_PRICE_STABLE * 100);
         vm.stopPrank();
 
-        assertEq(nodeRegistry.getNodePricing(host1, address(fabToken)), MIN_PRICE_STABLE * 100);
+        assertEq(nodeRegistry.getModelPricing(host1, modelId1, address(usdcToken)), MIN_PRICE_STABLE * 100);
     }
 
-    function test_UpdatePricingNative() public {
+    function test_SetModelTokenPricingNative() public {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId1;
 
@@ -330,9 +335,9 @@ contract NodeRegistryInitializationTest is Test {
         );
 
         vm.prank(host1);
-        nodeRegistry.updatePricingNative(MIN_PRICE_NATIVE * 5);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE * 5);
 
-        assertEq(nodeRegistry.getNodePricing(host1, address(0)), MIN_PRICE_NATIVE * 5);
+        assertEq(nodeRegistry.getModelPricing(host1, modelId1, address(0)), MIN_PRICE_NATIVE * 5);
     }
 
     // ============================================================

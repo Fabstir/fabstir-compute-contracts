@@ -142,6 +142,8 @@ contract LegacyRemovalTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        vm.prank(hostAddr);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
     }
 
     function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal view returns (bytes memory) {
@@ -165,8 +167,9 @@ contract LegacyRemovalTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -197,24 +200,19 @@ contract LegacyRemovalTest is Test {
     }
 
     /**
-     * @dev Verify that multiple session creation functions work correctly.
+     * @dev Verify that model-based session creation functions work correctly.
      */
     function test_AllSessionCreationMethodsWork() public {
         uint256 startTime = 1000;
         vm.warp(startTime);
 
-        // Method 1: createSessionJob (ETH)
+        // Method 1: createSessionJobForModel (ETH)
         vm.prank(user);
-        uint256 s1 = marketplace.createSessionJob{value: 0.1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s1 = marketplace.createSessionJobForModel{value: 0.1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         assertEq(s1, 1, "First session ID should be 1");
 
-        // Method 2: createSessionJobForModel (ETH)
-        vm.prank(user);
-        uint256 s2 = marketplace.createSessionJobForModel{value: 0.1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
-        assertEq(s2, 2, "Second session ID should be 2");
-
         // Verify sessions are tracked by checking nextJobId
-        assertEq(marketplace.nextJobId(), 3, "nextJobId should be 3 after 2 sessions");
+        assertEq(marketplace.nextJobId(), 2, "nextJobId should be 2 after 1 session");
     }
 
     /**
@@ -241,13 +239,11 @@ contract LegacyRemovalTest is Test {
      * This test documents the removal - the old `jobs(uint256)` getter no longer exists.
      */
     function test_SessionBasedArchitectureOnly() public view {
-        // After legacy removal, the contract only has session-based architecture
+        // After legacy removal, the contract only has model-based session architecture
         // The following are the active public functions for job management:
-        // - createSessionJob()
         // - createSessionJobForModel()
-        // - createSessionJobWithToken()
         // - createSessionJobForModelWithToken()
-        // - createSessionFromDeposit()
+        // - createSessionFromDepositForModel()
         // - completeSessionJob()
         // - submitProofOfWork()
         // - triggerSessionTimeout()
@@ -265,7 +261,7 @@ contract LegacyRemovalTest is Test {
         vm.warp(startTime);
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Submit proof (first proof >= proofInterval=1000)
         bytes32 ph = bytes32(uint256(0x1234));
@@ -287,7 +283,7 @@ contract LegacyRemovalTest is Test {
         vm.warp(startTime);
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, maxDuration, 1000, 300);
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, maxDuration, 1000, 300);
 
         // Fast forward past timeout
         vm.warp(startTime + maxDuration + 1);

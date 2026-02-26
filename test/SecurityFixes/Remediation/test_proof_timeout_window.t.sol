@@ -122,6 +122,7 @@ contract ProofTimeoutWindowTest is Test {
         models[0] = modelId;
 
         nodeRegistry.registerNode("http://host.example.com", "metadata", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
         vm.stopPrank();
     }
 
@@ -134,8 +135,8 @@ contract ProofTimeoutWindowTest is Test {
         uint256 proofTimeoutWindow = 300; // 5 minutes
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
-            host, MIN_PRICE_NATIVE, 1 hours, proofInterval, proofTimeoutWindow
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 hours, proofInterval, proofTimeoutWindow
         );
 
         assertGt(sessionId, 0, "Session should be created");
@@ -147,8 +148,8 @@ contract ProofTimeoutWindowTest is Test {
 
         vm.prank(user);
         vm.expectRevert("Bad timeout");
-        marketplace.createSessionJob{value: 0.01 ether}(
-            host, MIN_PRICE_NATIVE, 1 hours, proofInterval, tooSmallTimeout
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 hours, proofInterval, tooSmallTimeout
         );
     }
 
@@ -158,8 +159,8 @@ contract ProofTimeoutWindowTest is Test {
 
         vm.prank(user);
         vm.expectRevert("Bad timeout");
-        marketplace.createSessionJob{value: 0.01 ether}(
-            host, MIN_PRICE_NATIVE, 1 hours, proofInterval, tooLargeTimeout
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 hours, proofInterval, tooLargeTimeout
         );
     }
 
@@ -172,8 +173,8 @@ contract ProofTimeoutWindowTest is Test {
         uint256 proofTimeoutWindow = 120; // 2 minutes
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
-            host, MIN_PRICE_NATIVE, 1 hours, proofInterval, proofTimeoutWindow
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 hours, proofInterval, proofTimeoutWindow
         );
 
         // Fast forward just past the timeout window
@@ -193,8 +194,8 @@ contract ProofTimeoutWindowTest is Test {
         uint256 proofTimeoutWindow = 300; // 5 minutes
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
-            host, MIN_PRICE_NATIVE, 1 hours, proofInterval, proofTimeoutWindow
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 hours, proofInterval, proofTimeoutWindow
         );
 
         // Fast forward less than the timeout window

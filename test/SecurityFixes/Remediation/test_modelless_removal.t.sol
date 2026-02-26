@@ -10,8 +10,8 @@ import {HostEarningsUpgradeable} from "src/HostEarningsUpgradeable.sol";
 import {ProofSystemUpgradeable} from "src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "test/mocks/ERC20Mock.sol";
 
-/// @notice Phase 18: Integration tests for createSessionJobForModelWithToken with model-token pricing
-contract TokenPricingRevertTest is Test {
+/// @notice Phase 18B: Verify modelless JM functions removed + model-based functions still work
+contract ModellessRemovalTest is Test {
     JobMarketplaceWithModelsUpgradeable public marketplace;
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
@@ -76,19 +76,20 @@ contract TokenPricingRevertTest is Test {
         marketplace.setProofSystem(address(proofSystem));
         marketplace.setTreasury(treasury);
         marketplace.addAcceptedToken(address(usdcToken), USDC_MIN_DEPOSIT, USDC_MAX_DEPOSIT);
-
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
         proofSystem.setAuthorizedCaller(address(marketplace), true);
 
         vm.stopPrank();
 
-        // Register host (no setModelTokenPricing yet — tests verify revert behavior)
+        // Register host and set model-token pricing
         fabToken.mint(host, MIN_STAKE);
         vm.startPrank(host);
         fabToken.approve(address(nodeRegistry), MIN_STAKE);
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("http://host.example.com", "metadata", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         vm.deal(user, 100 ether);
@@ -96,36 +97,70 @@ contract TokenPricingRevertTest is Test {
     }
 
     // -------------------------------------------------------
-    // Integration: createSessionJobForModelWithToken
+    // Regression: model-based functions still work
     // -------------------------------------------------------
 
-    function test_CreateSessionForModelWithToken_RevertsWhenNoModelTokenPricing() public {
-        uint256 deposit = 1_000_000;
-        vm.startPrank(user);
-        usdcToken.approve(address(marketplace), deposit);
-
-        vm.expectRevert("No model pricing");
-        marketplace.createSessionJobForModelWithToken(
-            host, modelId, address(usdcToken), deposit, MIN_PRICE_STABLE, 1 days, MIN_PROVEN_TOKENS, 300
+    function test_CreateSessionJobForModel_StillWorks() public {
+        vm.prank(user);
+        uint256 jobId = marketplace.createSessionJobForModel{value: 1 ether}(
+            host, modelId, MIN_PRICE_NATIVE, 1 days, MIN_PROVEN_TOKENS, 300
         );
-        vm.stopPrank();
+        assertGt(jobId, 0);
     }
 
-    function test_CreateSessionForModelWithToken_SucceedsAfterSetModelTokenPricing() public {
-        // Host sets per-model per-token pricing
-        vm.prank(host);
-        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
-
+    function test_CreateSessionJobForModelWithToken_StillWorks() public {
         uint256 deposit = 1_000_000;
         vm.startPrank(user);
         usdcToken.approve(address(marketplace), deposit);
-        marketplace.createSessionJobForModelWithToken(
+        uint256 jobId = marketplace.createSessionJobForModelWithToken(
             host, modelId, address(usdcToken), deposit, MIN_PRICE_STABLE, 1 days, MIN_PROVEN_TOKENS, 300
         );
         vm.stopPrank();
+        assertGt(jobId, 0);
+    }
 
-        // Session was created — nextJobId should have advanced
-        uint256 nextId = marketplace.nextJobId();
-        assertGt(nextId, 0);
+    function test_CreateSessionFromDepositForModel_StillWorks() public {
+        vm.startPrank(user);
+        usdcToken.approve(address(marketplace), 2_000_000);
+        marketplace.depositToken(address(usdcToken), 2_000_000);
+        uint256 jobId = marketplace.createSessionFromDepositForModel(
+            modelId, host, address(usdcToken), 1_000_000, MIN_PRICE_STABLE, 1 days, MIN_PROVEN_TOKENS, 300
+        );
+        vm.stopPrank();
+        assertGt(jobId, 0);
+    }
+
+    // -------------------------------------------------------
+    // Removed JM functions — low-level call returns false
+    // -------------------------------------------------------
+
+    function test_CreateSessionJob_FunctionRemoved() public {
+        (bool success,) = address(marketplace).call{value: 1 ether}(
+            abi.encodeWithSignature(
+                "createSessionJob(address,uint256,uint256,uint256,uint256)",
+                host, MIN_PRICE_NATIVE, uint256(1 days), MIN_PROVEN_TOKENS, uint256(300)
+            )
+        );
+        assertFalse(success, "createSessionJob should not exist");
+    }
+
+    function test_CreateSessionJobWithToken_FunctionRemoved() public {
+        (bool success,) = address(marketplace).call(
+            abi.encodeWithSignature(
+                "createSessionJobWithToken(address,address,uint256,uint256,uint256,uint256,uint256)",
+                host, address(usdcToken), uint256(1_000_000), MIN_PRICE_STABLE, uint256(1 days), MIN_PROVEN_TOKENS, uint256(300)
+            )
+        );
+        assertFalse(success, "createSessionJobWithToken should not exist");
+    }
+
+    function test_CreateSessionFromDeposit_FunctionRemoved() public {
+        (bool success,) = address(marketplace).call(
+            abi.encodeWithSignature(
+                "createSessionFromDeposit(address,address,uint256,uint256,uint256,uint256,uint256)",
+                host, address(usdcToken), uint256(1_000_000), MIN_PRICE_STABLE, uint256(1 days), MIN_PROVEN_TOKENS, uint256(300)
+            )
+        );
+        assertFalse(success, "createSessionFromDeposit should not exist");
     }
 }

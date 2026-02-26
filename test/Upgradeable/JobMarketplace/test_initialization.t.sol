@@ -107,6 +107,9 @@ contract JobMarketplaceInitializationTest is Test {
             MIN_PRICE_STABLE
         );
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Setup user with ETH
         vm.deal(user1, 100 ether);
     }
@@ -229,8 +232,9 @@ contract JobMarketplaceInitializationTest is Test {
 
     function test_CreateSessionJobWorks() public {
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -245,8 +249,9 @@ contract JobMarketplaceInitializationTest is Test {
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
         emit JobMarketplaceWithModelsUpgradeable.SessionJobCreated(1, user1, host1, 0.01 ether);
-        marketplace.createSessionJob{value: 0.01 ether}(
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -257,8 +262,9 @@ contract JobMarketplaceInitializationTest is Test {
     function test_CreateSessionJobRejectsInsufficientDeposit() public {
         vm.prank(user1);
         vm.expectRevert("Insufficient deposit");
-        marketplace.createSessionJob{value: 0.00005 ether}( // Below MIN_DEPOSIT of 0.0001 ether
+        marketplace.createSessionJobForModel{value: 0.00005 ether}( // Below MIN_DEPOSIT of 0.0001 ether
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,

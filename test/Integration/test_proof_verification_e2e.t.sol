@@ -138,7 +138,8 @@ contract ProofVerificationE2ETest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         // Register host2 in NodeRegistry
@@ -154,7 +155,8 @@ contract ProofVerificationE2ETest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         // Setup user with ETH
@@ -219,8 +221,9 @@ contract ProofVerificationE2ETest is Test {
     function test_HostSubmitsProofOnChain() public {
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.5 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.5 ether}(
             host1,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -342,8 +345,9 @@ contract ProofVerificationE2ETest is Test {
     function test_DifferentHostsIndependentProofs() public {
         // Create sessions for both hosts
         vm.prank(user);
-        uint256 sessionId1 = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId1 = marketplace.createSessionJobForModel{value: 1 ether}(
             host1,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -351,8 +355,9 @@ contract ProofVerificationE2ETest is Test {
         );
 
         vm.prank(user);
-        uint256 sessionId2 = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId2 = marketplace.createSessionJobForModel{value: 1 ether}(
             host2,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -387,8 +392,9 @@ contract ProofVerificationE2ETest is Test {
      */
     function test_NonHostCannotSubmitProof() public {
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host1,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -411,8 +417,9 @@ contract ProofVerificationE2ETest is Test {
      */
     function test_ReplayProtectionWithoutSignatures() public {
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host1,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
             1000,

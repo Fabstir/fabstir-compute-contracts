@@ -246,10 +246,14 @@ contract FullFlowIntegrationTest is Test {
             MIN_PRICE_STABLE
         );
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Step 2: Create session
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 1 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
             1000,
@@ -301,16 +305,22 @@ contract FullFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU1"}', "https://host1.com", models1, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         vm.prank(host2);
         nodeRegistry.registerNode('{"hardware": "GPU2"}', "https://host2.com", models2, MIN_PRICE_NATIVE * 2, MIN_PRICE_STABLE * 2);
 
+        vm.prank(host2);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE * 2);
+
         // User1 creates session with host1
         vm.prank(user1);
-        uint256 session1 = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 session1 = jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // User2 creates session with host2
         vm.prank(user2);
-        uint256 session2 = jobMarketplace.createSessionJob{value: 0.5 ether}(host2, MIN_PRICE_NATIVE * 2, 1 days, 1000, 300);
+        uint256 session2 = jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host2, modelId1, MIN_PRICE_NATIVE * 2, 1 days, 1000, 300);
 
         assertEq(session1, 1, "Session 1 ID");
         assertEq(session2, 2, "Session 2 ID");
@@ -347,6 +357,9 @@ contract FullFlowIntegrationTest is Test {
 
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
+
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
 
         // Create model-specific session
         vm.prank(user1);
@@ -385,9 +398,12 @@ contract FullFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Create and complete session
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 1 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
@@ -422,9 +438,12 @@ contract FullFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Create session before pause
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Pause the marketplace
         vm.prank(deployer);
@@ -433,7 +452,7 @@ contract FullFlowIntegrationTest is Test {
         // New sessions should be blocked
         vm.prank(user2);
         vm.expectRevert();
-        jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // But existing sessions can still be completed (critical for user safety)
         vm.prank(user1);
@@ -445,7 +464,7 @@ contract FullFlowIntegrationTest is Test {
 
         // New sessions work again
         vm.prank(user2);
-        uint256 newSession = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 newSession = jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         assertEq(newSession, 2, "New session created after unpause");
     }
 

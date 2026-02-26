@@ -130,7 +130,8 @@ contract CreateFromDepositForModelTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("http://host.example.com", "metadata", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
-        nodeRegistry.setTokenPricing(address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
         vm.stopPrank();
     }
 
@@ -259,8 +260,10 @@ contract CreateFromDepositForModelTest is Test {
 
     function test_CreateFromDepositForModel_UsesModelPricing() public {
         uint256 higherModelPrice = MIN_PRICE_NATIVE * 2;
-        vm.prank(host);
-        nodeRegistry.setModelPricing(modelId, higherModelPrice, MIN_PRICE_STABLE);
+        vm.startPrank(host);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), higherModelPrice);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
+        vm.stopPrank();
 
         // Below model price should revert
         vm.prank(user);
