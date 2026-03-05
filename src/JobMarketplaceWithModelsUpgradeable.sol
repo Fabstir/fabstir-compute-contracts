@@ -572,6 +572,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         SessionJob storage session = sessionJobs[jobId];
         require(session.status == SessionStatus.Active, "Session not active");
         require(msg.sender == session.host, "Not host");
+        require(nodeRegistry.isActiveNode(session.host), "Host not active");
         require(tokensClaimed >= MIN_PROVEN_TOKENS, "Min tokens required");
 
         // First proof must meet proofInterval for minimum billing

@@ -365,27 +365,27 @@ contract HostValidationE2ETest is Test {
         nodeRegistry.unregisterNode();
         assertFalse(nodeRegistry.isActiveNode(host), "Host should be inactive");
 
-        // Host can still submit more proofs for existing session
-        // Wait 1 second from last proof (allows up to 2000 tokens)
+        // F202615278: Unregistered host can NO LONGER submit proofs
         vm.warp(startTime + 2);
         bytes32 phEF01 = bytes32(uint256(0xEF01));
         vm.prank(host);
+        vm.expectRevert("Host not active");
         marketplace.submitProofOfWork(
             sessionId,
-            200, // Reduced to ensure within rate limit
+            200,
             phEF01,
             "QmProof2",
             ""
         );
 
-        // Session can still be completed
+        // Session can still be completed (depositor gets refund for remaining)
         vm.warp(block.timestamp + disputeWindow + 1);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId, "QmFinalConversation");
 
-        // Verify completed by checking host has earnings
+        // Host still has earnings from the proof submitted before unregistering
         uint256 hostBalance = hostEarnings.getBalance(host, address(0));
-        assertTrue(hostBalance > 0, "Host should have earnings after session completion");
+        assertTrue(hostBalance > 0, "Host should have earnings from pre-unregister proofs");
     }
 
     function test_ExistingSessionEarningsAccumulateAfterHostUnregisters() public {
