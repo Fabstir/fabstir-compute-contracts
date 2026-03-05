@@ -935,7 +935,10 @@ contract JobMarketplaceWithModelsUpgradeable is
     // ============================================================
 
     /**
-     * @notice Authorize or revoke a delegate to create sessions on behalf of caller
+     * @notice Authorize or revoke a delegate to create sessions on behalf of caller.
+     * When re-authorizing (authorized=true), clears any existing expiry (validUntil=0)
+     * to prevent stale expiry from blocking re-activated delegates.
+     * To preserve expiry, use configureDelegate() instead.
      * @param delegate Address to authorize (e.g., Smart Wallet sub-account)
      * @param authorized True to authorize, false to revoke
      */
@@ -950,7 +953,9 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     /**
      * @notice Configure a delegate with spending limits and scope restrictions
-     * @dev Resets spent counter to 0. Call authorizeDelegate to modify active without resetting.
+     * @dev Resets spent counter to 0. The depositor controls their own spending limits
+     * and can reset at any time by reconfiguring. Call authorizeDelegate to toggle
+     * active without resetting spent or other config fields.
      * @param delegate Address to authorize
      * @param maxPerSession Maximum amount per session (0 = unlimited)
      * @param totalCap Cumulative spending cap (0 = unlimited)

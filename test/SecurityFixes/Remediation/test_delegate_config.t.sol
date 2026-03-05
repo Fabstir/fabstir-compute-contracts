@@ -501,4 +501,77 @@ contract DelegateConfigTest is Test {
     }
 
     event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel);
+
+    // ============================================================
+    // Phase 27: Post-Review Boundary/Integration Tests
+    // ============================================================
+
+    /// @notice Security review: amount=0 must be rejected
+    function test_Delegate_ZeroAmount_Reverts() public {
+        vm.prank(payer);
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+
+        vm.prank(delegate);
+        vm.expectRevert("Zero amount");
+        marketplace.createSessionForModelAsDelegate(
+            payer, modelIdA, hostA, address(usdcToken), 0, MIN_PRICE_STABLE, 1 days, 1000, 300
+        );
+    }
+
+    /// @notice Security review: exact totalCap boundary then fail
+    function test_Delegate_SpendExactlyTotalCap_ThenFail() public {
+        vm.prank(payer);
+        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 2), 0, address(0), bytes32(0));
+
+        // Spend exactly totalCap across 2 sessions
+        _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
+        _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
+
+        // Verify spent == totalCap
+        (,,uint128 spent,,,,) = marketplace.delegateConfigs(payer, delegate);
+        assertEq(spent, uint128(SESSION_AMOUNT * 2), "spent should equal totalCap");
+
+        // Next smallest valid amount should revert
+        vm.prank(delegate);
+        vm.expectRevert("Over cap");
+        marketplace.createSessionForModelAsDelegate(
+            payer, modelIdA, hostA, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
+        );
+    }
+
+    /// @notice Security review: both host AND model restrictions enforced together
+    function test_Delegate_BothHostAndModelRestriction() public {
+        vm.prank(payer);
+        marketplace.configureDelegate(delegate, 0, 0, 0, hostA, modelIdA);
+
+        // Correct combo succeeds
+        uint256 sid = _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
+        assertTrue(sid > 0, "correct host+model should succeed");
+
+        // Wrong host reverts
+        vm.prank(delegate);
+        vm.expectRevert("Wrong host");
+        marketplace.createSessionForModelAsDelegate(
+            payer, modelIdA, hostB, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
+        );
+
+        // Wrong model reverts
+        vm.prank(delegate);
+        vm.expectRevert("Wrong model");
+        marketplace.createSessionForModelAsDelegate(
+            payer, modelIdB, hostA, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
+        );
+    }
+
+    /// @notice Security review: validUntil=0 means no expiry, works after long time
+    function test_Delegate_NoExpiry_WorksAfterLongTime() public {
+        vm.prank(payer);
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+
+        // Warp 365 days into the future
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 sid = _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
+        assertTrue(sid > 0, "should work after 365 days with no expiry");
+    }
 }
