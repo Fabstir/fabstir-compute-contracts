@@ -535,7 +535,7 @@ contract FundSafetyTest is Test {
 
         // Cannot withdraw
         vm.prank(user);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.withdrawNative(sessionDeposit);
 
         // Locked should equal deposit

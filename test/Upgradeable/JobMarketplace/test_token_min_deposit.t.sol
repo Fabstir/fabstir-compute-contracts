@@ -135,13 +135,13 @@ contract TokenMinDepositTest is Test {
         uint256 newMinDeposit = 100000;
 
         vm.prank(owner);
-        vm.expectRevert("Token not accepted");
+        vm.expectRevert("Bad token");
         marketplace.updateTokenMinDeposit(randomToken, newMinDeposit);
     }
 
     function test_UpdateTokenMinDeposit_RevertIfZeroDeposit() public {
         vm.prank(owner);
-        vm.expectRevert("Invalid minimum deposit");
+        vm.expectRevert("Bad min");
         marketplace.updateTokenMinDeposit(address(usdcToken), 0);
     }
 

@@ -209,7 +209,7 @@ contract SessionCreationRefactorTest is Test {
         address unregisteredHost = address(0x999);
 
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(
             unregisteredHost, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300
         );
@@ -219,7 +219,7 @@ contract SessionCreationRefactorTest is Test {
         address unregisteredHost = address(0x999);
 
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModelWithToken(
             unregisteredHost, modelId, address(usdcToken), DEPOSIT_USDC, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300
         );
@@ -231,50 +231,50 @@ contract SessionCreationRefactorTest is Test {
 
     function test_CreateSessionJob_RejectsZeroPrice() public {
         vm.prank(user);
-        vm.expectRevert("Invalid price");
+        vm.expectRevert("Bad price");
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, 0, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsZeroDuration() public {
         vm.prank(user);
-        vm.expectRevert("Invalid duration");
+        vm.expectRevert("Bad dur");
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, 0, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsExcessiveDuration() public {
         vm.prank(user);
-        vm.expectRevert("Invalid duration");
+        vm.expectRevert("Bad dur");
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, 366 days, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsZeroProofInterval() public {
         vm.prank(user);
-        vm.expectRevert("Invalid proof interval");
+        vm.expectRevert("Bad interval");
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, 0, 300);
     }
 
     function test_CreateSessionJob_RejectsZeroHost() public {
         vm.prank(user);
-        vm.expectRevert("Invalid host");
+        vm.expectRevert("No host");
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(address(0), modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsUnregisteredHost() public {
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(address(0x999), modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJob_RejectsInsufficientDeposit() public {
         vm.prank(user);
-        vm.expectRevert("Insufficient deposit");
+        vm.expectRevert("Low deposit");
         marketplace.createSessionJobForModel{value: 0.00001 ether}(host, modelId, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
     function test_CreateSessionJobWithToken_RejectsUnapprovedToken() public {
         address badToken = address(0x123);
         vm.prank(user);
-        vm.expectRevert("Token not accepted");
+        vm.expectRevert("Bad token");
         marketplace.createSessionJobForModelWithToken(host, modelId, badToken, DEPOSIT_USDC, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300);
     }
 
@@ -282,7 +282,7 @@ contract SessionCreationRefactorTest is Test {
         bytes32 unsupportedModel = bytes32(uint256(999));
 
         vm.prank(user);
-        vm.expectRevert("Model not approved");
+        vm.expectRevert("Bad model");
         marketplace.createSessionJobForModel{value: DEPOSIT_ETH}(
             host, unsupportedModel, PRICE_PER_TOKEN, MAX_DURATION, PROOF_INTERVAL, 300
         );

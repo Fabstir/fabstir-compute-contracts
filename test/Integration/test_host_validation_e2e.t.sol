@@ -208,7 +208,7 @@ contract HostValidationE2ETest is Test {
         assertFalse(nodeRegistry.isActiveNode(randomAddress), "Random address should not be active");
 
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 1 ether}(
             randomAddress,
             modelId,
@@ -229,7 +229,7 @@ contract HostValidationE2ETest is Test {
 
         for (uint i = 0; i < fakeHosts.length; i++) {
             vm.prank(user);
-            vm.expectRevert("Host not registered");
+            vm.expectRevert("No host reg");
             marketplace.createSessionJobForModel{value: 0.1 ether}(
                 fakeHosts[i],
                 modelId,
@@ -269,7 +269,7 @@ contract HostValidationE2ETest is Test {
 
         // Attempt to create new session (should fail)
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 0.5 ether}(
             host,
             modelId,
@@ -455,7 +455,7 @@ contract HostValidationE2ETest is Test {
 
         // Cannot create new session
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 0.1 ether}(
             host,
             modelId,
@@ -505,7 +505,7 @@ contract HostValidationE2ETest is Test {
 
         // Session with unregistered host3 fails
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 0.1 ether}(host3, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
     }
 }

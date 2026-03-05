@@ -81,6 +81,17 @@ contract JobMarketplaceWithModelsUpgradeable is
         string nativeTokenSymbol; // "ETH" or "BNB"
     }
 
+    // F202615255+F202615256: Configurable delegate authorization
+    struct DelegateConfig {
+        uint128 maxPerSession;   // 0 = unlimited
+        uint128 totalCap;        // 0 = unlimited
+        uint128 spent;           // Cumulative spent
+        uint64 validUntil;       // 0 = no expiry
+        bool active;
+        address allowedHost;     // address(0) = any
+        bytes32 allowedModel;    // bytes32(0) = any
+    }
+
     // Session creation parameters
     struct SessionParams {
         address host;
@@ -151,12 +162,14 @@ contract JobMarketplaceWithModelsUpgradeable is
     /// @notice Min tokens charged on early cancel (before first proof)
     uint256 public minTokensFee;
 
-    // V2 Delegation: Coinbase Smart Wallet sub-account support (USDC only)
-    // Mapping: depositor => delegate => authorized
-    mapping(address => mapping(address => bool)) public isAuthorizedDelegate;
+    /// @dev DEPRECATED: Replaced by delegateConfigs. Retained for storage layout.
+    mapping(address => mapping(address => bool)) public _isAuthorizedDelegate;
 
-    // Storage gap for future upgrades (reduced by 2: minTokensFee + isAuthorizedDelegate)
-    uint256[33] private __gap;
+    // F202615255+F202615256: Configurable delegate authorization
+    mapping(address => mapping(address => DelegateConfig)) public delegateConfigs;
+
+    // Storage gap for future upgrades (reduced by 3: minTokensFee + _isAuthorizedDelegate + delegateConfigs)
+    uint256[32] private __gap;
 
     // Events
     event SessionJobCreated(uint256 indexed jobId, address indexed depositor, address indexed host, uint256 deposit);
@@ -209,6 +222,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     // V2 Delegation events (Coinbase Smart Wallet sub-account support)
     event DelegateAuthorized(address indexed depositor, address indexed delegate, bool authorized);
+    event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel);
     event SessionCreatedByDelegate(
         uint256 indexed sessionId,
         address indexed payer,
@@ -241,10 +255,10 @@ contract JobMarketplaceWithModelsUpgradeable is
         // Note: ReentrancyGuardTransient uses transient storage, no init needed
         // Note: OZ 5.x UUPSUpgradeable doesn't require __UUPSUpgradeable_init()
 
-        require(_nodeRegistry != address(0), "Invalid node registry");
-        require(_hostEarnings != address(0), "Invalid host earnings");
-        require(_feeBasisPoints <= 10000, "Fee cannot exceed 100%");
-        require(_disputeWindow > 0 && _disputeWindow <= 7 days, "Invalid dispute window");
+        require(_nodeRegistry != address(0), "Zero addr");
+        require(_hostEarnings != address(0), "Zero addr");
+        require(_feeBasisPoints <= 10000, "Bad fee");
+        require(_disputeWindow > 0 && _disputeWindow <= 7 days, "Bad window");
 
         feeBasisPoints = _feeBasisPoints;
         disputeWindow = _disputeWindow;
@@ -297,17 +311,17 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     function setProofSystem(address _proofSystem) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Not admin");
-        require(_proofSystem != address(0), "Zero address");
+        require(_proofSystem != address(0), "Zero addr");
         proofSystem = IProofSystemUpgradeable(_proofSystem);
     }
 
     function setTreasury(address _treasury) external onlyOwner {
-        require(_treasury != address(0), "Invalid treasury address");
+        require(_treasury != address(0), "Zero addr");
         treasuryAddress = _treasury;
     }
 
     function setUsdcAddress(address _usdc) external onlyOwner {
-        require(_usdc != address(0), "Invalid USDC address");
+        require(_usdc != address(0), "Zero addr");
 
         // Remove old USDC from accepted tokens if it exists
         if (usdcAddress != address(0) && acceptedTokens[usdcAddress]) {
@@ -330,7 +344,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Initialize chain configuration
     function initializeChainConfig(ChainConfig memory _config) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Not admin");
-        require(chainConfig.nativeWrapper == address(0), "Already initialized");
+        require(chainConfig.nativeWrapper == address(0), "Already init");
         chainConfig = _config;
     }
 
@@ -347,7 +361,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 proofInterval,
         uint256 proofTimeoutWindow
     ) external payable nonReentrant whenNotPaused returns (uint256 jobId) {
-        require(msg.value >= MIN_DEPOSIT, "Insufficient deposit");
+        require(msg.value >= MIN_DEPOSIT, "Low deposit");
 
         SessionParams memory params = SessionParams({
             host: host,
@@ -364,12 +378,12 @@ contract JobMarketplaceWithModelsUpgradeable is
         _validateSessionParams(params);
 
         // Model-specific validations
-        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Model not approved");
-        require(nodeRegistry.nodeSupportsModel(host, modelId), "Model not supported");
+        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Bad model");
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "No model");
 
         // Get model-specific pricing (falls back to default if not set)
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, address(0));
-        require(pricePerToken >= hostMinPrice, "Price below host min");
+        require(pricePerToken >= hostMinPrice, "Low price");
 
         jobId = nextJobId++;
         sessionModel[jobId] = modelId;
@@ -393,10 +407,10 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 proofTimeoutWindow
     ) external nonReentrant whenNotPaused returns (uint256 jobId) {
         // Token-specific validations
-        require(acceptedTokens[token], "Token not accepted");
+        require(acceptedTokens[token], "Bad token");
         uint256 minRequired = tokenMinDeposits[token];
         require(minRequired > 0, "Token not set");
-        require(deposit >= minRequired, "Insufficient deposit");
+        require(deposit >= minRequired, "Low deposit");
         require(deposit > 0, "Zero deposit");
 
         SessionParams memory params = SessionParams({
@@ -414,12 +428,12 @@ contract JobMarketplaceWithModelsUpgradeable is
         _validateSessionParams(params);
 
         // Model-specific validations
-        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Model not approved");
-        require(nodeRegistry.nodeSupportsModel(host, modelId), "Model not supported");
+        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Bad model");
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "No model");
 
         // Get model-specific pricing for this token (falls back to default stable if not set)
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, token);
-        require(pricePerToken >= hostMinPrice, "Price below host min");
+        require(pricePerToken >= hostMinPrice, "Low price");
 
         // Transfer tokens after all validations pass
         IERC20(token).safeTransferFrom(msg.sender, address(this), deposit);
@@ -444,7 +458,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @param host Address of the host to validate
      */
     function _validateHostRegistration(address host) internal view {
-        require(host != address(0), "Invalid host address");
+        require(host != address(0), "No host");
 
         // Query NodeRegistry for host info
         (
@@ -458,7 +472,7 @@ contract JobMarketplaceWithModelsUpgradeable is
                 // minPricePerTokenStable
         ) = nodeRegistry.getNodeFullInfo(host);
 
-        require(operator != address(0), "Host not registered");
+        require(operator != address(0), "No host reg");
         require(active, "Host not active");
     }
 
@@ -466,8 +480,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         // With PRICE_PRECISION: maxTokens = deposit * PRICE_PRECISION / pricePerToken
         uint256 maxTokens = (deposit * PRICE_PRECISION) / pricePerToken;
         uint256 tokensPerProof = proofInterval;
-        require(tokensPerProof >= MIN_PROVEN_TOKENS, "Interval too small");
-        require(maxTokens >= tokensPerProof, "Deposit too small");
+        require(tokensPerProof >= MIN_PROVEN_TOKENS, "Low interval");
+        require(maxTokens >= tokensPerProof, "Low deposit");
     }
 
     // ============================================================
@@ -480,22 +494,22 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @param params Session parameters to validate
      */
     function _validateSessionParams(SessionParams memory params) internal view {
-        require(params.pricePerToken > 0, "Invalid price");
-        require(params.maxDuration > 0 && params.maxDuration <= 365 days, "Invalid duration");
-        require(params.proofInterval > 0, "Invalid proof interval");
+        require(params.pricePerToken > 0, "Bad price");
+        require(params.maxDuration > 0 && params.maxDuration <= 365 days, "Bad dur");
+        require(params.proofInterval > 0, "Bad interval");
         require(
             params.proofTimeoutWindow >= MIN_PROOF_TIMEOUT && params.proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
             "Bad timeout"
         );
-        require(params.host != address(0), "Invalid host");
+        require(params.host != address(0), "No host");
 
         // Token-specific max deposit validation
         if (params.paymentToken == address(0)) {
-            require(params.deposit <= 1000 ether, "Deposit too large");
+            require(params.deposit <= 1000 ether, "Over max");
         } else {
             uint256 maxAllowed = tokenMaxDeposits[params.paymentToken];
-            require(maxAllowed > 0, "Token max not set");
-            require(params.deposit <= maxAllowed, "Deposit too large");
+            require(maxAllowed > 0, "No max set");
+            require(params.deposit <= maxAllowed, "Over max");
         }
 
         _validateHostRegistration(params.host);
@@ -544,15 +558,15 @@ contract JobMarketplaceWithModelsUpgradeable is
     function _deductFromDeposit(address depositor, address paymentToken, uint256 deposit) internal {
         require(deposit > 0, "Zero deposit");
         if (paymentToken == address(0)) {
-            require(deposit >= MIN_DEPOSIT, "Insufficient deposit");
-            require(userDepositsNative[depositor] >= deposit, "Insufficient balance");
+            require(deposit >= MIN_DEPOSIT, "Low deposit");
+            require(userDepositsNative[depositor] >= deposit, "Low balance");
             userDepositsNative[depositor] -= deposit;
         } else {
-            require(acceptedTokens[paymentToken], "Token not accepted");
+            require(acceptedTokens[paymentToken], "Bad token");
             uint256 minRequired = tokenMinDeposits[paymentToken];
             require(minRequired > 0, "Token not set");
-            require(deposit >= minRequired, "Insufficient deposit");
-            require(userDepositsToken[depositor][paymentToken] >= deposit, "Insufficient balance");
+            require(deposit >= minRequired, "Low deposit");
+            require(userDepositsToken[depositor][paymentToken] >= deposit, "Low balance");
             userDepositsToken[depositor][paymentToken] -= deposit;
         }
     }
@@ -568,16 +582,16 @@ contract JobMarketplaceWithModelsUpgradeable is
         string calldata proofCID,
         string calldata deltaCID
     ) external nonReentrant whenNotPaused {
-        require(address(proofSystem) != address(0), "ProofSystem not set");
+        require(address(proofSystem) != address(0), "No proof sys");
         SessionJob storage session = sessionJobs[jobId];
-        require(session.status == SessionStatus.Active, "Session not active");
+        require(session.status == SessionStatus.Active, "Not active");
         require(msg.sender == session.host, "Not host");
         require(nodeRegistry.isActiveNode(session.host), "Host not active");
-        require(tokensClaimed >= MIN_PROVEN_TOKENS, "Min tokens required");
+        require(tokensClaimed >= MIN_PROVEN_TOKENS, "Min tokens");
 
         // First proof must meet proofInterval for minimum billing
         if (session.tokensUsed == 0) {
-            require(tokensClaimed >= session.proofInterval, "First proof too small");
+            require(tokensClaimed >= session.proofInterval, "Low first");
         }
 
         uint256 timeSinceLastProof = block.timestamp - session.lastProofTime;
@@ -585,12 +599,12 @@ contract JobMarketplaceWithModelsUpgradeable is
         bytes32 modelId = sessionModel[jobId];
         uint256 maxRate = nodeRegistry.modelRegistry().getModelRateLimit(modelId);
         uint256 expectedTokens = timeSinceLastProof * maxRate;
-        require(tokensClaimed <= expectedTokens, "Excessive tokens claimed");
+        require(tokensClaimed <= expectedTokens, "Too many");
 
         uint256 newTotal = session.tokensUsed + tokensClaimed;
         // With PRICE_PRECISION: maxTokens = deposit * PRICE_PRECISION / pricePerToken
         uint256 maxTokens = (session.deposit * PRICE_PRECISION) / session.pricePerToken;
-        require(newTotal <= maxTokens, "Exceeds deposit");
+        require(newTotal <= maxTokens, "Over dep");
 
         // Mark proof as used via ProofSystem (replay protection)
         require(
@@ -645,7 +659,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      */
     function completeSessionJob(uint256 jobId, string calldata conversationCID) external nonReentrant {
         SessionJob storage session = sessionJobs[jobId];
-        require(session.status == SessionStatus.Active, "Session not active");
+        require(session.status == SessionStatus.Active, "Not active");
 
         // Only depositor or host can complete and set conversationCID
         require(
@@ -655,7 +669,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         // Dispute window only waived for the original depositor
         if (msg.sender != session.depositor) {
-            require(block.timestamp >= session.lastProofTime + disputeWindow, "Wait dispute window");
+            require(block.timestamp >= session.lastProofTime + disputeWindow, "Dispute wait");
         }
 
         session.status = SessionStatus.Completed;
@@ -695,7 +709,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             if (session.paymentToken == address(0)) {
                 accumulatedTreasuryNative += treasuryFee;
                 (bool sent,) = payable(address(hostEarnings)).call{value: netToHost}("");
-                require(sent, "Transfer failed");
+                require(sent, "Tx fail");
                 hostEarnings.creditEarnings(session.host, netToHost, address(0));
             } else {
                 accumulatedTreasuryTokens[session.paymentToken] += treasuryFee;
@@ -753,7 +767,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      */
     function triggerSessionTimeout(uint256 jobId) external nonReentrant {
         SessionJob storage session = sessionJobs[jobId];
-        require(session.status == SessionStatus.Active, "Session not active");
+        require(session.status == SessionStatus.Active, "Not active");
 
         // Use proofTimeoutWindow for time-based timeout (F202614911 fix)
         // Fallback to DEFAULT_PROOF_TIMEOUT for legacy sessions where proofTimeoutWindow is 0
@@ -764,7 +778,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         bool hasTimedOut = (block.timestamp > session.startTime + session.maxDuration)
             || (block.timestamp > session.lastProofTime + timeoutWindow);
 
-        require(hasTimedOut, "Session not timed out");
+        require(hasTimedOut, "Not timeout");
 
         session.status = SessionStatus.TimedOut;
         _settleSessionPayments(jobId, msg.sender);
@@ -779,11 +793,11 @@ contract JobMarketplaceWithModelsUpgradeable is
     function withdrawTreasuryNative() external {
         require(msg.sender == treasuryAddress, "Only treasury");
         uint256 amount = accumulatedTreasuryNative;
-        require(amount > 0, "No native balance");
+        require(amount > 0, "No balance");
 
         accumulatedTreasuryNative = 0;
         (bool sent,) = payable(treasuryAddress).call{value: amount}("");
-        require(sent, "Transfer failed");
+        require(sent, "Tx fail");
 
         emit TreasuryWithdrawal(address(0), amount);
     }
@@ -791,7 +805,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     function withdrawTreasuryTokens(address token) external {
         require(msg.sender == treasuryAddress, "Only treasury");
         uint256 amount = accumulatedTreasuryTokens[token];
-        require(amount > 0, "No tokens to withdraw");
+        require(amount > 0, "No tokens");
 
         accumulatedTreasuryTokens[token] = 0;
         IERC20(token).safeTransfer(treasuryAddress, amount);
@@ -806,7 +820,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             uint256 ethAmount = accumulatedTreasuryNative;
             accumulatedTreasuryNative = 0;
             (bool sent,) = payable(treasuryAddress).call{value: ethAmount}("");
-            require(sent, "Transfer failed");
+            require(sent, "Tx fail");
             emit TreasuryWithdrawal(address(0), ethAmount);
         }
 
@@ -828,10 +842,10 @@ contract JobMarketplaceWithModelsUpgradeable is
      */
     function addAcceptedToken(address token, uint256 minDeposit, uint256 maxDeposit) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Not admin");
-        require(!acceptedTokens[token], "Token already accepted");
-        require(minDeposit > 0, "Invalid minimum deposit");
-        require(maxDeposit > minDeposit, "Max must exceed min");
-        require(token != address(0), "Invalid token address");
+        require(!acceptedTokens[token], "Already set");
+        require(minDeposit > 0, "Bad min");
+        require(maxDeposit > minDeposit, "Max < min");
+        require(token != address(0), "Zero addr");
 
         acceptedTokens[token] = true;
         tokenMinDeposits[token] = minDeposit;
@@ -847,8 +861,8 @@ contract JobMarketplaceWithModelsUpgradeable is
      */
     function updateTokenMinDeposit(address token, uint256 minDeposit) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Not admin");
-        require(acceptedTokens[token], "Token not accepted");
-        require(minDeposit > 0, "Invalid minimum deposit");
+        require(acceptedTokens[token], "Bad token");
+        require(minDeposit > 0, "Bad min");
 
         uint256 oldMinDeposit = tokenMinDeposits[token];
         tokenMinDeposits[token] = minDeposit;
@@ -863,8 +877,8 @@ contract JobMarketplaceWithModelsUpgradeable is
      */
     function updateTokenMaxDeposit(address token, uint256 maxDeposit) external {
         require(msg.sender == treasuryAddress || msg.sender == owner(), "Not admin");
-        require(acceptedTokens[token], "Token not accepted");
-        require(maxDeposit > tokenMinDeposits[token], "Max must exceed min");
+        require(acceptedTokens[token], "Bad token");
+        require(maxDeposit > tokenMinDeposits[token], "Max < min");
 
         uint256 oldMaxDeposit = tokenMaxDeposits[token];
         tokenMaxDeposits[token] = maxDeposit;
@@ -884,8 +898,8 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     function depositToken(address token, uint256 amount) external whenNotPaused nonReentrant {
         require(amount > 0, "Zero deposit");
-        require(token != address(0), "Invalid token");
-        require(acceptedTokens[token], "Token not accepted");
+        require(token != address(0), "Bad token");
+        require(acceptedTokens[token], "Bad token");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         userDepositsToken[msg.sender][token] += amount;
@@ -897,7 +911,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     // ============================================================
 
     function withdrawNative(uint256 amount) external nonReentrant {
-        require(userDepositsNative[msg.sender] >= amount, "Insufficient balance");
+        require(userDepositsNative[msg.sender] >= amount, "Low balance");
 
         userDepositsNative[msg.sender] -= amount;
 
@@ -908,7 +922,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     }
 
     function withdrawToken(address token, uint256 amount) external nonReentrant {
-        require(userDepositsToken[msg.sender][token] >= amount, "Insufficient balance");
+        require(userDepositsToken[msg.sender][token] >= amount, "Low balance");
 
         userDepositsToken[msg.sender][token] -= amount;
         IERC20(token).safeTransfer(msg.sender, amount);
@@ -926,11 +940,45 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @param authorized True to authorize, false to revoke
      */
     function authorizeDelegate(address delegate, bool authorized) external {
-        require(delegate != address(0), "Invalid delegate address");
-        require(delegate != msg.sender, "Cannot delegate to self");
+        require(delegate != address(0), "Zero addr");
+        require(delegate != msg.sender, "Self deleg");
 
-        isAuthorizedDelegate[msg.sender][delegate] = authorized;
+        delegateConfigs[msg.sender][delegate].active = authorized;
+        if (authorized) delegateConfigs[msg.sender][delegate].validUntil = 0;
         emit DelegateAuthorized(msg.sender, delegate, authorized);
+    }
+
+    /**
+     * @notice Configure a delegate with spending limits and scope restrictions
+     * @dev Resets spent counter to 0. Call authorizeDelegate to modify active without resetting.
+     * @param delegate Address to authorize
+     * @param maxPerSession Maximum amount per session (0 = unlimited)
+     * @param totalCap Cumulative spending cap (0 = unlimited)
+     * @param validUntil Expiration timestamp (0 = no expiry)
+     * @param allowedHost Restrict to specific host (address(0) = any)
+     * @param allowedModel Restrict to specific model (bytes32(0) = any)
+     */
+    function configureDelegate(
+        address delegate,
+        uint128 maxPerSession,
+        uint128 totalCap,
+        uint64 validUntil,
+        address allowedHost,
+        bytes32 allowedModel
+    ) external {
+        require(delegate != address(0), "Zero addr");
+        require(delegate != msg.sender, "Self deleg");
+        delegateConfigs[msg.sender][delegate] = DelegateConfig({
+            maxPerSession: maxPerSession,
+            totalCap: totalCap,
+            spent: 0,
+            validUntil: validUntil,
+            active: true,
+            allowedHost: allowedHost,
+            allowedModel: allowedModel
+        });
+        emit DelegateAuthorized(msg.sender, delegate, true);
+        emit DelegateConfigured(msg.sender, delegate, maxPerSession, totalCap, validUntil, allowedHost, allowedModel);
     }
 
     /**
@@ -940,7 +988,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @return True if delegate is authorized
      */
     function isDelegateAuthorized(address depositor, address delegate) external view returns (bool) {
-        return isAuthorizedDelegate[depositor][delegate];
+        return delegateConfigs[depositor][delegate].active;
     }
 
     // ============================================================
@@ -1044,7 +1092,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         returns (bytes32 proofHash, uint256 tokensClaimed, uint256 timestamp, bool verified, string memory deltaCID)
     {
         SessionJob storage session = sessionJobs[sessionId];
-        require(proofIndex < session.proofs.length, "Invalid proof index");
+        require(proofIndex < session.proofs.length, "Bad index");
         ProofSubmission storage proof = session.proofs[proofIndex];
         return (proof.proofHash, proof.tokensClaimed, proof.timestamp, proof.verified, proof.deltaCID);
     }
@@ -1079,12 +1127,12 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 proofInterval,
         uint256 proofTimeoutWindow
     ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
-        require(modelId != bytes32(0), "Invalid model ID");
+        require(modelId != bytes32(0), "Bad modelId");
 
         // Deposit-specific early checks (before _validateSessionParams)
         require(deposit > 0, "Zero deposit");
         if (paymentToken != address(0)) {
-            require(acceptedTokens[paymentToken], "Token not accepted");
+            require(acceptedTokens[paymentToken], "Bad token");
         }
 
         SessionParams memory params = SessionParams({
@@ -1101,12 +1149,12 @@ contract JobMarketplaceWithModelsUpgradeable is
         _validateSessionParams(params);
 
         // Model-specific validation: model must be approved and host must support it
-        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Model not approved");
-        require(nodeRegistry.nodeSupportsModel(host, modelId), "Model not supported");
+        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Bad model");
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "No model");
 
         // Model-specific pricing validation
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
-        require(pricePerToken >= hostMinPrice, "Price below host min");
+        require(pricePerToken >= hostMinPrice, "Low price");
 
         _deductFromDeposit(msg.sender, paymentToken, deposit);
 
@@ -1149,23 +1197,30 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 proofInterval,
         uint256 proofTimeoutWindow
     ) external nonReentrant whenNotPaused returns (uint256 sessionId) {
-        require(payer != address(0), "Invalid payer");
-        require(
-            msg.sender == payer || isAuthorizedDelegate[payer][msg.sender],
-            "Not delegate"
-        );
-        require(modelId != bytes32(0), "Invalid model ID");
+        require(payer != address(0), "No payer");
+        if (msg.sender != payer) {
+            DelegateConfig storage dc = delegateConfigs[payer][msg.sender];
+            require(dc.active, "Not delegate");
+            if (dc.validUntil > 0) require(block.timestamp <= dc.validUntil, "Expired");
+            if (dc.maxPerSession > 0) require(amount <= dc.maxPerSession, "Over limit");
+            if (dc.totalCap > 0) require(dc.spent + amount <= dc.totalCap, "Over cap");
+            if (dc.allowedHost != address(0)) require(host == dc.allowedHost, "Wrong host");
+            if (dc.allowedModel != bytes32(0)) require(modelId == dc.allowedModel, "Wrong model");
+            require(amount <= type(uint128).max, "Overflow");
+            dc.spent += uint128(amount);
+        }
+        require(modelId != bytes32(0), "Bad modelId");
         require(paymentToken != address(0), "ERC20 only");
-        require(acceptedTokens[paymentToken], "Token not accepted");
+        require(acceptedTokens[paymentToken], "Bad token");
 
-        require(pricePerToken > 0, "Invalid price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Invalid duration");
-        require(proofInterval > 0, "Invalid proof interval");
+        require(pricePerToken > 0, "Bad price");
+        require(maxDuration > 0 && maxDuration <= 365 days, "Bad dur");
+        require(proofInterval > 0, "Bad interval");
         require(
             proofTimeoutWindow >= MIN_PROOF_TIMEOUT && proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
             "Bad timeout"
         );
-        require(host != address(0), "Invalid host");
+        require(host != address(0), "No host");
         require(amount > 0, "Zero amount");
 
         _validateHostRegistration(host);
@@ -1177,11 +1232,11 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(amount >= minRequired, "Below min");
         require(amount <= maxAllowed, "Above max");
 
-        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Model not approved");
-        require(nodeRegistry.nodeSupportsModel(host, modelId), "Model not supported");
+        require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Bad model");
+        require(nodeRegistry.nodeSupportsModel(host, modelId), "No model");
 
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
-        require(pricePerToken >= hostMinPrice, "Price below host min");
+        require(pricePerToken >= hostMinPrice, "Low price");
 
         IERC20(paymentToken).safeTransferFrom(payer, address(this), amount);
 

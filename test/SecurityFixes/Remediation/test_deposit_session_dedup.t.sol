@@ -199,7 +199,7 @@ contract DepositSessionDedupTest is Test {
         uint256 tooMuch = 50 ether; // User only deposited 10 ether
 
         vm.prank(user);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.createSessionFromDepositForModel(modelId, host, address(0), tooMuch, MIN_PRICE_NATIVE, 1 hours, 100, 300);
     }
 
@@ -211,7 +211,7 @@ contract DepositSessionDedupTest is Test {
         uint256 tooMuch = 50_000_000_000; // User only deposited 5B
 
         vm.prank(user);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.createSessionFromDepositForModel(modelId, host, address(usdcToken), tooMuch, MIN_PRICE_STABLE, 1 hours, 100, 300);
     }
 
@@ -221,7 +221,7 @@ contract DepositSessionDedupTest is Test {
 
     function test_CreateFromDeposit_InvalidHost_Reverts() public {
         vm.prank(user);
-        vm.expectRevert("Invalid host");
+        vm.expectRevert("No host");
         marketplace.createSessionFromDepositForModel(modelId, address(0), address(0), 0.1 ether, MIN_PRICE_NATIVE, 1 hours, 100, 300);
     }
 
@@ -231,7 +231,7 @@ contract DepositSessionDedupTest is Test {
 
     function test_CreateFromDeposit_InvalidDuration_Reverts() public {
         vm.prank(user);
-        vm.expectRevert("Invalid duration");
+        vm.expectRevert("Bad dur");
         marketplace.createSessionFromDepositForModel(modelId, host, address(0), 0.1 ether, MIN_PRICE_NATIVE, 0, 100, 300);
     }
 
@@ -243,7 +243,7 @@ contract DepositSessionDedupTest is Test {
         ERC20Mock randomToken = new ERC20Mock("Random", "RND");
 
         vm.prank(user);
-        vm.expectRevert("Token not accepted");
+        vm.expectRevert("Bad token");
         marketplace.createSessionFromDepositForModel(
             modelId, host, address(randomToken), 100_000_000, MIN_PRICE_STABLE, 1 hours, 100, 300
         );
@@ -291,7 +291,7 @@ contract DepositSessionDedupTest is Test {
         bytes32 unapprovedModelId = keccak256("unapproved-model");
 
         vm.prank(user);
-        vm.expectRevert("Model not approved");
+        vm.expectRevert("Bad model");
         marketplace.createSessionFromDepositForModel(
             unapprovedModelId, host, address(0), 0.1 ether, MIN_PRICE_NATIVE, 1 hours, 100, 300
         );

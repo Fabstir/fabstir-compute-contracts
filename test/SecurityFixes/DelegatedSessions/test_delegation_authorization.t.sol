@@ -123,13 +123,13 @@ contract DelegationAuthorizationTest is Test {
 
     function test_AuthorizeDelegate_ZeroAddress_Reverts() public {
         vm.prank(depositor);
-        vm.expectRevert("Invalid delegate address");
+        vm.expectRevert("Zero addr");
         marketplace.authorizeDelegate(address(0), true);
     }
 
     function test_AuthorizeDelegate_Self_Reverts() public {
         vm.prank(depositor);
-        vm.expectRevert("Cannot delegate to self");
+        vm.expectRevert("Self deleg");
         marketplace.authorizeDelegate(depositor, true);
     }
 

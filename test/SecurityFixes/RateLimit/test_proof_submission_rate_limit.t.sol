@@ -139,7 +139,7 @@ contract ProofSubmissionRateLimitTest is Test {
         // Claiming 2001 should fail after another second
         vm.warp(block.timestamp + 1);
         vm.prank(host);
-        vm.expectRevert("Excessive tokens claimed");
+        vm.expectRevert("Too many");
         marketplace.submitProofOfWork(sessionId, 2001, keccak256("proof2"), "cid2", "delta2");
     }
 
@@ -171,7 +171,7 @@ contract ProofSubmissionRateLimitTest is Test {
 
         // Try to claim 1500 tokens (exceeds 1000 limit)
         vm.prank(host);
-        vm.expectRevert("Excessive tokens claimed");
+        vm.expectRevert("Too many");
         marketplace.submitProofOfWork(sessionId, 1500, keccak256("proof1"), "cid1", "delta1");
     }
 
@@ -189,7 +189,7 @@ contract ProofSubmissionRateLimitTest is Test {
         // Should not allow more than default after another second
         vm.warp(block.timestamp + 1);
         vm.prank(host);
-        vm.expectRevert("Excessive tokens claimed");
+        vm.expectRevert("Too many");
         marketplace.submitProofOfWork(sessionId, 2001, keccak256("proof2"), "cid2", "delta2");
     }
 

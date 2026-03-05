@@ -155,7 +155,7 @@ contract ModelApprovedCheckTest is Test {
         modelRegistry.deactivateModel(modelId);
 
         vm.prank(user);
-        vm.expectRevert("Model not approved");
+        vm.expectRevert("Bad model");
         marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 100, 300);
     }
 
@@ -180,7 +180,7 @@ contract ModelApprovedCheckTest is Test {
         usdcToken.mint(user, 10_000_000_000);
         vm.startPrank(user);
         usdcToken.approve(address(marketplace), type(uint256).max);
-        vm.expectRevert("Model not approved");
+        vm.expectRevert("Bad model");
         marketplace.createSessionJobForModelWithToken(
             host, modelId, address(usdcToken), USDC_MIN_DEPOSIT, MIN_PRICE_STABLE, 1 days, 100, 300
         );
@@ -209,7 +209,7 @@ contract ModelApprovedCheckTest is Test {
         modelRegistry.deactivateModel(modelId);
 
         vm.prank(user);
-        vm.expectRevert("Model not approved");
+        vm.expectRevert("Bad model");
         marketplace.createSessionFromDepositForModel(
             modelId, host, address(0), 0.1 ether, MIN_PRICE_NATIVE, 1 hours, 100, 300
         );
@@ -234,7 +234,7 @@ contract ModelApprovedCheckTest is Test {
         modelRegistry.deactivateModel(modelId);
 
         vm.prank(delegate);
-        vm.expectRevert("Model not approved");
+        vm.expectRevert("Bad model");
         marketplace.createSessionForModelAsDelegate(
             user, modelId, host, address(usdcToken), USDC_MIN_DEPOSIT, MIN_PRICE_STABLE, 1 days, 100, 300
         );

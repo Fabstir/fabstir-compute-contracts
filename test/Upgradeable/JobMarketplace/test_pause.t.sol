@@ -386,7 +386,7 @@ contract JobMarketplacePauseTest is Test {
         marketplace.completeSessionJob(sessionId, "QmConversationCID");
 
         // Verify session is completed by checking it no longer reverts on re-complete attempt
-        vm.expectRevert("Session not active");
+        vm.expectRevert("Not active");
         vm.prank(user1);
         marketplace.completeSessionJob(sessionId, "QmAnotherCID");
     }

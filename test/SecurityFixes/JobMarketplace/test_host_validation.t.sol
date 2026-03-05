@@ -131,7 +131,7 @@ contract HostValidationTest is Test {
 
     function test_ZeroAddressFailsValidation() public {
         vm.prank(user);
-        vm.expectRevert("Invalid host");
+        vm.expectRevert("No host");
         marketplace.createSessionJobForModel{value: 0.01 ether}(
             address(0),
             modelId,
@@ -144,7 +144,7 @@ contract HostValidationTest is Test {
 
     function test_ZeroAddressFailsValidationWithToken() public {
         vm.prank(user);
-        vm.expectRevert("Invalid host");
+        vm.expectRevert("No host");
         marketplace.createSessionJobForModelWithToken(
             address(0),
             modelId,
@@ -164,7 +164,7 @@ contract HostValidationTest is Test {
     function test_UnregisteredHostFailsValidation() public {
         // unregisteredHost is not registered in NodeRegistry
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 0.01 ether}(
             unregisteredHost,
             modelId,
@@ -177,7 +177,7 @@ contract HostValidationTest is Test {
 
     function test_UnregisteredHostFailsValidationWithToken() public {
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModelWithToken(
             unregisteredHost,
             modelId,
@@ -192,7 +192,7 @@ contract HostValidationTest is Test {
 
     function test_UnregisteredHostFailsValidationForModel() public {
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 0.01 ether}(
             unregisteredHost,
             modelId,
@@ -205,7 +205,7 @@ contract HostValidationTest is Test {
 
     function test_UnregisteredHostFailsValidationForModelWithToken() public {
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModelWithToken(
             unregisteredHost,
             modelId,
@@ -384,7 +384,7 @@ contract HostValidationTest is Test {
 
         // Now try to create session - should fail
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 0.01 ether}(
             tempHost,
             modelId,

@@ -187,7 +187,7 @@ contract DoubleSpendPreventionTest is Test {
 
         // Attempt to withdraw should fail
         vm.prank(user);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.withdrawNative(depositAmount);
     }
 
@@ -210,7 +210,7 @@ contract DoubleSpendPreventionTest is Test {
 
         // Attempt to withdraw should fail
         vm.prank(user);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.withdrawNative(depositAmount);
     }
 
@@ -239,7 +239,7 @@ contract DoubleSpendPreventionTest is Test {
 
         // Attempt to withdraw should fail
         vm.prank(user);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.withdrawToken(address(usdcToken), depositAmount);
     }
 
@@ -264,7 +264,7 @@ contract DoubleSpendPreventionTest is Test {
 
         // Attempt to withdraw should fail
         vm.prank(user);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.withdrawToken(address(usdcToken), depositAmount);
     }
 
@@ -373,7 +373,7 @@ contract DoubleSpendPreventionTest is Test {
 
         // Attacker cannot withdraw
         vm.prank(attacker);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.withdrawNative(attackAmount);
 
         // Contract balance unchanged (attack failed)
@@ -405,7 +405,7 @@ contract DoubleSpendPreventionTest is Test {
 
         // Attacker cannot withdraw
         vm.prank(attacker);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.withdrawToken(address(usdcToken), attackAmount);
     }
 

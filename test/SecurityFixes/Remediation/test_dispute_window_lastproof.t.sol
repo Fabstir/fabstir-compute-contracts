@@ -148,7 +148,7 @@ contract DisputeWindowLastProofTest is Test {
         // Try to complete 15s after proof (less than disputeWindow=30)
         vm.warp(block.timestamp + 15);
         vm.prank(host);
-        vm.expectRevert("Wait dispute window");
+        vm.expectRevert("Dispute wait");
         marketplace.completeSessionJob(sessionId, "QmCID");
     }
 
@@ -208,7 +208,7 @@ contract DisputeWindowLastProofTest is Test {
         // Try to complete 10s after second proof (within new window)
         vm.warp(block.timestamp + 10);
         vm.prank(host);
-        vm.expectRevert("Wait dispute window");
+        vm.expectRevert("Dispute wait");
         marketplace.completeSessionJob(sessionId, "QmCID");
 
         // Complete after disputeWindow from second proof
@@ -234,7 +234,7 @@ contract DisputeWindowLastProofTest is Test {
         // Try to complete 5s after proof — startTime+30 long passed, but lastProofTime+30 not
         vm.warp(block.timestamp + 5);
         vm.prank(host);
-        vm.expectRevert("Wait dispute window");
+        vm.expectRevert("Dispute wait");
         marketplace.completeSessionJob(sessionId, "QmCID");
     }
 }

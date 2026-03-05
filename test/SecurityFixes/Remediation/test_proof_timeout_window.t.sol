@@ -202,7 +202,7 @@ contract ProofTimeoutWindowTest is Test {
         vm.warp(block.timestamp + proofTimeoutWindow - 10);
 
         // Should NOT be able to trigger timeout
-        vm.expectRevert("Session not timed out");
+        vm.expectRevert("Not timeout");
         marketplace.triggerSessionTimeout(sessionId);
     }
 

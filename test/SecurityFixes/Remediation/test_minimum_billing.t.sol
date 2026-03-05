@@ -125,7 +125,7 @@ contract MinimumBillingTest is Test {
         vm.warp(block.timestamp + 1);
 
         vm.prank(host);
-        vm.expectRevert("First proof too small");
+        vm.expectRevert("Low first");
         marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, keccak256("proof1"), "cid1", "delta1");
     }
 
@@ -236,7 +236,7 @@ contract MinimumBillingTest is Test {
 
         vm.warp(startTime + 2);
         vm.prank(host);
-        vm.expectRevert("Min tokens required");
+        vm.expectRevert("Min tokens");
         marketplace.submitProofOfWork(sessionId, 50, keccak256("proof2"), "cid2", "delta2");
     }
 
@@ -252,7 +252,7 @@ contract MinimumBillingTest is Test {
 
         vm.warp(block.timestamp + 1);
         vm.prank(host);
-        vm.expectRevert("First proof too small");
+        vm.expectRevert("Low first");
         marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, keccak256("proof1"), "cid1", "delta1");
     }
 
@@ -278,7 +278,7 @@ contract MinimumBillingTest is Test {
 
         vm.warp(block.timestamp + 1);
         vm.prank(host);
-        vm.expectRevert("First proof too small");
+        vm.expectRevert("Low first");
         marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, keccak256("proof1"), "cid1", "delta1");
     }
 

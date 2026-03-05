@@ -242,7 +242,7 @@ contract ProofSystemIntegrationTest is Test {
 
         // Should revert when ProofSystem not set (F202614909)
         vm.prank(host);
-        vm.expectRevert("ProofSystem not set");
+        vm.expectRevert("No proof sys");
         marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, "QmTestCID", "");
     }
 
@@ -306,7 +306,7 @@ contract ProofSystemIntegrationTest is Test {
 
         // Should revert when ProofSystem not set (F202614909)
         vm.prank(host);
-        vm.expectRevert("ProofSystem not set");
+        vm.expectRevert("No proof sys");
         marketplaceNoProof.submitProofOfWork(newSessionId, 500, proofHash, "QmTestCID", "");
     }
 

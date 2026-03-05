@@ -224,7 +224,7 @@ contract DirectPaymentDelegationTest is Test {
 
     function test_CreateSessionForModelAsDelegate_ZeroPayer_Reverts() public {
         vm.prank(delegate);
-        vm.expectRevert("Invalid payer");
+        vm.expectRevert("No payer");
         marketplace.createSessionForModelAsDelegate(
             address(0), modelId, host, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
         );
@@ -232,7 +232,7 @@ contract DirectPaymentDelegationTest is Test {
 
     function test_CreateSessionForModelAsDelegate_InvalidModel_Reverts() public {
         vm.prank(delegate);
-        vm.expectRevert("Invalid model ID");
+        vm.expectRevert("Bad modelId");
         marketplace.createSessionForModelAsDelegate(
             payer, bytes32(0), host, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
         );
