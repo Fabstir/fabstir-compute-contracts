@@ -46,7 +46,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         bytes32 proofHash;
         uint256 tokensClaimed;
         uint256 timestamp;
-        bool verified;
+        bool verified;  /// @dev DEPRECATED: Always true. Retained for storage layout.
         string deltaCID;  // Delta CID for incremental proof storage
     }
 
@@ -597,8 +597,6 @@ contract JobMarketplaceWithModelsUpgradeable is
             proofSystem.markProofUsed(proofHash, msg.sender, tokensClaimed, modelId),
             "Proof already used"
         );
-        bool verified = true;
-
         // S5: Store proof hash and CID instead of full proof
         session.lastProofHash = proofHash;
         session.lastProofCID = proofCID;
@@ -609,7 +607,7 @@ contract JobMarketplaceWithModelsUpgradeable is
                 proofHash: proofHash,
                 tokensClaimed: tokensClaimed,
                 timestamp: block.timestamp,
-                verified: verified,
+                verified: true,  // DEPRECATED: always true
                 deltaCID: deltaCID
             })
         );
@@ -1037,7 +1035,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @return proofHash The hash of the proof
      * @return tokensClaimed Number of tokens claimed in this proof
      * @return timestamp When the proof was submitted
-     * @return verified Whether the proof was cryptographically verified
+     * @return verified DEPRECATED: Always true. Retained for ABI compatibility.
      * @return deltaCID The delta CID for incremental proof storage
      */
     function getProofSubmission(uint256 sessionId, uint256 proofIndex)
