@@ -288,9 +288,9 @@ contract MinimumBillingTest is Test {
 
     /// @notice Early cancel with minTokensFee exceeding deposit should not revert
     function test_EarlyFeeNoUnderflowWhenFeeExceedsDeposit() public {
-        // Set minTokensFee very high so earlyFee > deposit
+        // Set minTokensFee to max allowed; with high pricePerToken, earlyFee > deposit
         vm.prank(owner);
-        marketplace.setMinTokensFee(100_000_000);
+        marketplace.setMinTokensFee(10_000);
 
         // Create session with small deposit (1 ETH) and high price
         uint256 deposit = 1 ether;

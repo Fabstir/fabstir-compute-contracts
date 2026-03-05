@@ -101,6 +101,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     uint256 public constant DEFAULT_PROOF_TIMEOUT = 300;  // 5 minutes default
     uint256 public constant MIN_PROOF_TIMEOUT = 60;       // 1 minute minimum
     uint256 public constant MAX_PROOF_TIMEOUT = 3600;     // 1 hour maximum
+    uint256 public constant MAX_MIN_TOKENS_FEE = 10000;   // F202615258: cap for minTokensFee
 
     /// @notice Time window before non-depositor can complete session (default 30s)
     uint256 public disputeWindow;
@@ -322,6 +323,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     /// @notice Set min token fee for early cancellation
     function setMinTokensFee(uint256 _fee) external onlyOwner {
+        require(_fee <= MAX_MIN_TOKENS_FEE, "Fee too high");
         minTokensFee = _fee;
     }
 

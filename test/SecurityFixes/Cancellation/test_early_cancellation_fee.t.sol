@@ -180,13 +180,14 @@ contract EarlyCancellationFeeTest is Test {
     /// @notice Early cancel fee capped at deposit amount
     function test_EarlyComplete_FeeCapped_AtDeposit() public {
         vm.prank(owner);
-        marketplace.setMinTokensFee(10_000_000_000_000);
+        marketplace.setMinTokensFee(10_000);
 
         uint256 deposit = 0.001 ether;
+        uint256 highPrice = 1e15; // earlyFee = 10000 * 1e15 / 1000 = 1e16 >> deposit
         vm.deal(user, deposit);
         vm.prank(user);
         uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
-            host, modelId, MIN_PRICE_NATIVE, 3600, 100, 300
+            host, modelId, highPrice, 3600, 100, 300
         );
 
         uint256 userBalanceBefore = user.balance;
