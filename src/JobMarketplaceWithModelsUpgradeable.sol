@@ -715,13 +715,11 @@ contract JobMarketplaceWithModelsUpgradeable is
                     emit RefundCreditedToDeposit(jobId, session.depositor, userRefund, address(0));
                 }
             } else {
-                // F202614898: Use try/catch with low-level transfer for pull pattern
-                try IERC20(session.paymentToken).transfer(session.depositor, userRefund) returns (bool success) {
-                    if (!success) {
-                        userDepositsToken[session.depositor][session.paymentToken] += userRefund;
-                        emit RefundCreditedToDeposit(jobId, session.depositor, userRefund, session.paymentToken);
-                    }
-                } catch {
+                // F202615254: Low-level call handles non-returning tokens (USDT)
+                (bool callOk, bytes memory ret) = session.paymentToken.call(
+                    abi.encodeCall(IERC20.transfer, (session.depositor, userRefund))
+                );
+                if (!(callOk && (ret.length == 0 || abi.decode(ret, (bool))))) {
                     userDepositsToken[session.depositor][session.paymentToken] += userRefund;
                     emit RefundCreditedToDeposit(jobId, session.depositor, userRefund, session.paymentToken);
                 }
