@@ -216,6 +216,9 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint256 indexed jobId, address indexed depositor, uint256 amount, address indexed token
     );
 
+    // Fee events
+    event MinTokensFeeUpdated(uint256 oldFee, uint256 newFee);
+
     // Pause events
     event ContractPaused(address indexed by);
     event ContractUnpaused(address indexed by);
@@ -338,7 +341,9 @@ contract JobMarketplaceWithModelsUpgradeable is
     /// @notice Set min token fee for early cancellation
     function setMinTokensFee(uint256 _fee) external onlyOwner {
         require(_fee <= MAX_MIN_TOKENS_FEE, "Fee too high");
+        uint256 oldFee = minTokensFee;
         minTokensFee = _fee;
+        emit MinTokensFeeUpdated(oldFee, _fee);
     }
 
     // Initialize chain configuration
@@ -387,7 +392,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         jobId = nextJobId++;
         sessionModel[jobId] = modelId;
-        _initializeSession(jobId, params);
+        _initializeSession(jobId, params, msg.sender);
 
         emit SessionJobCreated(jobId, msg.sender, host, msg.value);
         emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, msg.value);
@@ -440,7 +445,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         jobId = nextJobId++;
         sessionModel[jobId] = modelId;
-        _initializeSession(jobId, params);
+        _initializeSession(jobId, params, msg.sender);
 
         emit SessionJobCreated(jobId, msg.sender, host, deposit);
         emit SessionJobCreatedForModel(jobId, msg.sender, host, modelId, deposit);
@@ -521,15 +526,17 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @dev Sets all session fields and updates tracking mappings
      * @param jobId The job ID for the session
      * @param params Session parameters
+     * @param depositor Address of the depositor (msg.sender for direct, payer for delegate)
      * @return session Storage pointer to the initialized session
      */
     function _initializeSession(
         uint256 jobId,
-        SessionParams memory params
+        SessionParams memory params,
+        address depositor
     ) internal returns (SessionJob storage session) {
         session = sessionJobs[jobId];
         session.id = jobId;
-        session.depositor = msg.sender;
+        session.depositor = depositor;
         session.host = params.host;
         session.paymentToken = params.paymentToken;
         session.deposit = params.deposit;
@@ -542,7 +549,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         session.status = SessionStatus.Active;
 
         // Track session for user and host
-        userSessions[msg.sender].push(jobId);
+        userSessions[depositor].push(jobId);
         hostSessions[params.host].push(jobId);
 
         return session;
@@ -1165,7 +1172,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         sessionId = nextJobId++;
         sessionModel[sessionId] = modelId;
-        _initializeSession(sessionId, params);
+        _initializeSession(sessionId, params, msg.sender);
 
         emit SessionJobCreated(sessionId, msg.sender, host, deposit);
         emit SessionCreatedByDepositor(sessionId, msg.sender, host, deposit);
@@ -1217,29 +1224,26 @@ contract JobMarketplaceWithModelsUpgradeable is
         require(modelId != bytes32(0), "Bad modelId");
         require(paymentToken != address(0), "ERC20 only");
         require(acceptedTokens[paymentToken], "Bad token");
-
-        require(pricePerToken > 0, "Bad price");
-        require(maxDuration > 0 && maxDuration <= 365 days, "Bad dur");
-        require(proofInterval > 0, "Bad interval");
-        require(
-            proofTimeoutWindow >= MIN_PROOF_TIMEOUT && proofTimeoutWindow <= MAX_PROOF_TIMEOUT,
-            "Bad timeout"
-        );
-        require(host != address(0), "No host");
         require(amount > 0, "Zero amount");
-
-        _validateHostRegistration(host);
-        _validateProofRequirements(proofInterval, amount, pricePerToken);
-
         uint256 minRequired = tokenMinDeposits[paymentToken];
-        uint256 maxAllowed = tokenMaxDeposits[paymentToken];
-        require(minRequired > 0 && maxAllowed > 0, "Token not set");
+        require(minRequired > 0 && tokenMaxDeposits[paymentToken] > 0, "Token not set");
         require(amount >= minRequired, "Below min");
-        require(amount <= maxAllowed, "Above max");
+
+        SessionParams memory params = SessionParams({
+            host: host,
+            paymentToken: paymentToken,
+            deposit: amount,
+            pricePerToken: pricePerToken,
+            maxDuration: maxDuration,
+            proofInterval: proofInterval,
+            proofTimeoutWindow: proofTimeoutWindow,
+            modelId: modelId
+        });
+
+        _validateSessionParams(params);
 
         require(nodeRegistry.modelRegistry().isModelApproved(modelId), "Bad model");
         require(nodeRegistry.nodeSupportsModel(host, modelId), "No model");
-
         uint256 hostMinPrice = nodeRegistry.getModelPricing(host, modelId, paymentToken);
         require(pricePerToken >= hostMinPrice, "Low price");
 
@@ -1247,23 +1251,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         sessionId = nextJobId++;
         sessionModel[sessionId] = modelId;
-
-        SessionJob storage session = sessionJobs[sessionId];
-        session.id = sessionId;
-        session.depositor = payer;
-        session.host = host;
-        session.paymentToken = paymentToken;
-        session.deposit = amount;
-        session.pricePerToken = pricePerToken;
-        session.maxDuration = maxDuration;
-        session.startTime = block.timestamp;
-        session.lastProofTime = block.timestamp;
-        session.proofInterval = proofInterval;
-        session.proofTimeoutWindow = proofTimeoutWindow;
-        session.status = SessionStatus.Active;
-
-        userSessions[payer].push(sessionId);
-        hostSessions[host].push(sessionId);
+        _initializeSession(sessionId, params, payer);
 
         emit SessionJobCreated(sessionId, payer, host, amount);
         emit SessionJobCreatedForModel(sessionId, payer, host, modelId, amount);

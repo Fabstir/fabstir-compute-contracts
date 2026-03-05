@@ -99,4 +99,17 @@ contract MinTokensFeeCapTest is Test {
     function test_MaxMinTokensFee_Constant() public view {
         assertEq(marketplace.MAX_MIN_TOKENS_FEE(), 10000);
     }
+
+    /// @notice F202615258: setMinTokensFee emits MinTokensFeeUpdated event
+    function test_SetMinTokensFee_EmitsEvent() public {
+        vm.prank(owner);
+        marketplace.setMinTokensFee(500);
+
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit MinTokensFeeUpdated(500, 1000);
+        marketplace.setMinTokensFee(1000);
+    }
+
+    event MinTokensFeeUpdated(uint256 oldFee, uint256 newFee);
 }
