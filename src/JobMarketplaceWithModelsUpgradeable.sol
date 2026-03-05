@@ -674,8 +674,8 @@ contract JobMarketplaceWithModelsUpgradeable is
 
         uint256 hostPayment = (billableTokens * session.pricePerToken) / PRICE_PRECISION;
         uint256 earlyFee;
-        // Early cancel fee: depositor cancels before any proofs
-        if (completedBy == session.depositor && session.proofs.length == 0 && minTokensFee > 0) {
+        // Early cancel fee: depositor cancels before any proofs (F202615257: not on timeout)
+        if (completedBy == session.depositor && session.status == SessionStatus.Completed && session.proofs.length == 0 && minTokensFee > 0) {
             earlyFee = (minTokensFee * session.pricePerToken) / PRICE_PRECISION;
             if (hostPayment >= session.deposit) {
                 earlyFee = 0;
