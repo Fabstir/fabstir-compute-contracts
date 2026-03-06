@@ -1,5 +1,28 @@
 # Client ABIs Changelog
 
+## March 5, 2026 - Final Audit Remediation Upgrade
+
+### No Breaking Changes
+JobMarketplace implementation upgraded to `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508`. Proxy address unchanged (`0xD067...adA4`). All existing ABIs remain compatible.
+
+### Fixes Included
+- **F-2026-15254 (HIGH)**: Safe ERC20 refund — low-level call replaces try/catch for non-returning tokens (USDT)
+- **F-2026-15257 (MEDIUM)**: Timeout fee exemption — early cancel fee no longer charged on host-abandoned sessions
+- **F-2026-15255 + F-2026-15256 (LOW)**: Delegate spending limits and scope restrictions via `configureDelegate()`
+- **F-2026-15258 (LOW)**: `setMinTokensFee` capped at 10000 + `MinTokensFeeUpdated` event added
+- **F-2026-15278 (LOW)**: Unregistered hosts blocked from submitting proofs
+- **F-2026-15279 (INFO)**: `verified` field deprecated in `ProofSubmission` struct (always true)
+
+### New Event
+```solidity
+event MinTokensFeeUpdated(uint256 oldFee, uint256 newFee);
+```
+
+### Code Quality
+- `createSessionForModelAsDelegate()` refactored to use shared `_validateSessionParams()` + `_initializeSession()` helpers (no behavioral change)
+
+---
+
 ## February 26, 2026 - Phase 18: Per-Model Per-Token Pricing Migration (BREAKING CHANGE)
 
 ### ⚠️ BREAKING CHANGE — Major Pricing API Overhaul

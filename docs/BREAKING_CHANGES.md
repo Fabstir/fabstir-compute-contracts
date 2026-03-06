@@ -2,6 +2,211 @@
 
 ---
 
+## March 2026: Final Audit Remediation (Phases 19-28)
+
+**Contracts Affected**: All upgradeable contracts
+**Impact Level**: HIGH — New features, function consolidation, dead code removal
+
+### Summary
+
+Final audit remediation added delegated sessions with spending limits, deposit management, slashing, and consolidated several contract interfaces. 866 tests passing.
+
+| Change | Impact | Action Required |
+|--------|--------|-----------------|
+| ProofSystem dead code removal (5 functions) | HIGH | Remove any direct ProofSystem calls |
+| HostEarnings interface consolidation | HIGH | Update function signatures |
+| New delegate system in JM | MEDIUM | Adopt for Smart Wallet sub-accounts |
+| New deposit/withdraw system in JM | MEDIUM | Use for pre-funded sessions |
+| New slashing in NR | LOW | No SDK action unless building dispute UI |
+| JM fresh proxy deployment | HIGH | Update proxy address |
+| Shortened require strings | LOW | Update error message matching |
+
+### 1. ProofSystem — Dead Code Removal (BREAKING)
+
+The following functions were removed (proof authentication is handled by `msg.sender == host` in JobMarketplace):
+
+| Removed Function | Replacement |
+|-----------------|-------------|
+| `verifyHostSignature(bytes, address, uint256)` | None — removed |
+| `recordVerifiedProof(...)` | None — removed |
+| `verifyAndMarkComplete(...)` | None — removed |
+| `verifyBatch(...)` | None — removed |
+| `registerModelCircuit(...)` | None — removed |
+
+**Remaining public function**: `markProofUsed(proofHash, prover, claimedTokens, modelId)` (called internally by JobMarketplace).
+
+**Impact**: If you were calling ProofSystem directly, remove those calls. JobMarketplace handles all proof logic.
+
+### 2. HostEarnings — Interface Consolidation (BREAKING)
+
+| Old Function | New Function |
+|-------------|-------------|
+| `creditEarnings(host)` (ETH, payable) | `creditEarnings(host, amount, token)` (unified) |
+| `creditEarningsToken(host, token, amount)` | `creditEarnings(host, amount, token)` (unified) |
+| `withdraw()` (all ETH) | `withdraw(amount, token)` (specific amount + token) |
+| `withdrawToken(token)` (all of token) | `withdrawAll(token)` (all of specific token) |
+| `getEarnings(host, token)` | `getBalance(host, token)` |
+
+**New functions:**
+```solidity
+function withdrawMultiple(address[] calldata tokens) external  // Batch withdraw all balances
+function getBalances(address host, address[] calldata tokens) external view returns (uint256[])
+function getTokenStats(address token) external view returns (uint256 accumulated, uint256 withdrawn, uint256 outstanding)
+function rescueTokens(address token, uint256 amount) external   // Owner-only recovery
+```
+
+**Migration:**
+```javascript
+// Before
+const earnings = await hostEarnings.getEarnings(host, ethers.ZeroAddress);
+await hostEarnings.withdraw();
+
+// After
+const balance = await hostEarnings.getBalance(host, ethers.ZeroAddress);
+await hostEarnings.withdrawAll(ethers.ZeroAddress);
+// Or withdraw specific amount:
+await hostEarnings.withdraw(amount, tokenAddress);
+```
+
+### 3. JobMarketplace — New Delegate System
+
+New functions for Coinbase Smart Wallet sub-account support:
+
+```solidity
+// Authorize a delegate (simple on/off)
+function authorizeDelegate(address delegate, bool authorized) external
+
+// Configure delegate with spending limits and scope
+function configureDelegate(
+    address delegate,
+    uint128 maxPerSession,   // 0 = unlimited
+    uint128 totalCap,        // 0 = unlimited
+    uint64 validUntil,       // 0 = no expiry
+    address allowedHost,     // address(0) = any host
+    bytes32 allowedModel     // bytes32(0) = any model
+) external
+
+// Delegate creates session using depositor's funds
+function createSessionForModelAsDelegate(
+    address payer, bytes32 modelId, address host, address paymentToken,
+    uint256 amount, uint256 pricePerToken, uint256 maxDuration,
+    uint256 proofInterval, uint256 proofTimeoutWindow
+) external returns (uint256 sessionId)
+
+// Query
+function isDelegateAuthorized(address depositor, address delegate) external view returns (bool)
+```
+
+**New events:**
+```solidity
+event DelegateAuthorized(address indexed depositor, address indexed delegate, bool authorized);
+event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel);
+event MinTokensFeeUpdated(uint256 oldFee, uint256 newFee);
+```
+
+### 4. JobMarketplace — New Deposit/Withdraw System
+
+```solidity
+function depositNative() external payable
+function depositToken(address token, uint256 amount) external
+function withdrawNative(uint256 amount) external
+function withdrawToken(address token, uint256 amount) external
+function createSessionFromDepositForModel(...) external returns (uint256)
+
+// Query balances
+function getDepositBalance(address account, address token) external view returns (uint256)
+function getDepositBalances(address account, address[] calldata tokens) external view returns (uint256[])
+function getLockedBalanceNative(address account) external view returns (uint256)
+function getLockedBalanceToken(address account, address token) external view returns (uint256)
+```
+
+### 5. JobMarketplace — New Admin Functions
+
+```solidity
+function setProofSystem(address _proofSystem) external      // Owner or Treasury
+function setUsdcAddress(address _usdc) external              // Owner only
+function setMinTokensFee(uint256 _fee) external              // Owner only
+function initializeChainConfig(ChainConfig memory) external  // Owner or Treasury
+function addAcceptedToken(address token, uint256 minDeposit, uint256 maxDeposit) external
+function updateTokenMaxDeposit(address token, uint256 maxDeposit) external
+function withdrawAllTreasuryFees(address[] calldata tokens) external  // Treasury only
+```
+
+### 6. NodeRegistry — Slashing System
+
+```solidity
+function slashStake(address host, uint256 amount, string calldata evidenceCID, string calldata reason) external
+function setSlashingAuthority(address newAuthority) external   // Owner only
+function setTreasury(address newTreasury) external             // Owner only
+function initializeSlashing(address _treasury) external        // Owner only
+function repairCorruptNode(address nodeAddress) external       // Owner only
+```
+
+### 7. ModelRegistry — New Functions
+
+```solidity
+function setModelRateLimit(bytes32 modelId, uint256 maxTokensPerSec) external  // Owner only
+function getModelRateLimit(bytes32 modelId) external view returns (uint256)
+function batchAddTrustedModels(string[] repos, string[] fileNames, bytes32[] hashes) external
+function withdrawRejectedFees(uint256 amount) external  // Owner only
+```
+
+### 8. JobMarketplace — Fresh Proxy Deployment (BREAKING)
+
+| Old Proxy | New Proxy |
+|-----------|-----------|
+| `0x95132177F964FF053C1E874b53CF74d819618E06` (DEPRECATED) | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` |
+
+The old proxy `0x95132...` was deprecated and replaced with a fresh proxy. All SDK integrations must use the new address.
+
+### 9. Shortened Require Strings
+
+Error messages were shortened for EVM contract size compliance. Update any string-matching error handling:
+
+| Old String | New String |
+|-----------|-----------|
+| `"Invalid price"` | `"Bad price"` |
+| `"Invalid duration"` | `"Bad dur"` |
+| `"Invalid proof interval"` | `"Bad interval"` |
+| `"Invalid model ID"` | `"Bad modelId"` |
+| `"Invalid host"` | `"No host"` |
+| `"Deposit too large"` | `"Over max"` |
+| `"Excessive tokens claimed"` | `"Too many"` |
+| `"Exceeds deposit"` | `"Over dep"` |
+| `"Transfer failed"` | `"Tx fail"` |
+| `"Host not registered"` | `"No host reg"` |
+| `"Fee cannot exceed 100%"` | `"Bad fee"` |
+| `"Wait dispute window"` | `"Dispute wait"` |
+
+### Updated Implementation Addresses (March 5, 2026)
+
+| Contract | Proxy | Implementation |
+|----------|-------|----------------|
+| JobMarketplace | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508` |
+| NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0` |
+| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xF12a0A07d4230E0b045dB22057433a9826d21652` |
+| ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` |
+| HostEarnings | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | (unchanged) |
+
+### Migration Checklist
+
+#### For SDK Developers
+
+- [ ] Update JM proxy address to `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4`
+- [ ] Remove any direct ProofSystem calls (`verifyHostSignature`, etc.)
+- [ ] Update HostEarnings calls: `getEarnings` → `getBalance`, `withdraw()` → `withdrawAll(token)`
+- [ ] Update error message string matching (shortened strings)
+- [ ] Update cached ABIs from `client-abis/`
+- [ ] Adopt delegate system for Smart Wallet sub-accounts (optional)
+- [ ] Adopt deposit system for pre-funded sessions (optional)
+
+#### For Node Operators
+
+- [ ] No action required for existing registrations
+- [ ] Update HostEarnings withdrawal calls if using SDK
+
+---
+
 ## February 2026: Phase 18 — Per-Model Per-Token Pricing Migration
 
 **Contracts Affected**: NodeRegistryWithModelsUpgradeable, JobMarketplaceWithModelsUpgradeable
@@ -238,9 +443,11 @@ await marketplace.completeSessionJob(jobId, conversationCID);
 // Use "" if not storing conversation record
 ```
 
-### 5. Updated Implementation Address
+### 5. Updated Implementation Address (January 2026 — Historical)
 
-| Contract | Proxy | New Implementation |
+> **Note**: This proxy was later frozen for audit. Current proxy: `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4`. See March 2026 section.
+
+| Contract | Proxy | Implementation (Jan 14) |
 |----------|-------|-------------------|
 | JobMarketplace | `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E` | `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` |
 
@@ -400,6 +607,8 @@ The contracts now require **EIP-1153** (Cancun upgrade) support on the target ne
 
 ### 3. ProofSystem Function Rename (BREAKING)
 
+> **Note**: `verifyHostSignature` was subsequently removed entirely in March 2026 (dead code removal). See the March 2026 section above.
+
 **Changed From**: `verifyEKZL(bytes proof, address prover, uint256 claimedTokens)`
 **Changed To**: `verifyHostSignature(bytes proof, address prover, uint256 claimedTokens)`
 
@@ -551,6 +760,8 @@ All contracts are now UUPS upgradeable:
 ---
 
 ## December 2025: PRICE_PRECISION Update
+
+> **Note**: Many functions referenced below (`registerNode` with pricing params, `updatePricingStable`, `setModelPricing`, `getNodePricing`, `createSessionJobWithToken`) were subsequently removed in Phase 18 (February 2026). See the Phase 18 section above. PRICE_PRECISION itself still applies to the new `setModelTokenPricing()` function.
 
 **Contracts Affected**: `NodeRegistryWithModels`, `JobMarketplaceWithModels`
 **Impact Level**: HIGH - Requires SDK and Node operator updates

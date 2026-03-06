@@ -12,7 +12,7 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ### JobMarketplaceWithModelsUpgradeable
 - **Proxy Address**: `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` (**FRESH PROXY** - Feb 22, 2026)
-- **Implementation**: `0xFC06E43BB897AE10FA8F61e0094fE8E47dA412cd` ✅ Phase 18 per-model per-token pricing (Feb 26, 2026)
+- **Implementation**: `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508` ✅ Final audit remediation (Mar 5, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json`
@@ -887,9 +887,10 @@ const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
 - **Replacement**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6
 
 ## Last Updated
-February 26, 2026 - Phase 18 per-model per-token pricing migration
+March 5, 2026 - Final audit remediation upgrade
 
 ### Recent Changes
+- **Mar 5, 2026**: **Final audit remediation** — JM implementation upgraded to `0x6b57...C508`. 8 new findings from Hacken final report addressed: safe ERC20 refund (F202615254), timeout fee exemption (F202615257), delegate spending limits and scope restrictions (F202615255/F202615256), fee cap with event (F202615258), host active check (F202615278). Code deduplication in delegate session creation. No ABI breaking changes — proxy address unchanged.
 - **Feb 26, 2026**: **Phase 18 — Per-model per-token pricing migration**. Removed `getNodePricing`, `setTokenPricing`, `updatePricingNative`, `updatePricingStable`, `setModelPricing`, `clearModelPricing` from NodeRegistry. Added `setModelTokenPricing(modelId, token, price)`, `clearModelTokenPricing(modelId, token)`. `getModelPricing` now reads from `modelTokenPricing` only (reverts with `"No model pricing"` if not set). `getHostModelPrices(operator, token)` now takes a `token` parameter. Removed `createSessionJob`, `createSessionJobWithToken`, `createSessionFromDeposit` from JobMarketplace (use model-specific variants). Supersedes Phase 17 (F202614977).
 - **Feb 24, 2026**: ~~**F202614977 per-token pricing**~~ **Superseded by Phase 18** — NodeRegistry upgraded to `0xeeB3...D24b`. `getNodePricing()` and `getModelPricing()` reverted with `"No token pricing"` for ERC20 tokens without explicit `setTokenPricing()`. Now replaced by per-model per-token pricing.
 - **Feb 22, 2026**: **Post-audit remediation** — Fresh JM proxy `0xD067...adA4`, all 20 Hacken audit findings addressed. Signature removed from submitProofOfWork, proofTimeoutWindow added, per-model rate limits, early cancellation fees, pull-pattern refunds, shortened require strings (F202615067). ProofSystem and ModelRegistry implementations upgraded.

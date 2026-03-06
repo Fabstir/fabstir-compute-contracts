@@ -26,10 +26,10 @@ const contracts = {
   usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
 };
 
-// Implementation addresses (for verification only) - Updated Feb 26, 2026
+// Implementation addresses (for verification only) - Updated Mar 5, 2026
 const implementations = {
-  jobMarketplace: "0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba", // Full audit remediation (Feb 22)
-  nodeRegistry: "0xeeB3ABad9d27Bb3a5D7ACA3c282CDD8C80aAD24b",   // Needs redeployment for Phase 18
+  jobMarketplace: "0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508", // Final audit remediation (Mar 5)
+  nodeRegistry: "0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0",   // Per-model per-token pricing (Feb 26)
   modelRegistry: "0xF12a0A07d4230E0b045dB22057433a9826d21652",   // Rate limits + rejected fee (Feb 22)
   proofSystem: "0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963",    // markProofUsed + dead code removal (Feb 22)
   hostEarnings: "0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0",    // Unchanged
@@ -63,7 +63,7 @@ const GPT_OSS_20B =
 Host registration and pricing management.
 
 **Proxy Address:** `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22`
-**Implementation:** `0xeeB3ABad9d27Bb3a5D7ACA3c282CDD8C80aAD24b` (needs redeployment for Phase 18 per-model per-token pricing)
+**Implementation:** `0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0` (Per-model per-token pricing - Feb 26, 2026)
 
 ### Constants
 
@@ -500,7 +500,7 @@ function lastSlashTime(address host) external view returns (uint256)
 Session management and payments.
 
 **Proxy Address:** `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4`
-**Implementation:** `0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba` (Full audit remediation - Feb 22, 2026)
+**Implementation:** `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508` (Final audit remediation - Mar 5, 2026)
 
 ### Constants
 
@@ -1150,10 +1150,10 @@ const config = {
     usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
   },
 
-  // Implementation addresses (for contract verification) - Feb 26, 2026
+  // Implementation addresses (for contract verification) - Mar 5, 2026
   implementations: {
-    jobMarketplace: "0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba", // Full audit remediation (Feb 22)
-    nodeRegistry: "0xeeB3ABad9d27Bb3a5D7ACA3c282CDD8C80aAD24b",   // Needs redeployment for Phase 18
+    jobMarketplace: "0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508", // Final audit remediation (Mar 5)
+    nodeRegistry: "0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0",   // Per-model per-token pricing (Feb 26)
     modelRegistry: "0xF12a0A07d4230E0b045dB22057433a9826d21652",   // Rate limits + rejected fee (Feb 22)
     proofSystem: "0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963",    // markProofUsed + dead code removal (Feb 22)
     hostEarnings: "0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0",    // Unchanged
