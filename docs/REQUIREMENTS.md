@@ -1,7 +1,7 @@
 # Fabstir Compute Contracts - Formal Requirements Specification
 
 **Version:** 2.0
-**Last Updated:** March 6, 2026
+**Last Updated:** March 8, 2026
 **Status:** Production (Base Sepolia Testnet) — Post-Audit Remediation
 
 ---
@@ -205,7 +205,7 @@ Fabstir Compute solves these problems by:
 | **SM-1** | Session state transitions: Active → Completed/TimedOut | Status enum and require checks |
 | **SM-2** | Completed sessions cannot be modified | `require(status == SessionStatus.Active)` |
 | **SM-3** | Proofs can only be submitted to active sessions | Status check in `submitProofOfWork()` |
-| **SM-4** | Timeout can only trigger after 3× proofInterval | Time check in `triggerSessionTimeout()` |
+| **SM-4** | Timeout triggers after proofTimeoutWindow elapses or session exceeds maxDuration | Time check in `triggerSessionTimeout()` |
 | **SM-5** | tokensUsed monotonically increases | `tokensUsed += tokensClaimed` only |
 
 ### 4.3 Access Control Invariants
@@ -247,7 +247,7 @@ Fabstir Compute solves these problems by:
 │                                                             │
 │  ECONOMICALLY SECURED:                                      │
 │    • Hosts behave honestly due to stake at risk            │
-│    • Hosts sign accurate token counts (reputation risk)     │
+│    • Hosts submit accurate token counts (stake at risk)     │
 │    • FAB token has market value (stake is meaningful)       │
 │                                                             │
 │  UNTRUSTED:                                                 │
@@ -261,7 +261,6 @@ Fabstir Compute solves these problems by:
 
 | Assumption | Basis |
 |------------|-------|
-| ECDSA signatures are unforgeable | secp256k1 security (128-bit) |
 | SHA256/Keccak256 are collision-resistant | Standard assumption |
 | Block timestamps accurate within 15 seconds | Ethereum consensus rules |
 

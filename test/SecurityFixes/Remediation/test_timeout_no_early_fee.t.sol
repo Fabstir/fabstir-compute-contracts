@@ -222,6 +222,83 @@ contract TimeoutNoEarlyFeeTest is Test {
     // Test: ETH timeout also has no early fee
     // ============================================================
 
+    // ============================================================
+    // Test: Timeout after partial proofs — host paid for work, no early fee
+    // ============================================================
+
+    /// @notice F202615257: Timeout after host submits partial proofs — host paid for proven work, no early fee
+    function test_Timeout_AfterPartialProofs_NoEarlyFee() public {
+        uint256 deposit = USDC_MIN_DEPOSIT * 2;
+        uint256 sessionId = _createSession(deposit);
+
+        // Advance time so rate limit allows proof
+        vm.warp(block.timestamp + 10);
+
+        // Host submits 1 proof
+        vm.prank(host);
+        marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, keccak256("p1"), "cid1", "d1");
+
+        // Advance past proofTimeoutWindow (host goes inactive)
+        vm.warp(block.timestamp + PROOF_TIMEOUT + 1);
+
+        uint256 depositorBalBefore = usdc.balanceOf(depositor);
+
+        // Depositor triggers timeout
+        vm.prank(depositor);
+        marketplace.triggerSessionTimeout(sessionId);
+
+        // Host should receive payment for proven tokens (minus 10% treasury)
+        uint256 expectedHostPayment = (MIN_PROVEN_TOKENS * TOKEN_PRICE) / 1000;
+        uint256 treasuryFee = (expectedHostPayment * FEE_BASIS_POINTS) / 10000;
+        uint256 netToHost = expectedHostPayment - treasuryFee;
+        // Note: early cancel fee is charged along with hostPayment, but since
+        // _settleSessionPayments treats it as part of totalHostAmount, we add earlyFee to host payment.
+        // However, on timeout (TimedOut status), earlyFee = 0.
+        uint256 hostBal = hostEarnings.getBalance(host, address(usdc));
+        assertEq(hostBal, netToHost, "Host should receive net payment for proven tokens");
+
+        // Depositor gets remainder — no early fee deducted
+        uint256 depositorBal = usdc.balanceOf(depositor);
+        uint256 expectedRefund = deposit - expectedHostPayment;
+        assertEq(depositorBal - depositorBalBefore, expectedRefund, "Depositor gets remainder without early fee");
+    }
+
+    // ============================================================
+    // Test: maxDuration timeout with no proofs — full refund, no early fee
+    // ============================================================
+
+    /// @notice F202615257: maxDuration timeout — depositor gets full refund, no early fee
+    function test_Timeout_ViaMaxDuration_NoEarlyFee() public {
+        // Create session with short maxDuration (60 seconds)
+        uint256 deposit = USDC_MIN_DEPOSIT * 2;
+        usdc.mint(depositor, deposit);
+        vm.prank(depositor);
+        usdc.approve(address(marketplace), type(uint256).max);
+        vm.prank(depositor);
+        uint256 sessionId = marketplace.createSessionJobForModelWithToken(
+            host, modelId, address(usdc), deposit, TOKEN_PRICE, 60, MIN_PROVEN_TOKENS, PROOF_TIMEOUT
+        );
+
+        // Advance past maxDuration (startTime + 60), but NOT past proofTimeoutWindow
+        vm.warp(block.timestamp + 61);
+
+        // Depositor triggers timeout via maxDuration path
+        vm.prank(depositor);
+        marketplace.triggerSessionTimeout(sessionId);
+
+        // Depositor gets full refund — no proofs, no early fee (TimedOut, not Completed)
+        uint256 depositorBal = usdc.balanceOf(depositor);
+        assertEq(depositorBal, deposit, "Full refund on maxDuration timeout");
+
+        // Host gets zero
+        uint256 hostBal = hostEarnings.getBalance(host, address(usdc));
+        assertEq(hostBal, 0, "Host gets zero on maxDuration timeout with no proofs");
+    }
+
+    // ============================================================
+    // Test: ETH timeout also has no early fee
+    // ============================================================
+
     /// @notice F202615257: ETH session timeout should also not charge early fee
     function test_Timeout_NoEarlyFee_ETHSession() public {
         uint256 deposit = 1 ether;
@@ -243,5 +320,38 @@ contract TimeoutNoEarlyFeeTest is Test {
         // Depositor should get full refund
         uint256 balAfter = depositor.balance;
         assertEq(balAfter - balBefore, deposit, "ETH depositor should get full refund on timeout");
+    }
+
+    // ============================================================
+    // Test: SessionTimedOut event with correct parameters
+    // ============================================================
+
+    /// @notice F202615257: SessionTimedOut event emits correct hostEarnings and userRefund
+    function test_Timeout_EmitsCorrectEvent() public {
+        uint256 deposit = USDC_MIN_DEPOSIT * 2;
+        uint256 sessionId = _createSession(deposit);
+
+        // Advance time so rate limit allows proof
+        vm.warp(block.timestamp + 10);
+
+        // Host submits 1 proof
+        vm.prank(host);
+        marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, keccak256("ev"), "cid", "d");
+
+        // Advance past proofTimeoutWindow
+        vm.warp(block.timestamp + PROOF_TIMEOUT + 1);
+
+        // Calculate expected values
+        uint256 hostPayment = (MIN_PROVEN_TOKENS * TOKEN_PRICE) / 1000;
+        uint256 treasuryFee = (hostPayment * FEE_BASIS_POINTS) / 10000;
+        uint256 netToHost = hostPayment - treasuryFee;
+        uint256 expectedRefund = deposit - hostPayment;
+
+        // Expect SessionTimedOut event
+        vm.expectEmit(true, false, false, true);
+        emit JobMarketplaceWithModelsUpgradeable.SessionTimedOut(sessionId, netToHost, expectedRefund);
+
+        vm.prank(depositor);
+        marketplace.triggerSessionTimeout(sessionId);
     }
 }

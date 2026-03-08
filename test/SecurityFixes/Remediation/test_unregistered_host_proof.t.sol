@@ -189,6 +189,43 @@ contract UnregisteredHostProofTest is Test {
     // Test: Session can still be timed out after host unregisters
     // ============================================================
 
+    // ============================================================
+    // Test: Host submits proof, unregisters, next proof blocked
+    // ============================================================
+
+    /// @notice F202615278: Mid-session unregister blocks further proof submission
+    function test_MidSession_HostUnregisters_NextProofBlocked() public {
+        uint256 deposit = USDC_MIN_DEPOSIT * 2;
+        uint256 sessionId = _createSession(deposit);
+
+        // Advance time for rate limit
+        vm.warp(block.timestamp + 10);
+
+        // Host submits first proof — succeeds
+        vm.prank(host);
+        marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, keccak256("p1"), "cid1", "d1");
+
+        // Verify first proof accepted
+        (, , , , , , uint256 tokensUsed, , , , , , , , , , , ) = marketplace.sessionJobs(sessionId);
+        assertEq(tokensUsed, MIN_PROVEN_TOKENS, "First proof should be recorded");
+
+        // Host unregisters mid-session
+        vm.prank(host);
+        nodeRegistry.unregisterNode();
+
+        // Advance time for next proof window
+        vm.warp(block.timestamp + 60);
+
+        // Host attempts second proof — should be blocked
+        vm.prank(host);
+        vm.expectRevert("Host not active");
+        marketplace.submitProofOfWork(sessionId, MIN_PROVEN_TOKENS, keccak256("p2"), "cid2", "d2");
+    }
+
+    // ============================================================
+    // Test: Session can still be timed out after host unregisters
+    // ============================================================
+
     /// @notice F202615278: Session timeout still works after host unregisters
     function test_Timeout_AfterHostUnregisters() public {
         uint256 deposit = USDC_MIN_DEPOSIT * 2;

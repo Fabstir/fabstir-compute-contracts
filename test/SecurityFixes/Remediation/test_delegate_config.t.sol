@@ -563,6 +563,39 @@ contract DelegateConfigTest is Test {
         );
     }
 
+    // ============================================================
+    // Phase 30.3: configureDelegate emits both DelegateAuthorized AND DelegateConfigured
+    // ============================================================
+
+    /// @notice Phase 30.3: configureDelegate emits both events
+    function test_ConfigureDelegate_EmitsBothEvents() public {
+        vm.expectEmit(true, true, false, true);
+        emit JobMarketplaceWithModelsUpgradeable.DelegateAuthorized(payer, delegate, true);
+        vm.expectEmit(true, true, false, true);
+        emit DelegateConfigured(payer, delegate, 5000, 50000, 0, address(0), bytes32(0));
+
+        vm.prank(payer);
+        marketplace.configureDelegate(delegate, 5000, 50000, 0, address(0), bytes32(0));
+    }
+
+    // ============================================================
+    // Phase 30.3: spent increments correctly with unlimited cap (totalCap=0)
+    // ============================================================
+
+    /// @notice Phase 30.3: spent tracks correctly when totalCap=0 (unlimited)
+    function test_Delegate_SpentIncrementsWithUnlimitedCap() public {
+        vm.prank(payer);
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+
+        // Create two sessions
+        _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
+        _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
+
+        // Spent should reflect both sessions
+        (, , uint128 spent, , , , ) = marketplace.delegateConfigs(payer, delegate);
+        assertEq(spent, SESSION_AMOUNT * 2, "Spent should track both sessions");
+    }
+
     /// @notice Security review: validUntil=0 means no expiry, works after long time
     function test_Delegate_NoExpiry_WorksAfterLongTime() public {
         vm.prank(payer);

@@ -797,7 +797,7 @@ contract JobMarketplaceWithModelsUpgradeable is
     // Treasury Functions
     // ============================================================
 
-    function withdrawTreasuryNative() external {
+    function withdrawTreasuryNative() external nonReentrant {
         require(msg.sender == treasuryAddress, "Only treasury");
         uint256 amount = accumulatedTreasuryNative;
         require(amount > 0, "No balance");
@@ -809,7 +809,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         emit TreasuryWithdrawal(address(0), amount);
     }
 
-    function withdrawTreasuryTokens(address token) external {
+    function withdrawTreasuryTokens(address token) external nonReentrant {
         require(msg.sender == treasuryAddress, "Only treasury");
         uint256 amount = accumulatedTreasuryTokens[token];
         require(amount > 0, "No tokens");
@@ -820,7 +820,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         emit TreasuryWithdrawal(token, amount);
     }
 
-    function withdrawAllTreasuryFees(address[] calldata tokens) external {
+    function withdrawAllTreasuryFees(address[] calldata tokens) external nonReentrant {
         require(msg.sender == treasuryAddress, "Only treasury");
 
         if (accumulatedTreasuryNative > 0) {

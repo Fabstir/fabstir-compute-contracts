@@ -1,17 +1,17 @@
 # CONTRACT_ADDRESSES.md
 
-**Last Updated:** March 5, 2026
+**Last Updated:** March 8, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 
 ---
 
-## Active Contracts (Post-Audit Remediation - Mar 5, 2026)
+## Active Contracts (Post-Audit Remediation - Mar 8, 2026)
 
 > **USE THESE FOR SDK DEVELOPMENT.** All 35 audit findings addressed (27 original + 8 final). Per-model per-token pricing. Delegate spending limits and scope restrictions. Safe ERC20 refund handling. No breaking ABI changes — proxy addresses unchanged.
 
 | Contract | Proxy Address | Implementation | Status |
 |----------|---------------|----------------|--------|
-| **JobMarketplaceWithModelsUpgradeable** | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508` | Upgraded (Mar 5, 2026) — Final audit remediation |
+| **JobMarketplaceWithModelsUpgradeable** | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0x54F2154979E590C3fdae6560d237FEB91eB9661d` | Upgraded (Mar 8, 2026) — Hardening: treasury nonReentrant |
 | **ProofSystemUpgradeable** | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` | Upgraded (Feb 22, 2026) |
 | **NodeRegistryWithModelsUpgradeable** | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0` | Upgraded (Feb 26, 2026) — Phase 18 per-model per-token pricing |
 | **HostEarningsUpgradeable** | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | unchanged | Unchanged |
@@ -27,7 +27,7 @@
 ### Configuration (JavaScript)
 
 ```javascript
-// Post-audit remediation addresses — Updated February 22, 2026
+// Post-audit remediation addresses — Updated March 8, 2026
 const CONTRACTS = {
   jobMarketplace: "0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4",  // FRESH PROXY (Feb 22, 2026)
   proofSystem: "0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31",

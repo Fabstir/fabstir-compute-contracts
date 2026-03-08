@@ -111,5 +111,12 @@ contract MinTokensFeeCapTest is Test {
         marketplace.setMinTokensFee(1000);
     }
 
+    /// @notice Phase 30.3: Fee set to one below max succeeds
+    function test_SetMinTokensFee_BoundaryBelowMax() public {
+        vm.prank(owner);
+        marketplace.setMinTokensFee(9999);
+        assertEq(marketplace.minTokensFee(), 9999, "Fee should be 9999");
+    }
+
     event MinTokensFeeUpdated(uint256 oldFee, uint256 newFee);
 }

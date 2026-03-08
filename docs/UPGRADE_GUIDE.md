@@ -1,6 +1,6 @@
 # UPGRADE_GUIDE.md - Contract Upgrade Procedures
 
-**Last Updated:** March 6, 2026
+**Last Updated:** March 8, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 
 ---
@@ -13,7 +13,7 @@ This guide documents the procedures for upgrading the Fabstir marketplace smart 
 
 | Contract | Proxy Address | Current Implementation |
 |----------|---------------|------------------------|
-| JobMarketplaceWithModelsUpgradeable | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508` |
+| JobMarketplaceWithModelsUpgradeable | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0x54F2154979E590C3fdae6560d237FEB91eB9661d` |
 | NodeRegistryWithModelsUpgradeable | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0` |
 | ModelRegistryUpgradeable | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xF12a0A07d4230E0b045dB22057433a9826d21652` |
 | HostEarningsUpgradeable | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | (unchanged from initial deployment) |
@@ -148,7 +148,7 @@ function reinitialize(uint256 version) public reinitializer(version) {
 ### JobMarketplaceWithModelsUpgradeable
 
 **Current Proxy**: `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` (fresh proxy, Feb 22, 2026)
-**Current Implementation**: `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508` (Mar 5, 2026)
+**Current Implementation**: `0x54F2154979E590C3fdae6560d237FEB91eB9661d` (Mar 8, 2026)
 
 **Critical Dependencies**:
 - NodeRegistry address (set via initialize)
@@ -350,6 +350,7 @@ When deploying to Base Mainnet:
 
 | Version | Date | Changes | Implementation |
 |---------|------|---------|----------------|
+| 4.1.0 | March 8, 2026 | **Hardening** — treasury nonReentrant, 13 new test scenarios | JM: `0x54F2154979E590C3fdae6560d237FEB91eB9661d` |
 | 4.0.0 | March 5, 2026 | **Final audit remediation** — delegate dedup, `MinTokensFeeUpdated` event, delegate config (spending limits, scope, expiry), security hardening | JM: `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508` |
 | 3.1.0 | February 26, 2026 | **Phase 18** — per-model per-token pricing, legacy pricing functions removed | NR: `0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0` |
 | 3.0.0 | February 22, 2026 | **Post-audit remediation** — fresh JM proxy, all 20 preliminary findings addressed, shortened strings (F202615067) | JM: `0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba` |

@@ -256,6 +256,111 @@ contract DelegateDedupTest is Test {
         );
     }
 
+    // ============================================================
+    // Phase 30.1: End-to-end delegate session lifecycle — refund to payer
+    // ============================================================
+
+    /// @notice F202615255: Full delegate lifecycle — refund goes to payer, not delegate
+    function test_DelegateSession_EndToEnd_RefundToPayer() public {
+        // Configure delegate with totalCap
+        vm.prank(payer);
+        marketplace.configureDelegate(delegate, uint128(SESSION_AMOUNT), uint128(SESSION_AMOUNT * 2), 0, address(0), bytes32(0));
+
+        uint256 payerBalBefore = usdcToken.balanceOf(payer);
+
+        // Delegate creates session
+        vm.prank(delegate);
+        uint256 sid = marketplace.createSessionForModelAsDelegate(
+            payer, modelId, hostAddr, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
+        );
+
+        // Host submits proof (advance time for rate limit)
+        vm.warp(block.timestamp + 10);
+        vm.prank(hostAddr);
+        marketplace.submitProofOfWork(sid, 1000, keccak256("lifecycle"), "cid", "delta");
+
+        // Complete after dispute window
+        vm.warp(block.timestamp + DISPUTE_WINDOW + 1);
+        vm.prank(hostAddr);
+        marketplace.completeSessionJob(sid, "QmConversation");
+
+        // Assert refund went to payer (not delegate)
+        (, , , , , , , , , , , , , uint256 withdrawn, uint256 refunded, , , ) = marketplace.sessionJobs(sid);
+        assertGt(refunded, 0, "Refund should be > 0");
+
+        uint256 payerBalAfter = usdcToken.balanceOf(payer);
+        // Payer received refund (balance went down by deposit, then up by refund)
+        assertEq(payerBalAfter, payerBalBefore - SESSION_AMOUNT + refunded, "Refund goes to payer");
+
+        // Delegate balance unchanged (shouldn't receive refund)
+        assertEq(usdcToken.balanceOf(delegate), 0, "Delegate balance unchanged");
+
+        // Host received payment via HostEarnings
+        uint256 hostBal = hostEarnings.getBalance(hostAddr, address(usdcToken));
+        assertEq(hostBal, withdrawn, "Host received net payment");
+
+        // Delegate spent counter reflects session amount
+        (, , uint128 spent, , , , ) = marketplace.delegateConfigs(payer, delegate);
+        assertEq(spent, SESSION_AMOUNT, "Spent counter reflects session amount");
+    }
+
+    // ============================================================
+    // Phase 30.2: Delegate session timeout — refund to payer, no early fee
+    // ============================================================
+
+    /// @notice F202615255+F202615257: Delegate timeout refunds payer, no early fee
+    function test_DelegateSession_Timeout_RefundToPayer() public {
+        vm.prank(payer);
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+
+        uint256 payerBalBefore = usdcToken.balanceOf(payer);
+
+        // Delegate creates session
+        vm.prank(delegate);
+        uint256 sid = marketplace.createSessionForModelAsDelegate(
+            payer, modelId, hostAddr, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
+        );
+
+        // Host goes inactive — advance past proofTimeoutWindow
+        vm.warp(block.timestamp + 301);
+
+        // Payer triggers timeout
+        vm.prank(payer);
+        marketplace.triggerSessionTimeout(sid);
+
+        // Payer gets full refund (no early fee on TimedOut status)
+        uint256 payerBalAfter = usdcToken.balanceOf(payer);
+        assertEq(payerBalAfter, payerBalBefore, "Payer gets full refund on timeout");
+
+        // Host gets $0
+        uint256 hostBal = hostEarnings.getBalance(hostAddr, address(usdcToken));
+        assertEq(hostBal, 0, "Host gets zero on timeout");
+
+        // Delegate spent counter still reflects original amount (not decremented)
+        (, , uint128 spent, , , , ) = marketplace.delegateConfigs(payer, delegate);
+        assertEq(spent, SESSION_AMOUNT, "Spent counter not decremented on timeout");
+    }
+
+    // ============================================================
+    // Phase 30.3: Delegate session reverts when marketplace is paused
+    // ============================================================
+
+    /// @notice Delegate session creation should revert when marketplace is paused
+    function test_DelegateSession_RevertsWhenPaused() public {
+        vm.prank(owner);
+        marketplace.pause();
+
+        vm.prank(delegate);
+        vm.expectRevert();
+        marketplace.createSessionForModelAsDelegate(
+            payer, modelId, hostAddr, address(usdcToken), SESSION_AMOUNT, MIN_PRICE_STABLE, 1 days, 1000, 300
+        );
+    }
+
+    // ============================================================
+    // Existing tests
+    // ============================================================
+
     /// @notice Delegate path rejects same invalid params as direct path
     function test_DelegateSession_ValidationParity() public {
         // pricePerToken=0 → "Bad price"

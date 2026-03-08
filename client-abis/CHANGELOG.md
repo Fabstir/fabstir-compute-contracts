@@ -1,5 +1,28 @@
 # Client ABIs Changelog
 
+## March 8, 2026 - Hardening Phases 29-31: Treasury Reentrancy Guard + Test Coverage
+
+### No Breaking Changes
+JobMarketplace implementation upgraded to `0x54F2154979E590C3fdae6560d237FEB91eB9661d`. Proxy address unchanged (`0xD067...adA4`). All existing ABIs remain compatible.
+
+### Defense-in-Depth
+- `nonReentrant` modifier added to `withdrawTreasuryNative()`, `withdrawTreasuryTokens()`, and `withdrawAllTreasuryFees()` (transient storage — ~100 gas per call)
+
+### Test Coverage Hardened (13 new tests)
+- Timeout after partial proofs: host paid for proven work, no early fee
+- maxDuration timeout: full refund, no early fee
+- Mid-session host unregister: subsequent proof submission blocked
+- SessionTimedOut event parameter verification
+- End-to-end delegate session lifecycle with refund routing to payer
+- Delegate session timeout with refund routing to payer
+- Delegate session creation reverts when marketplace paused
+- `configureDelegate()` emits both `DelegateAuthorized` and `DelegateConfigured`
+- Delegate spent counter tracks correctly with unlimited cap
+- `setMinTokensFee` boundary test (one below max)
+- Treasury token/ETH/batch withdrawal with `nonReentrant`
+
+---
+
 ## March 5, 2026 - Final Audit Remediation Upgrade
 
 ### No Breaking Changes
