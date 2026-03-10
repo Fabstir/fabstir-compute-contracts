@@ -90,6 +90,7 @@ contract JobMarketplaceWithModelsUpgradeable is
         bool active;
         address allowedHost;     // address(0) = any
         bytes32 allowedModel;    // bytes32(0) = any
+        address allowedToken;    // address(0) = any
     }
 
     // Session creation parameters
@@ -225,7 +226,7 @@ contract JobMarketplaceWithModelsUpgradeable is
 
     // V2 Delegation events (Coinbase Smart Wallet sub-account support)
     event DelegateAuthorized(address indexed depositor, address indexed delegate, bool authorized);
-    event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel);
+    event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel, address allowedToken);
     event SessionCreatedByDelegate(
         uint256 indexed sessionId,
         address indexed payer,
@@ -969,6 +970,7 @@ contract JobMarketplaceWithModelsUpgradeable is
      * @param validUntil Expiration timestamp (0 = no expiry)
      * @param allowedHost Restrict to specific host (address(0) = any)
      * @param allowedModel Restrict to specific model (bytes32(0) = any)
+     * @param allowedToken Restrict to specific payment token (address(0) = any)
      */
     function configureDelegate(
         address delegate,
@@ -976,7 +978,8 @@ contract JobMarketplaceWithModelsUpgradeable is
         uint128 totalCap,
         uint64 validUntil,
         address allowedHost,
-        bytes32 allowedModel
+        bytes32 allowedModel,
+        address allowedToken
     ) external {
         require(delegate != address(0), "Zero addr");
         require(delegate != msg.sender, "Self deleg");
@@ -987,10 +990,11 @@ contract JobMarketplaceWithModelsUpgradeable is
             validUntil: validUntil,
             active: true,
             allowedHost: allowedHost,
-            allowedModel: allowedModel
+            allowedModel: allowedModel,
+            allowedToken: allowedToken
         });
         emit DelegateAuthorized(msg.sender, delegate, true);
-        emit DelegateConfigured(msg.sender, delegate, maxPerSession, totalCap, validUntil, allowedHost, allowedModel);
+        emit DelegateConfigured(msg.sender, delegate, maxPerSession, totalCap, validUntil, allowedHost, allowedModel, allowedToken);
     }
 
     /**
@@ -1218,6 +1222,7 @@ contract JobMarketplaceWithModelsUpgradeable is
             if (dc.totalCap > 0) require(dc.spent + amount <= dc.totalCap, "Over cap");
             if (dc.allowedHost != address(0)) require(host == dc.allowedHost, "Wrong host");
             if (dc.allowedModel != bytes32(0)) require(modelId == dc.allowedModel, "Wrong model");
+            if (dc.allowedToken != address(0)) require(paymentToken == dc.allowedToken, "Wrong token");
             require(amount <= type(uint128).max, "Overflow");
             dc.spent += uint128(amount);
         }

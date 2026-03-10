@@ -161,7 +161,8 @@ contract DelegateConfigTest is Test {
             uint128(SESSION_AMOUNT * 5), // totalCap
             uint64(block.timestamp + 1 days), // validUntil
             hostA, // allowedHost
-            modelIdA // allowedModel
+            modelIdA, // allowedModel
+            address(0) // allowedToken
         );
 
         (
@@ -171,7 +172,7 @@ contract DelegateConfigTest is Test {
             uint64 validUntil,
             bool active,
             address allowedHost,
-            bytes32 allowedModel
+            bytes32 allowedModel,
         ) = marketplace.delegateConfigs(payer, delegate);
 
         assertEq(maxPerSession, uint128(SESSION_AMOUNT));
@@ -186,7 +187,7 @@ contract DelegateConfigTest is Test {
     /// @notice F202615255: Delegate exceeding maxPerSession reverts
     function test_Delegate_ExceedsMaxPerSession_Reverts() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, uint128(SESSION_AMOUNT - 1), 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, uint128(SESSION_AMOUNT - 1), 0, 0, address(0), bytes32(0), address(0));
 
         vm.prank(delegate);
         vm.expectRevert("Over limit");
@@ -198,7 +199,7 @@ contract DelegateConfigTest is Test {
     /// @notice F202615255: Delegate within maxPerSession succeeds
     function test_Delegate_WithinMaxPerSession_Succeeds() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, uint128(SESSION_AMOUNT), 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, uint128(SESSION_AMOUNT), 0, 0, address(0), bytes32(0), address(0));
 
         uint256 sid = _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
         assertTrue(sid > 0);
@@ -207,7 +208,7 @@ contract DelegateConfigTest is Test {
     /// @notice F202615255: Delegate exceeding totalCap across sessions reverts
     function test_Delegate_ExceedsTotalCap_Reverts() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 2 - 1), 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 2 - 1), 0, address(0), bytes32(0), address(0));
 
         _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
 
@@ -221,7 +222,7 @@ contract DelegateConfigTest is Test {
     /// @notice F202615255: Delegate within totalCap succeeds
     function test_Delegate_WithinTotalCap_Succeeds() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 2), 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 2), 0, address(0), bytes32(0), address(0));
 
         _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
         uint256 sid = _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
@@ -231,7 +232,7 @@ contract DelegateConfigTest is Test {
     /// @notice F202615255: Expired delegate reverts
     function test_Delegate_Expired_Reverts() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, uint64(block.timestamp + 100), address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, uint64(block.timestamp + 100), address(0), bytes32(0), address(0));
 
         vm.warp(block.timestamp + 101);
 
@@ -245,7 +246,7 @@ contract DelegateConfigTest is Test {
     /// @notice Delegate with valid expiry succeeds
     function test_Delegate_ValidExpiry_Succeeds() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, uint64(block.timestamp + 1 days), address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, uint64(block.timestamp + 1 days), address(0), bytes32(0), address(0));
 
         uint256 sid = _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
         assertTrue(sid > 0);
@@ -258,7 +259,7 @@ contract DelegateConfigTest is Test {
     /// @notice F202615256: Delegate restricted to hostA tries hostB → reverts
     function test_Delegate_WrongHost_Reverts() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, hostA, bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, hostA, bytes32(0), address(0));
 
         vm.prank(delegate);
         vm.expectRevert("Wrong host");
@@ -270,7 +271,7 @@ contract DelegateConfigTest is Test {
     /// @notice F202615256: Delegate restricted to hostA with hostA → succeeds
     function test_Delegate_CorrectHost_Succeeds() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, hostA, bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, hostA, bytes32(0), address(0));
 
         uint256 sid = _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
         assertTrue(sid > 0);
@@ -279,7 +280,7 @@ contract DelegateConfigTest is Test {
     /// @notice F202615256: Delegate restricted to modelA tries modelB → reverts
     function test_Delegate_WrongModel_Reverts() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), modelIdA);
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), modelIdA, address(0));
 
         vm.prank(delegate);
         vm.expectRevert("Wrong model");
@@ -291,7 +292,7 @@ contract DelegateConfigTest is Test {
     /// @notice F202615256: Delegate restricted to modelA with modelA → succeeds
     function test_Delegate_CorrectModel_Succeeds() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), modelIdA);
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), modelIdA, address(0));
 
         uint256 sid = _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
         assertTrue(sid > 0);
@@ -304,7 +305,7 @@ contract DelegateConfigTest is Test {
     /// @notice Unrestricted delegate (all zeros) works with any host/model/amount
     function test_Delegate_Unrestricted_Succeeds() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0), address(0));
 
         uint256 s1 = _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
         uint256 s2 = _createSession(delegate, hostB, modelIdB, SESSION_AMOUNT * 2);
@@ -315,7 +316,7 @@ contract DelegateConfigTest is Test {
     /// @notice Revoking delegate (active = false) reverts
     function test_Delegate_Revoked_Reverts() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0), address(0));
 
         // Revoke using authorizeDelegate(delegate, false)
         vm.prank(payer);
@@ -343,7 +344,7 @@ contract DelegateConfigTest is Test {
         vm.prank(payer);
         marketplace.authorizeDelegate(delegate, true);
 
-        (,,,,bool active,,) = marketplace.delegateConfigs(payer, delegate);
+        (,,,,bool active,,,) = marketplace.delegateConfigs(payer, delegate);
         assertTrue(active);
     }
 
@@ -360,29 +361,29 @@ contract DelegateConfigTest is Test {
     function test_ConfigureDelegate_ZeroAddress_Reverts() public {
         vm.prank(payer);
         vm.expectRevert("Zero addr");
-        marketplace.configureDelegate(address(0), 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(address(0), 0, 0, 0, address(0), bytes32(0), address(0));
     }
 
     /// @notice configureDelegate with self reverts
     function test_ConfigureDelegate_Self_Reverts() public {
         vm.prank(payer);
         vm.expectRevert("Self deleg");
-        marketplace.configureDelegate(payer, 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(payer, 0, 0, 0, address(0), bytes32(0), address(0));
     }
 
     /// @notice Spent counter tracks cumulative spending
     function test_Delegate_SpentCounter_Tracks() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 10), 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 10), 0, address(0), bytes32(0), address(0));
 
         _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
 
-        (,,uint128 spent,,,,) = marketplace.delegateConfigs(payer, delegate);
+        (,,uint128 spent,,,,,) = marketplace.delegateConfigs(payer, delegate);
         assertEq(spent, uint128(SESSION_AMOUNT));
 
         _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT * 2);
 
-        (,,spent,,,,) = marketplace.delegateConfigs(payer, delegate);
+        (,,spent,,,,,) = marketplace.delegateConfigs(payer, delegate);
         assertEq(spent, uint128(SESSION_AMOUNT * 3));
     }
 
@@ -393,18 +394,18 @@ contract DelegateConfigTest is Test {
     /// @notice Security review: configureDelegate resets spent counter
     function test_ConfigureDelegate_ResetsSpent() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 10), 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 10), 0, address(0), bytes32(0), address(0));
 
         // Spend some
         _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
-        (,,uint128 spent,,,,) = marketplace.delegateConfigs(payer, delegate);
+        (,,uint128 spent,,,,,) = marketplace.delegateConfigs(payer, delegate);
         assertEq(spent, uint128(SESSION_AMOUNT));
 
         // Reconfigure — spent should reset to 0
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 10), 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 10), 0, address(0), bytes32(0), address(0));
 
-        (,,spent,,,,) = marketplace.delegateConfigs(payer, delegate);
+        (,,spent,,,,,) = marketplace.delegateConfigs(payer, delegate);
         assertEq(spent, 0, "spent should reset on reconfigure");
     }
 
@@ -412,7 +413,7 @@ contract DelegateConfigTest is Test {
     function test_AuthorizeDelegate_AfterExpiry_ClearsExpiry() public {
         // Configure with expiry
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, uint64(block.timestamp + 100), address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, uint64(block.timestamp + 100), address(0), bytes32(0), address(0));
 
         // Warp past expiry
         vm.warp(block.timestamp + 200);
@@ -430,7 +431,7 @@ contract DelegateConfigTest is Test {
     function test_Delegate_ExactExpiryBoundary() public {
         uint64 expiryTime = uint64(block.timestamp + 1000);
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, expiryTime, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, expiryTime, address(0), bytes32(0), address(0));
 
         // At exact expiry — should succeed (<=)
         vm.warp(expiryTime);
@@ -450,7 +451,7 @@ contract DelegateConfigTest is Test {
     function test_AuthorizeDelegate_PreservesConfig() public {
         // Configure with specific limits
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, uint128(SESSION_AMOUNT), uint128(SESSION_AMOUNT * 5), 0, hostA, modelIdA);
+        marketplace.configureDelegate(delegate, uint128(SESSION_AMOUNT), uint128(SESSION_AMOUNT * 5), 0, hostA, modelIdA, address(0));
 
         // Revoke via authorizeDelegate
         vm.prank(payer);
@@ -461,7 +462,7 @@ contract DelegateConfigTest is Test {
         marketplace.authorizeDelegate(delegate, true);
 
         // Verify limits are preserved
-        (uint128 maxPerSession, uint128 totalCap,,, bool active, address allowedHost, bytes32 allowedModel) =
+        (uint128 maxPerSession, uint128 totalCap,,, bool active, address allowedHost, bytes32 allowedModel,) =
             marketplace.delegateConfigs(payer, delegate);
         assertTrue(active);
         assertEq(maxPerSession, uint128(SESSION_AMOUNT), "maxPerSession preserved");
@@ -473,7 +474,7 @@ contract DelegateConfigTest is Test {
     /// @notice Security review: safe cast for large amounts
     function test_Delegate_LargeAmount_SafeCast() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0), address(0));
 
         // amount > type(uint128).max should revert
         uint256 largeAmount = uint256(type(uint128).max) + 1;
@@ -489,18 +490,19 @@ contract DelegateConfigTest is Test {
     function test_ConfigureDelegate_EmitsEvent() public {
         vm.prank(payer);
         vm.expectEmit(true, true, false, true);
-        emit DelegateConfigured(payer, delegate, uint128(SESSION_AMOUNT), uint128(SESSION_AMOUNT * 5), uint64(block.timestamp + 1 days), hostA, modelIdA);
+        emit DelegateConfigured(payer, delegate, uint128(SESSION_AMOUNT), uint128(SESSION_AMOUNT * 5), uint64(block.timestamp + 1 days), hostA, modelIdA, address(0));
         marketplace.configureDelegate(
             delegate,
             uint128(SESSION_AMOUNT),
             uint128(SESSION_AMOUNT * 5),
             uint64(block.timestamp + 1 days),
             hostA,
-            modelIdA
+            modelIdA,
+            address(0)
         );
     }
 
-    event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel);
+    event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel, address allowedToken);
 
     // ============================================================
     // Phase 27: Post-Review Boundary/Integration Tests
@@ -509,7 +511,7 @@ contract DelegateConfigTest is Test {
     /// @notice Security review: amount=0 must be rejected
     function test_Delegate_ZeroAmount_Reverts() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0), address(0));
 
         vm.prank(delegate);
         vm.expectRevert("Zero amount");
@@ -521,14 +523,14 @@ contract DelegateConfigTest is Test {
     /// @notice Security review: exact totalCap boundary then fail
     function test_Delegate_SpendExactlyTotalCap_ThenFail() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 2), 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, uint128(SESSION_AMOUNT * 2), 0, address(0), bytes32(0), address(0));
 
         // Spend exactly totalCap across 2 sessions
         _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
         _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
 
         // Verify spent == totalCap
-        (,,uint128 spent,,,,) = marketplace.delegateConfigs(payer, delegate);
+        (,,uint128 spent,,,,,) = marketplace.delegateConfigs(payer, delegate);
         assertEq(spent, uint128(SESSION_AMOUNT * 2), "spent should equal totalCap");
 
         // Next smallest valid amount should revert
@@ -542,7 +544,7 @@ contract DelegateConfigTest is Test {
     /// @notice Security review: both host AND model restrictions enforced together
     function test_Delegate_BothHostAndModelRestriction() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, hostA, modelIdA);
+        marketplace.configureDelegate(delegate, 0, 0, 0, hostA, modelIdA, address(0));
 
         // Correct combo succeeds
         uint256 sid = _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
@@ -572,10 +574,10 @@ contract DelegateConfigTest is Test {
         vm.expectEmit(true, true, false, true);
         emit JobMarketplaceWithModelsUpgradeable.DelegateAuthorized(payer, delegate, true);
         vm.expectEmit(true, true, false, true);
-        emit DelegateConfigured(payer, delegate, 5000, 50000, 0, address(0), bytes32(0));
+        emit DelegateConfigured(payer, delegate, 5000, 50000, 0, address(0), bytes32(0), address(0));
 
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 5000, 50000, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 5000, 50000, 0, address(0), bytes32(0), address(0));
     }
 
     // ============================================================
@@ -585,21 +587,21 @@ contract DelegateConfigTest is Test {
     /// @notice Phase 30.3: spent tracks correctly when totalCap=0 (unlimited)
     function test_Delegate_SpentIncrementsWithUnlimitedCap() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0), address(0));
 
         // Create two sessions
         _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
         _createSession(delegate, hostA, modelIdA, SESSION_AMOUNT);
 
         // Spent should reflect both sessions
-        (, , uint128 spent, , , , ) = marketplace.delegateConfigs(payer, delegate);
+        (, , uint128 spent, , , , ,) = marketplace.delegateConfigs(payer, delegate);
         assertEq(spent, SESSION_AMOUNT * 2, "Spent should track both sessions");
     }
 
     /// @notice Security review: validUntil=0 means no expiry, works after long time
     function test_Delegate_NoExpiry_WorksAfterLongTime() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0), address(0));
 
         // Warp 365 days into the future
         vm.warp(block.timestamp + 365 days);

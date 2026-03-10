@@ -145,7 +145,7 @@ contract DelegateDedupTest is Test {
 
         // Authorize delegate (unlimited)
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0), address(0));
     }
 
     /// @notice Helper to get core session fields without stack-too-deep
@@ -264,7 +264,7 @@ contract DelegateDedupTest is Test {
     function test_DelegateSession_EndToEnd_RefundToPayer() public {
         // Configure delegate with totalCap
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, uint128(SESSION_AMOUNT), uint128(SESSION_AMOUNT * 2), 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, uint128(SESSION_AMOUNT), uint128(SESSION_AMOUNT * 2), 0, address(0), bytes32(0), address(0));
 
         uint256 payerBalBefore = usdcToken.balanceOf(payer);
 
@@ -300,7 +300,7 @@ contract DelegateDedupTest is Test {
         assertEq(hostBal, withdrawn, "Host received net payment");
 
         // Delegate spent counter reflects session amount
-        (, , uint128 spent, , , , ) = marketplace.delegateConfigs(payer, delegate);
+        (, , uint128 spent, , , , ,) = marketplace.delegateConfigs(payer, delegate);
         assertEq(spent, SESSION_AMOUNT, "Spent counter reflects session amount");
     }
 
@@ -311,7 +311,7 @@ contract DelegateDedupTest is Test {
     /// @notice F202615255+F202615257: Delegate timeout refunds payer, no early fee
     function test_DelegateSession_Timeout_RefundToPayer() public {
         vm.prank(payer);
-        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0));
+        marketplace.configureDelegate(delegate, 0, 0, 0, address(0), bytes32(0), address(0));
 
         uint256 payerBalBefore = usdcToken.balanceOf(payer);
 
@@ -337,7 +337,7 @@ contract DelegateDedupTest is Test {
         assertEq(hostBal, 0, "Host gets zero on timeout");
 
         // Delegate spent counter still reflects original amount (not decremented)
-        (, , uint128 spent, , , , ) = marketplace.delegateConfigs(payer, delegate);
+        (, , uint128 spent, , , , ,) = marketplace.delegateConfigs(payer, delegate);
         assertEq(spent, SESSION_AMOUNT, "Spent counter not decremented on timeout");
     }
 
