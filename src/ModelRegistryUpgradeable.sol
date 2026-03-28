@@ -72,6 +72,17 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     // Track last proposal execution time for cooldown
     mapping(bytes32 => uint256) public lastProposalExecutionTime;
 
+    // Accumulated fees from rejected proposals (withdrawable by owner)
+    uint256 public accumulatedRejectedFees;
+
+    // Per-model token generation rate limits (tokens per second)
+    mapping(bytes32 => uint256) public modelMaxTokensPerSecond;
+
+    // Rate limit constants
+    uint256 public constant MIN_RATE_LIMIT = 100;      // Minimum 100 tokens/sec
+    uint256 public constant MAX_RATE_LIMIT = 10000;    // Maximum 10000 tokens/sec
+    uint256 public constant DEFAULT_RATE_LIMIT = 2000; // Backward compatible default
+
     // Events
     event ModelAdded(bytes32 indexed modelId, string huggingfaceRepo, string fileName, uint256 tier);
     event ModelProposed(bytes32 indexed modelId, address indexed proposer, string huggingfaceRepo);
@@ -80,9 +91,11 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     event ModelDeactivated(bytes32 indexed modelId);
     event ModelReactivated(bytes32 indexed modelId);
     event VotingExtended(bytes32 indexed modelId, uint256 newEndTime, uint8 extensionCount);
+    event RejectedFeesWithdrawn(address indexed recipient, uint256 amount);
+    event ModelRateLimitUpdated(bytes32 indexed modelId, uint256 maxTokensPerSecond);
 
-    // Storage gap for future upgrades (reduced for lateVotes + lastProposalExecutionTime)
-    uint256[47] private __gap;
+    // Storage gap for future upgrades (reduced for modelMaxTokensPerSecond mapping)
+    uint256[45] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -247,9 +260,11 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
                           proposal.modelData.fileName, 2);
         }
 
-        // Return proposal fee to proposer if approved
+        // Return proposal fee to proposer if approved, otherwise accumulate
         if (approved) {
             governanceToken.safeTransfer(proposal.proposer, PROPOSAL_FEE);
+        } else {
+            accumulatedRejectedFees += PROPOSAL_FEE;
         }
 
         // Remove from active proposals
@@ -316,6 +331,21 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     }
 
     /**
+     * @notice Withdraw accumulated fees from rejected proposals (owner only)
+     * @param amount Amount to withdraw (use 0 for all)
+     */
+    function withdrawRejectedFees(uint256 amount) external onlyOwner nonReentrant {
+        uint256 toWithdraw = amount == 0 ? accumulatedRejectedFees : amount;
+        require(toWithdraw > 0, "No fees to withdraw");
+        require(toWithdraw <= accumulatedRejectedFees, "Insufficient accumulated fees");
+
+        accumulatedRejectedFees -= toWithdraw;
+        governanceToken.safeTransfer(msg.sender, toWithdraw);
+
+        emit RejectedFeesWithdrawn(msg.sender, toWithdraw);
+    }
+
+    /**
      * @notice Get all model IDs
      */
     function getAllModels() external view returns (bytes32[] memory) {
@@ -377,8 +407,38 @@ contract ModelRegistryUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgr
     function _clearOldProposal(bytes32 modelId) internal {
         if (proposals[modelId].executed) {
             delete proposals[modelId];
+            delete lateVotes[modelId];  // Clear stale late votes for fresh re-proposal
         }
         require(proposals[modelId].endTime == 0, "Active proposal exists");
+    }
+
+    // ============================================================
+    // Rate Limit Functions
+    // ============================================================
+
+    /**
+     * @notice Set the maximum token generation rate for a model
+     * @param modelId The model identifier
+     * @param maxTokensPerSec Maximum tokens per second allowed for this model
+     */
+    function setModelRateLimit(bytes32 modelId, uint256 maxTokensPerSec) external onlyOwner {
+        require(models[modelId].timestamp > 0, "Model does not exist");
+        require(maxTokensPerSec >= MIN_RATE_LIMIT, "Rate below minimum");
+        require(maxTokensPerSec <= MAX_RATE_LIMIT, "Rate above maximum");
+
+        modelMaxTokensPerSecond[modelId] = maxTokensPerSec;
+        emit ModelRateLimitUpdated(modelId, maxTokensPerSec);
+    }
+
+    /**
+     * @notice Get the maximum token generation rate for a model
+     * @dev Returns DEFAULT_RATE_LIMIT if no rate is configured for the model
+     * @param modelId The model identifier
+     * @return Maximum tokens per second for this model
+     */
+    function getModelRateLimit(bytes32 modelId) external view returns (uint256) {
+        uint256 rate = modelMaxTokensPerSecond[modelId];
+        return rate > 0 ? rate : DEFAULT_RATE_LIMIT;
     }
 
     /**

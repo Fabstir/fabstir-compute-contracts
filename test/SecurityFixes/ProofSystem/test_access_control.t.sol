@@ -7,11 +7,7 @@ import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
 
 /**
  * @title ProofSystemUpgradeable Access Control Tests
- * @dev Tests for recordVerifiedProof access control (Sub-phase 1.1)
- *
- * Security Fix: recordVerifiedProof was callable by anyone, enabling front-running
- * attacks where malicious actors could mark proof hashes as used before legitimate
- * hosts submit their proofs.
+ * @dev Tests for markProofUsed and setAuthorizedCaller access control
  */
 contract ProofSystemAccessControlTest is Test {
     ProofSystemUpgradeable public implementation;
@@ -50,12 +46,10 @@ contract ProofSystemAccessControlTest is Test {
     }
 
     function test_OwnerCanRevokeAuthorization() public {
-        // First authorize
         vm.prank(owner);
         proofSystem.setAuthorizedCaller(authorizedCaller, true);
         assertTrue(proofSystem.authorizedCallers(authorizedCaller));
 
-        // Then revoke
         vm.prank(owner);
         proofSystem.setAuthorizedCaller(authorizedCaller, false);
         assertFalse(proofSystem.authorizedCallers(authorizedCaller));
@@ -81,59 +75,54 @@ contract ProofSystemAccessControlTest is Test {
     }
 
     // ============================================================
-    // recordVerifiedProof Access Control Tests
+    // markProofUsed Access Control Tests
     // ============================================================
 
-    function test_AuthorizedCallerCanRecordProof() public {
-        // Authorize the caller
+    function test_AuthorizedCallerCanMarkProof() public {
         vm.prank(owner);
         proofSystem.setAuthorizedCaller(authorizedCaller, true);
 
-        // Authorized caller should be able to record proof
         bytes32 proofHash = bytes32(uint256(0x1234));
         vm.prank(authorizedCaller);
-        proofSystem.recordVerifiedProof(proofHash);
+        bool result = proofSystem.markProofUsed(proofHash, address(0xBEEF), 100, bytes32(0));
 
+        assertTrue(result);
         assertTrue(proofSystem.verifiedProofs(proofHash));
     }
 
-    function test_OwnerCanRecordProofDirectly() public {
-        // Owner should be able to record proof without being in authorizedCallers
+    function test_OwnerCanMarkProofDirectly() public {
         bytes32 proofHash = bytes32(uint256(0x5678));
         vm.prank(owner);
-        proofSystem.recordVerifiedProof(proofHash);
+        bool result = proofSystem.markProofUsed(proofHash, address(0xBEEF), 100, bytes32(0));
 
+        assertTrue(result);
         assertTrue(proofSystem.verifiedProofs(proofHash));
     }
 
-    function test_UnauthorizedCallerCannotRecordProof() public {
+    function test_UnauthorizedCallerCannotMarkProof() public {
         bytes32 proofHash = bytes32(uint256(0xABCD));
 
         vm.prank(unauthorizedUser);
         vm.expectRevert("Unauthorized");
-        proofSystem.recordVerifiedProof(proofHash);
+        proofSystem.markProofUsed(proofHash, address(0xBEEF), 100, bytes32(0));
 
-        // Proof should not be recorded
         assertFalse(proofSystem.verifiedProofs(proofHash));
     }
 
-    function test_RevokedCallerCannotRecordProof() public {
-        // First authorize
+    function test_RevokedCallerCannotMarkProof() public {
         vm.prank(owner);
         proofSystem.setAuthorizedCaller(authorizedCaller, true);
 
-        // Then revoke
         vm.prank(owner);
         proofSystem.setAuthorizedCaller(authorizedCaller, false);
 
-        // Revoked caller should not be able to record proof
         bytes32 proofHash = bytes32(uint256(0xDEAD));
         vm.prank(authorizedCaller);
         vm.expectRevert("Unauthorized");
-        proofSystem.recordVerifiedProof(proofHash);
+        proofSystem.markProofUsed(proofHash, address(0xBEEF), 100, bytes32(0));
     }
 
-    function test_RecordVerifiedProofEmitsEvent() public {
+    function test_MarkProofUsedEmitsEvent() public {
         vm.prank(owner);
         proofSystem.setAuthorizedCaller(authorizedCaller, true);
 
@@ -141,8 +130,8 @@ contract ProofSystemAccessControlTest is Test {
 
         vm.prank(authorizedCaller);
         vm.expectEmit(true, true, false, true);
-        emit ProofVerified(proofHash, authorizedCaller, 0);
-        proofSystem.recordVerifiedProof(proofHash);
+        emit ProofVerified(proofHash, address(0xBEEF), 100);
+        proofSystem.markProofUsed(proofHash, address(0xBEEF), 100, bytes32(0));
     }
 
     // ============================================================
@@ -150,31 +139,20 @@ contract ProofSystemAccessControlTest is Test {
     // ============================================================
 
     function test_FrontRunningAttackPrevented() public {
-        // This test demonstrates the attack vector that is now prevented
-        //
-        // Attack scenario:
-        // 1. Legitimate host prepares proof with hash H
-        // 2. Attacker sees pending tx in mempool
-        // 3. Attacker tries to front-run with recordVerifiedProof(H)
-        // 4. Attack should fail because attacker is not authorized
-
         bytes32 proofHash = bytes32(uint256(0xCAFE));
         address attacker = address(0x666);
 
-        // Attacker tries to front-run
         vm.prank(attacker);
         vm.expectRevert("Unauthorized");
-        proofSystem.recordVerifiedProof(proofHash);
+        proofSystem.markProofUsed(proofHash, address(0xBEEF), 100, bytes32(0));
 
-        // Proof should not be marked as verified
         assertFalse(proofSystem.verifiedProofs(proofHash));
 
-        // Legitimate caller (authorized) can still record the proof
         vm.prank(owner);
         proofSystem.setAuthorizedCaller(authorizedCaller, true);
 
         vm.prank(authorizedCaller);
-        proofSystem.recordVerifiedProof(proofHash);
+        proofSystem.markProofUsed(proofHash, address(0xBEEF), 100, bytes32(0));
 
         assertTrue(proofSystem.verifiedProofs(proofHash));
     }
@@ -183,18 +161,16 @@ contract ProofSystemAccessControlTest is Test {
         address caller1 = address(0x100);
         address caller2 = address(0x200);
 
-        // Authorize multiple callers
         vm.startPrank(owner);
         proofSystem.setAuthorizedCaller(caller1, true);
         proofSystem.setAuthorizedCaller(caller2, true);
         vm.stopPrank();
 
-        // Both should be able to record proofs
         vm.prank(caller1);
-        proofSystem.recordVerifiedProof(bytes32(uint256(1)));
+        proofSystem.markProofUsed(bytes32(uint256(1)), address(0xBEEF), 100, bytes32(0));
 
         vm.prank(caller2);
-        proofSystem.recordVerifiedProof(bytes32(uint256(2)));
+        proofSystem.markProofUsed(bytes32(uint256(2)), address(0xBEEF), 200, bytes32(0));
 
         assertTrue(proofSystem.verifiedProofs(bytes32(uint256(1))));
         assertTrue(proofSystem.verifiedProofs(bytes32(uint256(2))));

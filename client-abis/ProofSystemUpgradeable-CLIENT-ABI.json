@@ -38,44 +38,6 @@
   },
   {
     "type": "function",
-    "name": "estimateBatchGas",
-    "inputs": [
-      {
-        "name": "batchSize",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "pure"
-  },
-  {
-    "type": "function",
-    "name": "getModelCircuit",
-    "inputs": [
-      {
-        "name": "model",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "initialize",
     "inputs": [],
     "outputs": [],
@@ -83,10 +45,25 @@
   },
   {
     "type": "function",
-    "name": "isCircuitRegistered",
+    "name": "markProofUsed",
     "inputs": [
       {
-        "name": "circuitHash",
+        "name": "proofHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "prover",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "claimedTokens",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "modelId",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -98,26 +75,7 @@
         "internalType": "bool"
       }
     ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "modelCircuits",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -141,56 +99,6 @@
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "recordVerifiedProof",
-    "inputs": [
-      {
-        "name": "proofHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "registerModelCircuit",
-    "inputs": [
-      {
-        "name": "model",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "circuitHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "registeredCircuits",
-    "inputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -271,122 +179,6 @@
     "stateMutability": "view"
   },
   {
-    "type": "function",
-    "name": "verifyAndMarkComplete",
-    "inputs": [
-      {
-        "name": "proof",
-        "type": "bytes",
-        "internalType": "bytes"
-      },
-      {
-        "name": "prover",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "claimedTokens",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "verifyBatch",
-    "inputs": [
-      {
-        "name": "proofs",
-        "type": "bytes[]",
-        "internalType": "bytes[]"
-      },
-      {
-        "name": "prover",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "tokenCounts",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "verifyBatchView",
-    "inputs": [
-      {
-        "name": "proofs",
-        "type": "bytes[]",
-        "internalType": "bytes[]"
-      },
-      {
-        "name": "prover",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "tokenCounts",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "results",
-        "type": "bool[]",
-        "internalType": "bool[]"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "verifyHostSignature",
-    "inputs": [
-      {
-        "name": "proof",
-        "type": "bytes",
-        "internalType": "bytes"
-      },
-      {
-        "name": "prover",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "claimedTokens",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
     "type": "event",
     "name": "AuthorizedCallerUpdated",
     "inputs": [
@@ -401,50 +193,6 @@
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "BatchProofVerified",
-    "inputs": [
-      {
-        "name": "proofHashes",
-        "type": "bytes32[]",
-        "indexed": false,
-        "internalType": "bytes32[]"
-      },
-      {
-        "name": "prover",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "totalTokens",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "CircuitRegistered",
-    "inputs": [
-      {
-        "name": "circuitHash",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "model",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
       }
     ],
     "anonymous": false

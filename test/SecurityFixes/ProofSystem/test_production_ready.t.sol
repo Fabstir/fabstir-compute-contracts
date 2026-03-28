@@ -7,12 +7,12 @@ import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
 
 /**
  * @title ProofSystemUpgradeable Production Readiness Tests
- * @dev Tests to verify the contract is production-ready (Sub-phase 1.4)
+ * @dev Tests to verify the contract is production-ready after dead code removal
  *
  * Verifies:
- * - No unsafe testing functions remain
  * - All state-changing functions have proper access control
  * - Contract behaves securely under various conditions
+ * - Only markProofUsed and setAuthorizedCaller remain as state-changing functions
  */
 contract ProofSystemProductionReadyTest is Test {
     ProofSystemUpgradeable public implementation;
@@ -22,13 +22,10 @@ contract ProofSystemProductionReadyTest is Test {
     address public unauthorizedUser = address(0x2);
     address public authorizedCaller = address(0x3);
 
-    // Use actual private key for signing tests
-    uint256 constant PROVER_PRIVATE_KEY = 0xA11CE;
-    address public prover;
+    event AuthorizedCallerUpdated(address indexed caller, bool authorized);
+    event ProofVerified(bytes32 indexed proofHash, address indexed prover, uint256 tokens);
 
     function setUp() public {
-        prover = vm.addr(PROVER_PRIVATE_KEY);
-
         // Deploy implementation
         implementation = new ProofSystemUpgradeable();
 
@@ -45,33 +42,23 @@ contract ProofSystemProductionReadyTest is Test {
     // Access Control Verification Tests
     // ============================================================
 
-    function test_RecordVerifiedProofRequiresAuthorization() public {
+    function test_MarkProofUsedRequiresAuthorization() public {
         bytes32 proofHash = bytes32(uint256(0x1234));
 
-        // Unauthorized user should fail
         vm.prank(unauthorizedUser);
         vm.expectRevert("Unauthorized");
-        proofSystem.recordVerifiedProof(proofHash);
+        proofSystem.markProofUsed(proofHash, address(0xBEEF), 100, bytes32(0));
     }
 
     function test_SetAuthorizedCallerRequiresOwner() public {
-        // Non-owner should fail
         vm.prank(unauthorizedUser);
         vm.expectRevert();
         proofSystem.setAuthorizedCaller(authorizedCaller, true);
     }
 
-    function test_RegisterModelCircuitRequiresOwner() public {
-        // Non-owner should fail
-        vm.prank(unauthorizedUser);
-        vm.expectRevert();
-        proofSystem.registerModelCircuit(address(0x100), bytes32(uint256(1)));
-    }
-
     function test_UpgradeRequiresOwner() public {
         ProofSystemUpgradeable newImpl = new ProofSystemUpgradeable();
 
-        // Non-owner should fail
         vm.prank(unauthorizedUser);
         vm.expectRevert();
         proofSystem.upgradeToAndCall(address(newImpl), "");
@@ -82,30 +69,17 @@ contract ProofSystemProductionReadyTest is Test {
     // ============================================================
 
     function test_AllStateChangingFunctionsHaveAccessControl() public {
-        // This test documents all state-changing functions and their access control
-
-        // 1. recordVerifiedProof - requires authorizedCallers or owner
+        // 1. markProofUsed - requires authorizedCallers or owner
         vm.prank(unauthorizedUser);
         vm.expectRevert("Unauthorized");
-        proofSystem.recordVerifiedProof(bytes32(uint256(1)));
+        proofSystem.markProofUsed(bytes32(uint256(1)), address(0xBEEF), 100, bytes32(0));
 
         // 2. setAuthorizedCaller - requires owner (onlyOwner modifier)
         vm.prank(unauthorizedUser);
         vm.expectRevert();
         proofSystem.setAuthorizedCaller(address(0x100), true);
 
-        // 3. registerModelCircuit - requires owner (onlyOwner modifier)
-        vm.prank(unauthorizedUser);
-        vm.expectRevert();
-        proofSystem.registerModelCircuit(address(0x100), bytes32(uint256(1)));
-
-        // 4. verifyAndMarkComplete - no access control needed (anyone can verify)
-        // This is intentional - verification is permissionless but records proof hash
-
-        // 5. verifyBatch - no access control needed (anyone can verify batch)
-        // This is intentional - batch verification is permissionless but records proof hashes
-
-        // 6. upgradeToAndCall - requires owner (via _authorizeUpgrade)
+        // 3. upgradeToAndCall - requires owner (via _authorizeUpgrade)
         ProofSystemUpgradeable newImpl = new ProofSystemUpgradeable();
         vm.prank(unauthorizedUser);
         vm.expectRevert();
@@ -117,41 +91,13 @@ contract ProofSystemProductionReadyTest is Test {
     // ============================================================
 
     function test_ViewFunctionsArePermissionless() public view {
-        // These functions are intentionally permissionless
-
-        // 1. verifyHostSignature - read-only verification
-        bytes memory proof = new bytes(97);
-        proofSystem.verifyHostSignature(proof, prover, 100);
-
-        // 2. verifiedProofs - public mapping
+        // 1. verifiedProofs - public mapping
         proofSystem.verifiedProofs(bytes32(uint256(1)));
 
-        // 3. authorizedCallers - public mapping
+        // 2. authorizedCallers - public mapping
         proofSystem.authorizedCallers(address(0x100));
 
-        // 4. registeredCircuits - public mapping
-        proofSystem.registeredCircuits(bytes32(uint256(1)));
-
-        // 5. modelCircuits - public mapping
-        proofSystem.modelCircuits(address(0x100));
-
-        // 6. isCircuitRegistered - view function
-        proofSystem.isCircuitRegistered(bytes32(uint256(1)));
-
-        // 7. getModelCircuit - view function
-        proofSystem.getModelCircuit(address(0x100));
-
-        // 8. verifyBatchView - view function
-        bytes[] memory proofs = new bytes[](1);
-        proofs[0] = new bytes(97);
-        uint256[] memory tokenCounts = new uint256[](1);
-        tokenCounts[0] = 100;
-        proofSystem.verifyBatchView(proofs, prover, tokenCounts);
-
-        // 9. estimateBatchGas - pure function
-        proofSystem.estimateBatchGas(1);
-
-        // 10. owner - inherited from OwnableUpgradeable
+        // 3. owner - inherited from OwnableUpgradeable
         proofSystem.owner();
     }
 
@@ -160,20 +106,15 @@ contract ProofSystemProductionReadyTest is Test {
     // ============================================================
 
     function test_NoUnauthorizedStateModification() public {
-        // Attempt all possible state modifications as unauthorized user
         vm.startPrank(unauthorizedUser);
 
-        // Try to record a proof
+        // Try to mark a proof
         vm.expectRevert("Unauthorized");
-        proofSystem.recordVerifiedProof(bytes32(uint256(1)));
+        proofSystem.markProofUsed(bytes32(uint256(1)), address(0xBEEF), 100, bytes32(0));
 
         // Try to authorize a caller
         vm.expectRevert();
         proofSystem.setAuthorizedCaller(unauthorizedUser, true);
-
-        // Try to register a circuit
-        vm.expectRevert();
-        proofSystem.registerModelCircuit(unauthorizedUser, bytes32(uint256(1)));
 
         // Try to upgrade
         vm.expectRevert();
@@ -184,7 +125,6 @@ contract ProofSystemProductionReadyTest is Test {
         // Verify no state was modified
         assertFalse(proofSystem.verifiedProofs(bytes32(uint256(1))));
         assertFalse(proofSystem.authorizedCallers(unauthorizedUser));
-        assertFalse(proofSystem.registeredCircuits(bytes32(uint256(1))));
     }
 
     // ============================================================
@@ -198,25 +138,19 @@ contract ProofSystemProductionReadyTest is Test {
         proofSystem.setAuthorizedCaller(authorizedCaller, true);
         assertTrue(proofSystem.authorizedCallers(authorizedCaller));
 
-        // Owner can record proofs
-        proofSystem.recordVerifiedProof(bytes32(uint256(0x1111)));
+        // Owner can mark proofs
+        proofSystem.markProofUsed(bytes32(uint256(0x1111)), address(0xBEEF), 100, bytes32(0));
         assertTrue(proofSystem.verifiedProofs(bytes32(uint256(0x1111))));
-
-        // Owner can register circuits
-        proofSystem.registerModelCircuit(address(0x100), bytes32(uint256(0x2222)));
-        assertTrue(proofSystem.isCircuitRegistered(bytes32(uint256(0x2222))));
 
         vm.stopPrank();
     }
 
-    function test_AuthorizedCallerCanRecordProofs() public {
-        // First authorize the caller
+    function test_AuthorizedCallerCanMarkProofs() public {
         vm.prank(owner);
         proofSystem.setAuthorizedCaller(authorizedCaller, true);
 
-        // Authorized caller can record proofs
         vm.prank(authorizedCaller);
-        proofSystem.recordVerifiedProof(bytes32(uint256(0x3333)));
+        proofSystem.markProofUsed(bytes32(uint256(0x3333)), address(0xBEEF), 100, bytes32(0));
 
         assertTrue(proofSystem.verifiedProofs(bytes32(uint256(0x3333))));
     }
@@ -226,13 +160,11 @@ contract ProofSystemProductionReadyTest is Test {
     // ============================================================
 
     function test_CannotReinitialize() public {
-        // Contract cannot be reinitialized
         vm.expectRevert();
         proofSystem.initialize();
     }
 
     function test_ImplementationCannotBeInitialized() public {
-        // Implementation contract cannot be initialized
         vm.expectRevert();
         implementation.initialize();
     }
@@ -240,10 +172,6 @@ contract ProofSystemProductionReadyTest is Test {
     // ============================================================
     // Event Emission Verification
     // ============================================================
-
-    event AuthorizedCallerUpdated(address indexed caller, bool authorized);
-    event ProofVerified(bytes32 indexed proofHash, address indexed prover, uint256 tokens);
-    event CircuitRegistered(bytes32 indexed circuitHash, address indexed model);
 
     function test_EventsEmittedCorrectly() public {
         vm.startPrank(owner);
@@ -255,13 +183,8 @@ contract ProofSystemProductionReadyTest is Test {
 
         // ProofVerified event
         vm.expectEmit(true, true, false, true);
-        emit ProofVerified(bytes32(uint256(0x4444)), owner, 0);
-        proofSystem.recordVerifiedProof(bytes32(uint256(0x4444)));
-
-        // CircuitRegistered event
-        vm.expectEmit(true, true, false, false);
-        emit CircuitRegistered(bytes32(uint256(0x5555)), address(0x100));
-        proofSystem.registerModelCircuit(address(0x100), bytes32(uint256(0x5555)));
+        emit ProofVerified(bytes32(uint256(0x4444)), address(0xBEEF), 100);
+        proofSystem.markProofUsed(bytes32(uint256(0x4444)), address(0xBEEF), 100, bytes32(0));
 
         vm.stopPrank();
     }

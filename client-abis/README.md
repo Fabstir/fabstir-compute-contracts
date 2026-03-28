@@ -4,15 +4,15 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ---
 
-## UPGRADEABLE CONTRACTS (January 9, 2026 - Clean Slate Deployment)
+## UPGRADEABLE CONTRACTS (February 26, 2026 - Post-Audit Remediation + Phase 18 Deployment)
 
-> **🔒 SECURITY UPDATE**: All CRITICAL vulnerabilities from January 2025 audit have been fixed.
-> **⚠️ ADDRESS CHANGE**: JobMarketplace proxy address changed on January 9, 2026 (clean slate deployment).
+> **POST-AUDIT REMEDIATION**: All 20 findings from the Hacken security audit addressed.
+> **ADDRESS CHANGE**: JobMarketplace has a NEW proxy address (fresh deployment for clean storage layout).
 > **RECOMMENDED**: Use these upgradeable contracts for all integrations.
 
 ### JobMarketplaceWithModelsUpgradeable
-- **Proxy Address**: `0x3CaCbf3f448B420918A93a88706B26Ab27a3523E`
-- **Implementation**: `0x1B6C6A1E373E5E00Bf6210e32A6DA40304f6484c` ✅ deltaCID support (Jan 14, 2026)
+- **Proxy Address**: `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` (**FRESH PROXY** - Feb 22, 2026)
+- **Implementation**: `0xCCd2426A644Ef5Ef69B128b31a0A42Ecb3855c86` ✅ Phase 32: delegate token restriction — allowedToken (Mar 28, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json`
@@ -35,17 +35,23 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
   - NEW: `getTotalBalanceNative(address)` - View total balance (withdrawable + locked)
   - NEW: `getTotalBalanceToken(address, address)` - View total token balance
   - NEW: `getProofSubmission(uint256 sessionId, uint256 proofIndex)` - View proof details including verified flag
-- **Breaking Change (Jan 14, 2026)**:
-  - `submitProofOfWork` now requires 6 parameters (added `string calldata deltaCID`)
-  - `getProofSubmission` now returns 5 values (added `deltaCID`)
-  - `ProofSubmitted` event now includes `deltaCID` field
-- **Previous Breaking Change (Jan 6, 2026)**:
-  - `submitProofOfWork` added `bytes calldata signature` parameter
-  - Hosts must sign their proofs with ECDSA for verification
+- **Breaking Change (Feb 26, 2026) — Phase 18: Non-Model Session Functions Removed**:
+  - **Removed**: `createSessionJob()`, `createSessionJobWithToken()`, `createSessionFromDeposit()` — all sessions now require a model ID
+  - **Use instead**: `createSessionJobForModel()`, `createSessionJobForModelWithToken()`, `createSessionFromDepositForModel()`, `createSessionForModelAsDelegate()`
+- **Breaking Change (Feb 22, 2026) — Audit Remediation**:
+  - `submitProofOfWork` now takes 5 parameters: `(sessionId, tokensClaimed, proofHash, proofCID, deltaCID)` — signature removed (F202614998+F202614976)
+  - New `proofTimeoutWindow` parameter on all session creation functions (F202614911)
+  - New `createSessionFromDepositForModel()` and `createSessionForModelAsDelegate()` functions (F202614916)
+  - Require strings shortened for EVM size limit compliance (F202615067) — error text changed but behavior unchanged
+  - Early cancellation fee via `minTokensFee` (F202614917)
+  - Per-model rate limits via `ModelRegistry.getModelRateLimit()` (F202614913)
+  - Pull-pattern refunds — `RefundCreditedToDeposit` event (F202614898)
+- **Previous Breaking Change (Jan 14, 2026)**:
+  - `submitProofOfWork` previously required 6 parameters (added `string calldata deltaCID`)
 
 ### NodeRegistryWithModelsUpgradeable
 - **Proxy Address**: `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22`
-- **Implementation**: `0xF2D98D38B2dF95f4e8e4A49750823C415E795377` ✅ Stake slashing (Jan 16, 2026)
+- **Implementation**: `0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0` ✅ Phase 18 per-model per-token pricing (Feb 26, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `NodeRegistryWithModelsUpgradeable-CLIENT-ABI.json`
@@ -53,6 +59,14 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
   - All features from non-upgradeable version
   - UUPS proxy pattern for future upgrades
   - Owner-only upgrade authorization
+  - Per-model per-token pricing via `setModelTokenPricing(modelId, token, price)`
+- **Breaking Change (Feb 26, 2026) — Phase 18: Per-Model Per-Token Pricing Migration**:
+  - **Removed functions**: `getNodePricing`, `setTokenPricing`, `updatePricingNative`, `updatePricingStable`, `setModelPricing`, `clearModelPricing`
+  - **Added functions**: `setModelTokenPricing(bytes32 modelId, address token, uint256 price)`, `clearModelTokenPricing(bytes32 modelId, address token)`
+  - **Changed**: `getModelPricing(operator, modelId, token)` now reads from `modelTokenPricing` only (no fallback); reverts with `"No model pricing"` if not set
+  - **Changed**: `getHostModelPrices(operator, token)` now takes a `token` parameter and returns prices from `modelTokenPricing` mapping
+  - Hosts **must** call `setModelTokenPricing(modelId, tokenAddress, price)` for each model+token combination they support
+  - Supersedes Phase 17 (F202614977) which introduced `setTokenPricing`
 - **Stake Slashing (Jan 16, 2026)**:
   - `slashStake(address, uint256, string, string)` - Slash host stake for misbehavior
   - `initializeSlashing(address)` - Initialize slashing after upgrade (owner, one-time)
@@ -73,7 +87,7 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ### ModelRegistryUpgradeable
 - **Proxy Address**: `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2`
-- **Implementation**: `0x8491af1f0D47f6367b56691dCA0F4996431fB0A5` ✅ Voting improvements (Jan 11, 2026)
+- **Implementation**: `0xF12a0A07d4230E0b045dB22057433a9826d21652` ✅ Rejected fees + lateVotes cleanup + per-model rate limits (Feb 22, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `ModelRegistryUpgradeable-CLIENT-ABI.json`
@@ -96,26 +110,28 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 - **ABI File**: `HostEarningsUpgradeable-CLIENT-ABI.json`
 
 ### ProofSystemUpgradeable
-- **Proxy Address**: `0x5afB91977e69Cc5003288849059bc62d47E7deeb`
-- **Implementation**: `0xCF46BBa79eA69A68001A1c2f5Ad9eFA1AD435EF9` ✅ Security fixes (Jan 9, 2026)
+- **Proxy Address**: `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31`
+- **Implementation**: `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` ✅ Dead code removal + storage placeholders (Feb 22, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `ProofSystemUpgradeable-CLIENT-ABI.json`
-- **Security Features** (Jan 2026):
-  - `setAuthorizedCaller(address, bool)` - Owner authorizes callers for recordVerifiedProof
+- **Audit Remediation (Feb 2026)**:
+  - Dead circuit/verification code removed (F202615147, F202615149, F202615002, F202615064-66)
+  - Only `markProofUsed()` and `setAuthorizedCaller()` remain
+  - Storage placeholders preserve slot alignment for `authorizedCallers` at slot 3
+  - `setAuthorizedCaller(address, bool)` - Owner authorizes callers
   - `authorizedCallers(address)` - Check if address is authorized
-  - Access control on `recordVerifiedProof()` prevents front-running attacks
 
 ### Upgradeable Contracts Configuration
 
 ```javascript
-// Use these addresses for all new integrations (Updated January 9, 2026)
+// Use these addresses for all new integrations (Updated February 22, 2026)
 const upgradeableContracts = {
-  jobMarketplace: "0x3CaCbf3f448B420918A93a88706B26Ab27a3523E",  // ⚠️ NEW (Jan 9, 2026)
+  jobMarketplace: "0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4",  // FRESH PROXY (Feb 22, 2026)
   nodeRegistry: "0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22",
   modelRegistry: "0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2",
   hostEarnings: "0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0",
-  proofSystem: "0x5afB91977e69Cc5003288849059bc62d47E7deeb",
+  proofSystem: "0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31",
   fabToken: "0xC78949004B4EB6dEf2D66e49Cd81231472612D62",
   usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 };
@@ -169,7 +185,7 @@ await nodeRegistry.repairCorruptNode(corruptHostAddress);
   - 18-Field SessionJob Struct: lastProofHash and lastProofCID fields
   - submitProofOfWork takes 4 params (jobId, tokensClaimed, proofHash, proofCID)
   - DUAL PRICING: Separate native (ETH/BNB) and stable (USDC) pricing fields
-  - 10,000x Range: Both native and stable have 10,000x range (MIN to MAX)
+  - On-chain MIN/MAX constants for both native and stable pricing
   - Price Validation: Validates against correct pricing field based on payment type
   - Works with NodeRegistryWithModels per-model pricing
   - Wallet-agnostic deposit/withdrawal functions (depositNative, withdrawNative)
@@ -200,18 +216,14 @@ await nodeRegistry.repairCorruptNode(corruptHostAddress);
 - **Status**: ✅ PRICE_PRECISION=1000 for sub-$1/million pricing (December 9, 2025)
 - **Stake Required**: 1000 FAB tokens
 - **Key Features**:
-  - 🆕 **Per-Model Pricing**: Set different prices for different AI models
-  - 🆕 **setModelPricing(bytes32 modelId, uint256 nativePrice, uint256 stablePrice)**: Set model-specific pricing
-  - 🆕 **clearModelPricing(bytes32 modelId)**: Clear model-specific pricing (revert to default)
-  - 🆕 **getModelPricing(address, bytes32, address)**: Query model-specific pricing with fallback
-  - 🆕 **getHostModelPrices(address)**: Batch query all model prices for a host
-  - 🆕 **Multi-Token Support**: Set custom pricing per stablecoin token
-  - 🆕 **setTokenPricing(address token, uint256 price)**: Set token-specific pricing
-  - 🆕 **customTokenPricing mapping**: Per-token price overrides
-  - 🆕 **100% Backward Compatible**: Default pricing still works for existing code
+  - 🆕 **Per-Model Per-Token Pricing**: Set different prices for different AI models and tokens
+  - 🆕 **setModelTokenPricing(bytes32 modelId, address token, uint256 price)**: Set per-model per-token pricing
+  - 🆕 **clearModelTokenPricing(bytes32 modelId, address token)**: Clear per-model per-token pricing
+  - 🆕 **getModelPricing(address, bytes32, address)**: Query per-model per-token pricing (reverts if not set)
+  - 🆕 **getHostModelPrices(address, address)**: Batch query all model prices for a host and token
   - Dual Pricing: Separate minPricePerTokenNative and minPricePerTokenStable fields
-  - Native Pricing Range: 2,272,727,273 to 22,727,272,727,273 wei (~$0.00001 to $0.1 @ $4400 ETH)
-  - Stable Pricing Range: 10 to 100,000 (0.00001 to 0.1 USDC per token)
+  - Native Pricing Range: 227,273 to 22,727,272,727,273,000 wei
+  - Stable Pricing Range: 1 to 100,000,000
   - Dynamic Pricing Updates: Separate updatePricingNative() and updatePricingStable() functions
   - 8-Field Node Struct: Both pricing fields (getNodeFullInfo returns 8 values)
   - Integrates with ModelRegistry for approved models only
@@ -272,9 +284,9 @@ console.log(`Model: ${model.huggingfaceRepo}/${model.fileName}`);
 console.log(`SHA256: ${model.sha256Hash}`);
 console.log(`Active: ${model.active}`);
 
-// For hosts - register with approved models AND dual pricing
+// For hosts - register with approved models AND set per-model per-token pricing
 const nodeRegistry = new ethers.Contract(
-  '0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999',  // NodeRegistryWithModels - PRICE_PRECISION=1000
+  '0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22',  // NodeRegistryWithModels - UUPS Proxy
   NodeRegistryABI,
   signer
 );
@@ -285,7 +297,7 @@ const metadata = JSON.stringify({
   location: "us-east"
 });
 
-// Dual pricing: separate native and stable
+// Default pricing: separate native and stable (set during registration)
 const minPriceNative = ethers.BigNumber.from("3000000000"); // 3B wei (~$0.000013 @ $4400 ETH)
 const minPriceStable = 15000; // 0.015 USDC per token
 
@@ -293,31 +305,33 @@ await nodeRegistry.registerNode(
   metadata,
   "http://my-host.com:8080",
   [modelId], // Must be an approved model ID
-  minPriceNative, // Native token pricing (ETH/BNB)
-  minPriceStable  // Stablecoin pricing (USDC)
+  minPriceNative, // Default native token pricing (ETH/BNB)
+  minPriceStable  // Default stablecoin pricing (USDC)
 );
+
+// REQUIRED: Set per-model per-token pricing for each model+token you accept
+const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+await nodeRegistry.setModelTokenPricing(modelId, usdcAddress, minPriceStable);
+await nodeRegistry.setModelTokenPricing(modelId, ethers.constants.AddressZero, minPriceNative);
 ```
 
-## Dual Pricing Usage (NEW - January 28, 2025)
+## Per-Model Per-Token Pricing (Phase 18 - February 26, 2026)
 
-### For Hosts: Setting and Updating Dual Pricing
+### For Hosts: Setting Per-Model Per-Token Pricing
 
 ```javascript
-import NodeRegistryABI from './NodeRegistryWithModels-CLIENT-ABI.json';
+import NodeRegistryABI from './NodeRegistryWithModelsUpgradeable-CLIENT-ABI.json';
 import { ethers } from 'ethers';
 
 const nodeRegistry = new ethers.Contract(
-  '0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999',
+  '0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22',
   NodeRegistryABI,
   signer
 );
 
-// Register with DUAL pricing (both required)
+// Register node with models and default pricing
 const minPriceNative = ethers.BigNumber.from("3000000000"); // 3B wei
 const minPriceStable = 15000; // 0.015 USDC per token
-
-// Native range: 2,272,727,273 to 22,727,272,727,273 wei (~$0.00001 to $0.1 @ $4400 ETH)
-// Stable range: 10 to 100,000 (0.00001 to 0.1 USDC per token)
 
 await nodeRegistry.registerNode(
   metadata,
@@ -327,112 +341,121 @@ await nodeRegistry.registerNode(
   minPriceStable
 );
 
-// Update native pricing (ETH/BNB)
-const newPriceNative = ethers.BigNumber.from("5000000000"); // 5B wei
-await nodeRegistry.updatePricingNative(newPriceNative);
+// Set per-model per-token pricing (REQUIRED for each model+token combination)
+const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 
-// Update stable pricing (USDC)
-const newPriceStable = 20000; // 0.02 USDC per token
-await nodeRegistry.updatePricingStable(newPriceStable);
+// Set USDC pricing for a specific model
+await nodeRegistry.setModelTokenPricing(modelId, usdcAddress, 15000);
 
-// Query own pricing (returns both)
-const [nativePrice, stablePrice] = await nodeRegistry.getNodePricing(myAddress);
-console.log(`Native: ${nativePrice.toString()} wei`);
-console.log(`Stable: ${stablePrice} (${stablePrice / 1e6} USDC per token)`);
+// Set native ETH pricing for a specific model
+await nodeRegistry.setModelTokenPricing(modelId, ethers.constants.AddressZero, ethers.BigNumber.from("3000000000"));
+
+// Clear pricing for a model+token combination
+await nodeRegistry.clearModelTokenPricing(modelId, usdcAddress);
+
+// Query model pricing for a specific token
+const price = await nodeRegistry.getModelPricing(myAddress, modelId, usdcAddress);
+console.log(`Model price for USDC: ${price}`);
+
+// Batch query all model prices for a specific token
+const [modelIds, prices] = await nodeRegistry.getHostModelPrices(myAddress, usdcAddress);
+for (let i = 0; i < modelIds.length; i++) {
+  console.log(`Model ${modelIds[i]}: ${prices[i]}`);
+}
 ```
 
-### For Clients: Querying Dual Pricing and Creating Sessions
+### For Clients: Querying Pricing and Creating Sessions
 
 ```javascript
-import JobMarketplaceABI from './JobMarketplaceWithModels-CLIENT-ABI.json';
-import NodeRegistryABI from './NodeRegistryWithModels-CLIENT-ABI.json';
+import JobMarketplaceABI from './JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json';
+import NodeRegistryABI from './NodeRegistryWithModelsUpgradeable-CLIENT-ABI.json';
 import { ethers } from 'ethers';
 
 const nodeRegistry = new ethers.Contract(
-  '0x906F4A8Cb944E4fe12Fb85Be7E627CeDAA8B8999',
+  '0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22',
   NodeRegistryABI,
   provider
 );
 
 const marketplace = new ethers.Contract(
-  '0x75C72e8C3eC707D8beF5Ba9b9C4f75CbB5bced97',  // PRICE_PRECISION + 2000 tok/sec
+  '0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4',
   JobMarketplaceABI,
   signer
 );
 
-// STEP 1: Query host dual pricing BEFORE creating session
+// STEP 1: Query per-model pricing for the specific token
 const hostAddress = '0x...';
-const [hostMinNative, hostMinStable] = await nodeRegistry.getNodePricing(hostAddress);
-console.log(`Host native minimum: ${hostMinNative.toString()} wei`);
-console.log(`Host stable minimum: ${hostMinStable} (${hostMinStable / 1e6} USDC)`);
+const modelId = '0x...'; // bytes32 model hash
+const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 
-// Or get all host info including dual pricing (7th and 8th fields)
-const [operator, stake, active, metadata, apiUrl, models, minNative, minStable] =
-  await nodeRegistry.getNodeFullInfo(hostAddress);
+try {
+  const hostPrice = await nodeRegistry.getModelPricing(hostAddress, modelId, usdcAddress);
+  console.log(`Host price for this model+token: ${hostPrice}`);
+} catch (e) {
+  console.log("Host has not set pricing for this model+token combination");
+}
 
-// STEP 2a: Create ETH session with price >= host native minimum
-const myPriceNative = ethers.BigNumber.from("4000000000"); // Must be >= hostMinNative
-const deposit = ethers.utils.parseEther('0.1'); // 0.1 ETH
+// Or batch query all model prices for a token
+const [modelIds, prices] = await nodeRegistry.getHostModelPrices(hostAddress, usdcAddress);
 
-// This will REVERT if myPriceNative < hostMinNative
-const txNative = await marketplace.createSessionJob(
+// STEP 2a: Create ETH model session
+const myPriceNative = ethers.BigNumber.from("4000000000");
+const deposit = ethers.utils.parseEther('0.1');
+const proofTimeoutWindow = 300; // 5 minutes
+
+const txNative = await marketplace.createSessionJobForModel(
+  modelId,
   hostAddress,
   myPriceNative,
   3600, // 1 hour max duration
   100,  // Proof every 100 tokens
+  proofTimeoutWindow,
   { value: deposit }
 );
 
 await txNative.wait();
-console.log('ETH session created with validated native pricing!');
+console.log('ETH model session created!');
 
-// STEP 2b: Create USDC session with price >= host stable minimum
-const myPriceStable = 20000; // Must be >= hostMinStable
-const usdcDeposit = ethers.utils.parseUnits("10", 6); // 10 USDC
+// STEP 2b: Create USDC model session
+const myPriceStable = 20000;
+const usdcDeposit = ethers.utils.parseUnits("10", 6);
 
 // Approve USDC first
 const usdcContract = new ethers.Contract(
-  '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+  usdcAddress,
   ['function approve(address,uint256)'],
   signer
 );
 await usdcContract.approve(marketplace.address, usdcDeposit);
 
-// This will REVERT if myPriceStable < hostMinStable
-const txStable = await marketplace.createSessionJobWithToken(
+const txStable = await marketplace.createSessionJobForModelWithToken(
+  modelId,
   hostAddress,
-  '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // USDC
+  usdcAddress,
   usdcDeposit,
   myPriceStable,
   3600,
-  100
+  100,
+  proofTimeoutWindow
 );
 
 await txStable.wait();
-console.log('USDC session created with validated stable pricing!');
+console.log('USDC model session created!');
 ```
 
-### Dual Pricing Validation Rules
+### Pricing Validation Rules
 
-⚠️ **CRITICAL**: All session creation functions validate against the CORRECT pricing field:
+All session creation functions now require a model ID and validate against per-model per-token pricing:
 
 **Native Token Sessions** (ETH/BNB):
-- `createSessionJob()` - Validates against `hostMinPricePerTokenNative`
-- `createSessionFromDeposit()` with ETH - Validates against native pricing
-- **Range**: 2,272,727,273 to 22,727,272,727,273 wei (~$0.00001 to $0.1 @ $4400 ETH)
-- **Validation**: `clientPricePerToken >= hostMinPricePerTokenNative`
+- `createSessionJobForModel()` - Validates against `modelTokenPricing[host][modelId][address(0)]`
+- **Range**: 227,273 to 22,727,272,727,273,000 wei
 
 **Stablecoin Sessions** (USDC):
-- `createSessionJobWithToken()` - Validates against `hostMinPricePerTokenStable`
-- `createSessionFromDeposit()` with USDC - Validates against stable pricing
-- **Range**: 10 to 100,000 (0.00001 to 0.1 USDC per token)
-- **Validation**: `clientPricePerToken >= hostMinPricePerTokenStable`
+- `createSessionJobForModelWithToken()` - Validates against `modelTokenPricing[host][modelId][token]`
+- **Range**: 1 to 100,000,000
 
-**If validation fails**: Transaction reverts with:
-- "Price below host minimum (native)" - for ETH sessions
-- "Price below host minimum (stable)" - for USDC sessions
-
-**10,000x Range**: Both native and stable pricing have identical 10,000x range (MIN to MAX)
+**If model pricing not set**: `getModelPricing()` reverts with `"No model pricing"`
 ```
 
 ## S5 Proof Storage Usage (NEW - October 14, 2025)
@@ -720,7 +743,7 @@ if (!hostApiUrl) {
   throw new Error('Host has not set API URL');
 }
 
-// Create USDC session job (with signer)
+// Create USDC model session job (with signer)
 const signer = provider.getSigner();
 const marketplaceWithSigner = marketplace.connect(signer);
 
@@ -729,14 +752,17 @@ const usdcAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 const usdcContract = new ethers.Contract(usdcAddress, ['function approve(address,uint256)'], signer);
 await usdcContract.approve(marketplace.address, ethers.utils.parseUnits("10", 6)); // 10 USDC
 
-// Create session with USDC
-await marketplaceWithSigner.createSessionJobWithToken(
+// Create model session with USDC (all sessions now require a model ID)
+const proofTimeoutWindow = 300; // 5 minutes
+await marketplaceWithSigner.createSessionJobForModelWithToken(
+  modelId,       // bytes32 model hash
   hostAddress,
   usdcAddress,
   ethers.utils.parseUnits("10", 6), // 10 USDC deposit
   ethers.utils.parseUnits("0.001", 6), // price per token in USDC
   3600, // max duration (1 hour)
-  300 // proof interval
+  300,  // proof interval
+  proofTimeoutWindow
 );
 
 // Now connect to host using discovered API URL
@@ -754,32 +780,25 @@ const response = await fetch(`${hostApiUrl}/api/v1/inference`, {
 ## Session Job Functions
 
 Key functions for session jobs:
-- `createSessionJob()` - Create ETH-based session
-- `createSessionJobWithToken()` - Create token-based session
-- `submitProofOfWork(jobId, tokensClaimed, proofHash, signature, proofCID, deltaCID)` - Submit signed proof (6 params)
+- `createSessionJobForModel()` - Create ETH-based model session
+- `createSessionJobForModelWithToken()` - Create token-based model session
+- `createSessionFromDepositForModel()` - Create model session from pre-deposited funds
+- `createSessionForModelAsDelegate()` - Delegate creates model session on behalf of depositor
+- `submitProofOfWork(sessionId, tokensClaimed, proofHash, proofCID, deltaCID)` - Submit proof (5 params, no signature)
 - `getProofSubmission(sessionId, proofIndex)` - Get proof details (returns 5 values including deltaCID)
 - `completeSessionJob(jobId, conversationCID)` - Complete and settle payments
 - `triggerSessionTimeout()` - Handle timeout scenarios
 
-**BREAKING CHANGE (Jan 14, 2026)**: `submitProofOfWork()` now includes deltaCID:
-- Old: `submitProofOfWork(jobId, tokensClaimed, proofHash, signature, proofCID)` - 5 params ❌ DEPRECATED
-- New: `submitProofOfWork(jobId, tokensClaimed, proofHash, signature, proofCID, deltaCID)` - 6 params ✅ CURRENT
+**REMOVED (Feb 26, 2026)**: `createSessionJob()`, `createSessionJobWithToken()`, `createSessionFromDeposit()` — use model-specific variants above.
 
-**BREAKING CHANGE (Jan 14, 2026)**: `getProofSubmission()` return value changed:
-- Old: Returns 4 values `(proofHash, tokensClaimed, timestamp, verified)`
-- New: Returns 5 values `(proofHash, tokensClaimed, timestamp, verified, deltaCID)` ✅ CURRENT
+**BREAKING CHANGE (Feb 22, 2026)**: `submitProofOfWork()` signature parameter removed:
+- Current: `submitProofOfWork(sessionId, tokensClaimed, proofHash, proofCID, deltaCID)` - 5 params
 
 ```javascript
-// Generate signature for proof submission
+// Proof submission (no signature required — msg.sender == host is verified on-chain)
 const proofHash = keccak256(workData);
-const dataHash = keccak256(
-  solidityPacked(['bytes32', 'address', 'uint256'], [proofHash, hostAddress, tokensClaimed])
-);
-const signature = await hostWallet.signMessage(getBytes(dataHash));
-
-// deltaCID is optional - use empty string if not tracking deltas
 const deltaCID = "QmDeltaCID123"; // or "" if not using delta tracking
-await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, signature, proofCID, deltaCID);
+await marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, proofCID, deltaCID);
 ```
 
 ## Treasury Functions
@@ -868,9 +887,15 @@ const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
 - **Replacement**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6
 
 ## Last Updated
-January 16, 2026 - Stake slashing feature for NodeRegistry
+March 28, 2026 - Phase 32: delegate token restriction (allowedToken)
 
 ### Recent Changes
+- **Mar 28, 2026**: **Phase 32 — delegate token restriction** — JM implementation upgraded to `0xCCd2...c86`. Added `allowedToken` to `DelegateConfig` struct and `configureDelegate()` (now 7 params). `DelegateConfigured` event includes `allowedToken`. Enforcement: delegates with non-zero `allowedToken` must use that exact payment token. `configureDelegate` is not used by SDK/UI — ABI update only.
+- **Mar 8, 2026**: **Hardening phases 29-31** — JM implementation upgraded to `0x54F2...661d`. Added `nonReentrant` to treasury withdrawal functions (defense-in-depth). 13 new tests covering timeout-after-partial-proofs, delegate lifecycle end-to-end, mid-session host unregister blocking, and event verification. No ABI breaking changes — proxy address unchanged.
+- **Mar 5, 2026**: **Final audit remediation** — JM implementation upgraded to `0x6b57...C508`. 8 new findings from Hacken final report addressed: safe ERC20 refund (F202615254), timeout fee exemption (F202615257), delegate spending limits and scope restrictions (F202615255/F202615256), fee cap with event (F202615258), host active check (F202615278). Code deduplication in delegate session creation. No ABI breaking changes — proxy address unchanged.
+- **Feb 26, 2026**: **Phase 18 — Per-model per-token pricing migration**. Removed `getNodePricing`, `setTokenPricing`, `updatePricingNative`, `updatePricingStable`, `setModelPricing`, `clearModelPricing` from NodeRegistry. Added `setModelTokenPricing(modelId, token, price)`, `clearModelTokenPricing(modelId, token)`. `getModelPricing` now reads from `modelTokenPricing` only (reverts with `"No model pricing"` if not set). `getHostModelPrices(operator, token)` now takes a `token` parameter. Removed `createSessionJob`, `createSessionJobWithToken`, `createSessionFromDeposit` from JobMarketplace (use model-specific variants). Supersedes Phase 17 (F202614977).
+- **Feb 24, 2026**: ~~**F202614977 per-token pricing**~~ **Superseded by Phase 18** — NodeRegistry upgraded to `0xeeB3...D24b`. `getNodePricing()` and `getModelPricing()` reverted with `"No token pricing"` for ERC20 tokens without explicit `setTokenPricing()`. Now replaced by per-model per-token pricing.
+- **Feb 22, 2026**: **Post-audit remediation** — Fresh JM proxy `0xD067...adA4`, all 20 Hacken audit findings addressed. Signature removed from submitProofOfWork, proofTimeoutWindow added, per-model rate limits, early cancellation fees, pull-pattern refunds, shortened require strings (F202615067). ProofSystem and ModelRegistry implementations upgraded.
 - **Jan 16, 2026**: Stake slashing - `slashStake()`, `initializeSlashing()`, `setSlashingAuthority()`, `setTreasury()`, `lastSlashTime()`
 - **Jan 14, 2026**: deltaCID support - `submitProofOfWork` now 6 params, `getProofSubmission` returns 5 values
 - **Jan 10, 2026**: NodeRegistry - Added `repairCorruptNode()` admin function and safety check in `unregisterNode()`

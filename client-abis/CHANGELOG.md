@@ -1,5 +1,310 @@
 # Client ABIs Changelog
 
+## March 28, 2026 - Phase 32: Delegate Token Restriction (BREAKING CHANGE for `configureDelegate`)
+
+### ⚠️ BREAKING CHANGE — `configureDelegate` gains 7th parameter
+`configureDelegate()` now takes an `allowedToken` address as the 7th parameter. Pass `address(0)` for "any token" (backward-compatible behavior). The `DelegateConfigured` event also includes the new `allowedToken` field.
+
+**Note**: Per SDK developer confirmation, `configureDelegate` is **not used** anywhere in the SDK or UI. No SDK/UI code changes required — only ABI update needed.
+
+### Implementation Upgrade
+| Contract | Proxy (unchanged) | New Implementation |
+|----------|-------------------|-------------------|
+| JobMarketplace | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0xCCd2426A644Ef5Ef69B128b31a0A42Ecb3855c86` |
+
+### Changed Function
+```solidity
+// OLD (6 params):
+function configureDelegate(address delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel) external
+
+// NEW (7 params):
+function configureDelegate(address delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel, address allowedToken) external
+```
+
+### Changed Event
+```solidity
+// NEW: includes allowedToken field
+event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel, address allowedToken);
+```
+
+### New Behavioral Check
+- If `allowedToken != address(0)`, delegate must use that exact payment token or `createSessionForModelAsDelegate` reverts with `"Wrong token"`
+- `address(0)` means any accepted token (default, backward-compatible)
+
+### ABI File Updated
+- `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json` — regenerated with 7-param `configureDelegate`
+
+---
+
+## March 8, 2026 - Hardening Phases 29-31: Treasury Reentrancy Guard + Test Coverage
+
+### No Breaking Changes
+JobMarketplace implementation upgraded to `0x54F2154979E590C3fdae6560d237FEB91eB9661d`. Proxy address unchanged (`0xD067...adA4`). All existing ABIs remain compatible.
+
+### Defense-in-Depth
+- `nonReentrant` modifier added to `withdrawTreasuryNative()`, `withdrawTreasuryTokens()`, and `withdrawAllTreasuryFees()` (transient storage — ~100 gas per call)
+
+### Test Coverage Hardened (13 new tests)
+- Timeout after partial proofs: host paid for proven work, no early fee
+- maxDuration timeout: full refund, no early fee
+- Mid-session host unregister: subsequent proof submission blocked
+- SessionTimedOut event parameter verification
+- End-to-end delegate session lifecycle with refund routing to payer
+- Delegate session timeout with refund routing to payer
+- Delegate session creation reverts when marketplace paused
+- `configureDelegate()` emits both `DelegateAuthorized` and `DelegateConfigured`
+- Delegate spent counter tracks correctly with unlimited cap
+- `setMinTokensFee` boundary test (one below max)
+- Treasury token/ETH/batch withdrawal with `nonReentrant`
+
+---
+
+## March 5, 2026 - Final Audit Remediation Upgrade
+
+### No Breaking Changes
+JobMarketplace implementation upgraded to `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508`. Proxy address unchanged (`0xD067...adA4`). All existing ABIs remain compatible.
+
+### Fixes Included
+- **F-2026-15254 (HIGH)**: Safe ERC20 refund — low-level call replaces try/catch for non-returning tokens (USDT)
+- **F-2026-15257 (MEDIUM)**: Timeout fee exemption — early cancel fee no longer charged on host-abandoned sessions
+- **F-2026-15255 + F-2026-15256 (LOW)**: Delegate spending limits and scope restrictions via `configureDelegate()`
+- **F-2026-15258 (LOW)**: `setMinTokensFee` capped at 10000 + `MinTokensFeeUpdated` event added
+- **F-2026-15278 (LOW)**: Unregistered hosts blocked from submitting proofs
+- **F-2026-15279 (INFO)**: `verified` field deprecated in `ProofSubmission` struct (always true)
+
+### New Event
+```solidity
+event MinTokensFeeUpdated(uint256 oldFee, uint256 newFee);
+```
+
+### Code Quality
+- `createSessionForModelAsDelegate()` refactored to use shared `_validateSessionParams()` + `_initializeSession()` helpers (no behavioral change)
+
+---
+
+## February 26, 2026 - Phase 18: Per-Model Per-Token Pricing Migration (BREAKING CHANGE)
+
+### ⚠️ BREAKING CHANGE — Major Pricing API Overhaul
+Phase 18 consolidates all pricing into a single per-model per-token mapping (`modelTokenPricing`), removing the layered fallback system from Phase 17. Non-model session creation functions are also removed from JobMarketplace.
+
+**Why**: The previous system had multiple overlapping pricing layers (node-level default, custom token pricing, model-level overrides) which created confusion and potential for mispricing. The new system has exactly one pricing source: `modelTokenPricing[host][modelId][token]`.
+
+### Supersedes Phase 17 (F202614977)
+Phase 17's `setTokenPricing`/`getNodePricing` approach is entirely replaced. All Phase 17 changes are superseded by Phase 18.
+
+### NodeRegistry: Removed Functions
+| Function | Replacement |
+|----------|-------------|
+| `getNodePricing(address, address)` | `getModelPricing(address, bytes32, address)` |
+| `setTokenPricing(address, uint256)` | `setModelTokenPricing(bytes32, address, uint256)` |
+| `updatePricingNative(uint256)` | `setModelTokenPricing(modelId, address(0), price)` |
+| `updatePricingStable(uint256)` | `setModelTokenPricing(modelId, token, price)` |
+| `setModelPricing(bytes32, uint256, uint256)` | `setModelTokenPricing(bytes32, address, uint256)` |
+| `clearModelPricing(bytes32)` | `clearModelTokenPricing(bytes32, address)` |
+
+### NodeRegistry: Added Functions
+```solidity
+// Set pricing for a specific model + token combination
+function setModelTokenPricing(bytes32 modelId, address token, uint256 price) external
+
+// Clear pricing for a specific model + token combination
+function clearModelTokenPricing(bytes32 modelId, address token) external
+```
+
+### NodeRegistry: Changed Functions
+```solidity
+// getModelPricing — no fallback chain, reads modelTokenPricing directly
+// Reverts with "No model pricing" if not set (was "No token pricing" in Phase 17)
+function getModelPricing(address operator, bytes32 modelId, address token) external view returns (uint256)
+
+// getHostModelPrices — now takes a token parameter (was: no token param, returned dual native/stable)
+function getHostModelPrices(address operator, address token) external view returns (
+    bytes32[] memory modelIds,
+    uint256[] memory prices
+)
+```
+
+### NodeRegistry: New Event
+```solidity
+event ModelTokenPricingUpdated(address indexed operator, bytes32 indexed modelId, address indexed token, uint256 price);
+```
+
+### NodeRegistry: New Storage
+```solidity
+// Per-operator, per-model, per-token pricing
+mapping(address => mapping(bytes32 => mapping(address => uint256))) public modelTokenPricing;
+```
+
+### JobMarketplace: Removed Functions
+| Function | Replacement |
+|----------|-------------|
+| `createSessionJob(...)` | `createSessionJobForModel(...)` |
+| `createSessionJobWithToken(...)` | `createSessionJobForModelWithToken(...)` |
+| `createSessionFromDeposit(...)` | `createSessionFromDepositForModel(...)` |
+
+All sessions now require a model ID parameter.
+
+### Host Migration Required
+All registered hosts must call `setModelTokenPricing()` for each model+token combination they accept:
+```javascript
+// After registerNode(), set pricing for each model+token pair
+await nodeRegistry.setModelTokenPricing(modelId, usdcAddress, pricePerToken);
+await nodeRegistry.setModelTokenPricing(modelId, ethers.constants.AddressZero, nativePricePerToken);
+```
+
+```bash
+# Via cast
+cast send 0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22 \
+  "setModelTokenPricing(bytes32,address,uint256)" \
+  <MODEL_ID> 0x036CbD53842c5426634e7929541eC2318f3dCF7e <price> \
+  --private-key $HOST_KEY --rpc-url "https://sepolia.base.org" --legacy
+```
+
+### SDK Changes Required
+```javascript
+// 1. Host registration flow — add setModelTokenPricing for each model+token
+await nodeRegistry.registerNode(metadata, apiUrl, [modelId], nativePrice, stablePrice);
+await nodeRegistry.setModelTokenPricing(modelId, usdcAddress, stablePrice); // NEW — required
+await nodeRegistry.setModelTokenPricing(modelId, ethers.constants.AddressZero, nativePrice); // NEW — required
+
+// 2. Query pricing — use getModelPricing (getNodePricing is removed)
+try {
+  const price = await nodeRegistry.getModelPricing(host, modelId, usdcAddress);
+} catch (e) {
+  console.log("Host has not set pricing for this model+token");
+}
+
+// 3. Batch query — getHostModelPrices now takes a token parameter
+const [modelIds, prices] = await nodeRegistry.getHostModelPrices(host, usdcAddress);
+
+// 4. Session creation — use model-specific functions (non-model variants removed)
+// OLD (removed):
+// await marketplace.createSessionJob(host, price, duration, interval, timeout, { value: deposit });
+// NEW:
+await marketplace.createSessionJobForModel(modelId, host, price, duration, interval, timeout, { value: deposit });
+```
+
+### ABI Files Updated
+- `NodeRegistryWithModelsUpgradeable-CLIENT-ABI.json` — re-extracted
+- `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json` — re-extracted
+
+---
+
+## ~~February 24, 2026 - F202614977: Per-Token Pricing Fix (BREAKING CHANGE)~~ SUPERSEDED BY PHASE 18
+
+> **Note**: This entry is superseded by Phase 18 (Feb 26, 2026) above. The `setTokenPricing`/`getNodePricing` approach has been replaced by per-model per-token pricing via `setModelTokenPricing`/`getModelPricing`.
+
+### Original Description (for historical reference)
+`getNodePricing()` and `getModelPricing()` no longer silently fall back to `minPricePerTokenStable` for ERC20 tokens. They now **revert** with `"No token pricing"` if the host hasn't explicitly set pricing via `setTokenPricing(token, price)`.
+
+**Why**: A 6-decimal token (USDC) and an 18-decimal token (DAI) previously got the same raw price value, enabling users to pay dust amounts for inference.
+
+---
+
+## February 22, 2026 - Post-Audit Remediation Deployment (ALL 20 FINDINGS ADDRESSED)
+
+### PROXY ADDRESS CHANGED
+**JobMarketplace proxy address has changed** due to fresh proxy deployment (clean storage layout for `minTokensFee` + `isAuthorizedDelegate`).
+
+| Contract | Old Proxy | New Proxy |
+|----------|-----------|-----------|
+| JobMarketplace | `0x95132177F964FF053C1E874b53CF74d819618E06` | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` |
+
+### Implementation Upgrades
+| Contract | Proxy (unchanged unless noted) | New Implementation |
+|----------|-------------------------------|-------------------|
+| JobMarketplace | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` (FRESH) | `0x51C3F60D2e3756Cc3F119f9aE1876e2B947347ba` |
+| ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` |
+| ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xF12a0A07d4230E0b045dB22057433a9826d21652` |
+
+### SDK Breaking Changes
+
+**`submitProofOfWork` signature changed (signature parameter removed):**
+```solidity
+// Old (no longer works):
+function submitProofOfWork(uint256 jobId, uint256 tokensClaimed, bytes32 proofHash,
+    bytes calldata signature, string calldata proofCID, string calldata deltaCID)
+
+// New (required):
+function submitProofOfWork(uint256 sessionId, uint256 tokensClaimed, bytes32 proofHash,
+    string calldata proofCID, string calldata deltaCID)
+```
+
+**All session creation functions now require `proofTimeoutWindow` parameter:**
+- `createSessionJob()`, `createSessionJobWithToken()`, `createSessionJobForModel()`, etc.
+- Value in seconds (60-3600), use 0 for default (300s)
+
+**Require string text changed (F202615067):**
+- Error messages shortened for EVM contract size compliance
+- Example: `"Only host can submit proof"` -> `"Not host"`
+- Behavior unchanged; only error message text differs
+
+### New Functions (Audit Remediation)
+```solidity
+// F202614916: Deposit-based model sessions + delegation
+function createSessionFromDepositForModel(bytes32 modelId, address host, address paymentToken,
+    uint256 amount, uint256 pricePerToken, uint256 maxDuration, uint256 proofInterval,
+    uint256 proofTimeoutWindow) external returns (uint256)
+function createSessionForModelAsDelegate(address payer, bytes32 modelId, address host,
+    address paymentToken, uint256 amount, uint256 pricePerToken, uint256 maxDuration,
+    uint256 proofInterval, uint256 proofTimeoutWindow) external returns (uint256)
+function authorizeDelegate(address delegate, bool authorized) external
+function isDelegateAuthorized(address depositor, address delegate) external view returns (bool)
+
+// F202614917: Early cancellation fee
+function setMinTokensFee(uint256 fee) external  // owner-only
+function minTokensFee() external view returns (uint256)
+
+// F202614964: Rejected proposal fee withdrawal (ModelRegistry)
+function withdrawRejectedFees() external  // owner-only
+function accumulatedRejectedFees() external view returns (uint256)
+
+// F202614913: Per-model rate limits (ModelRegistry)
+function setModelRateLimit(bytes32 modelId, uint256 maxTokensPerSecond) external  // owner-only
+function getModelRateLimit(bytes32 modelId) external view returns (uint256)
+```
+
+### New Events
+```solidity
+// F202614898: Pull-pattern refund
+event RefundCreditedToDeposit(uint256 indexed jobId, address indexed depositor, uint256 amount, address indexed token);
+
+// F202614916: Delegation
+event DelegateAuthorized(address indexed depositor, address indexed delegate, bool authorized);
+event SessionCreatedByDelegate(uint256 indexed sessionId, address indexed depositor, address indexed delegate);
+
+// F202614913: Rate limits (ModelRegistry)
+event ModelRateLimitUpdated(bytes32 indexed modelId, uint256 maxTokensPerSecond);
+
+// F202614964: Rejected fees (ModelRegistry)
+event RejectedFeesWithdrawn(address indexed to, uint256 amount);
+```
+
+### SDK Migration Guide
+```javascript
+// Update contract address
+const CONTRACTS = {
+  jobMarketplace: "0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4",  // CHANGED
+  proofSystem: "0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31",
+  // ... other addresses unchanged
+};
+
+// Update submitProofOfWork (signature parameter removed)
+// OLD:
+await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, signature, proofCID, deltaCID);
+// NEW:
+await marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, proofCID, deltaCID);
+
+// Update session creation (proofTimeoutWindow added)
+// OLD:
+await marketplace.createSessionJob(host, pricePerToken, maxDuration, proofInterval, { value: deposit });
+// NEW:
+const proofTimeoutWindow = 300; // 5 minutes (or 0 for default)
+await marketplace.createSessionJob(host, pricePerToken, maxDuration, proofInterval, proofTimeoutWindow, { value: deposit });
+```
+
+---
+
 ## January 16, 2026 - Stake Slashing Feature
 
 ### New Feature: Host Stake Slashing

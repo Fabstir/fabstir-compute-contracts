@@ -151,6 +151,7 @@ contract ReceiveFunctionRestrictionTest is Test {
             1e9,           // minPricePerTokenNative (1 gwei)
             100            // minPricePerTokenStable
         );
+        nodeRegistry.setModelTokenPricing(modelId, address(0), 1e9);
         vm.stopPrank();
 
         // Fund accounts
@@ -243,7 +244,8 @@ contract ReceiveFunctionRestrictionTest is Test {
             modelId,
             1e9,           // pricePerToken (1 gwei)
             1 days,        // maxDuration
-            100            // proofInterval
+            100,           // proofInterval
+            300            // proofTimeoutWindow
         );
 
         // Verify session created by checking the job ID is valid
@@ -262,13 +264,15 @@ contract ReceiveFunctionRestrictionTest is Test {
     }
 
     function test_JobMarketplace_CreateSessionJob_StillWorks() public {
-        // Create basic session (no model) with ETH
+        // Create session with model and ETH
         vm.prank(depositor);
-        uint256 jobId = marketplace.createSessionJob{value: 0.5 ether}(
+        uint256 jobId = marketplace.createSessionJobForModel{value: 0.5 ether}(
             host,
+            modelId,
             1e9,           // pricePerToken
             1 days,        // maxDuration
-            100            // proofInterval
+            100,           // proofInterval
+            300            // proofTimeoutWindow
         );
 
         // Verify session created

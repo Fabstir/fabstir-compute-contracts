@@ -107,6 +107,9 @@ contract JobMarketplaceInitializationTest is Test {
             MIN_PRICE_STABLE
         );
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Setup user with ETH
         vm.deal(user1, 100 ether);
     }
@@ -156,7 +159,7 @@ contract JobMarketplaceInitializationTest is Test {
     function test_InitializeRevertsWithZeroNodeRegistry() public {
         JobMarketplaceWithModelsUpgradeable newImpl = new JobMarketplaceWithModelsUpgradeable();
 
-        vm.expectRevert("Invalid node registry");
+        vm.expectRevert("Zero addr");
         new ERC1967Proxy(
             address(newImpl),
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
@@ -171,7 +174,7 @@ contract JobMarketplaceInitializationTest is Test {
     function test_InitializeRevertsWithZeroHostEarnings() public {
         JobMarketplaceWithModelsUpgradeable newImpl = new JobMarketplaceWithModelsUpgradeable();
 
-        vm.expectRevert("Invalid host earnings");
+        vm.expectRevert("Zero addr");
         new ERC1967Proxy(
             address(newImpl),
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
@@ -186,7 +189,7 @@ contract JobMarketplaceInitializationTest is Test {
     function test_InitializeRevertsWithExcessiveFee() public {
         JobMarketplaceWithModelsUpgradeable newImpl = new JobMarketplaceWithModelsUpgradeable();
 
-        vm.expectRevert("Fee cannot exceed 100%");
+        vm.expectRevert("Bad fee");
         new ERC1967Proxy(
             address(newImpl),
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
@@ -201,7 +204,7 @@ contract JobMarketplaceInitializationTest is Test {
     function test_InitializeRevertsWithZeroDisputeWindow() public {
         JobMarketplaceWithModelsUpgradeable newImpl = new JobMarketplaceWithModelsUpgradeable();
 
-        vm.expectRevert("Invalid dispute window");
+        vm.expectRevert("Bad window");
         new ERC1967Proxy(
             address(newImpl),
             abi.encodeCall(JobMarketplaceWithModelsUpgradeable.initialize, (
@@ -229,11 +232,13 @@ contract JobMarketplaceInitializationTest is Test {
 
     function test_CreateSessionJobWorks() public {
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -244,22 +249,26 @@ contract JobMarketplaceInitializationTest is Test {
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
         emit JobMarketplaceWithModelsUpgradeable.SessionJobCreated(1, user1, host1, 0.01 ether);
-        marketplace.createSessionJob{value: 0.01 ether}(
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
     function test_CreateSessionJobRejectsInsufficientDeposit() public {
         vm.prank(user1);
-        vm.expectRevert("Insufficient deposit");
-        marketplace.createSessionJob{value: 0.00005 ether}( // Below MIN_DEPOSIT of 0.0001 ether
+        vm.expectRevert("Low deposit");
+        marketplace.createSessionJobForModel{value: 0.00005 ether}( // Below MIN_DEPOSIT of 0.0001 ether
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -281,7 +290,7 @@ contract JobMarketplaceInitializationTest is Test {
 
     function test_SetTreasuryRejectsZeroAddress() public {
         vm.prank(owner);
-        vm.expectRevert("Invalid treasury address");
+        vm.expectRevert("Zero addr");
         marketplace.setTreasury(address(0));
     }
 

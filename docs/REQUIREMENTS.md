@@ -1,8 +1,8 @@
 # Fabstir Compute Contracts - Formal Requirements Specification
 
-**Version:** 1.1
-**Last Updated:** January 15, 2026
-**Status:** Production (Base Sepolia Testnet)
+**Version:** 2.0
+**Last Updated:** March 8, 2026
+**Status:** Production (Base Sepolia Testnet) — Post-Audit Remediation
 
 ---
 
@@ -73,94 +73,115 @@ Fabstir Compute solves these problems by:
 
 ### 3.1 JobMarketplaceWithModelsUpgradeable
 
-| Function | Owner | Host | Depositor | Anyone |
-|----------|:-----:|:----:|:---------:|:------:|
-| `initialize()` | ✓ (once) | - | - | - |
-| `pause()` | ✓** | - | - | - |
-| `unpause()` | ✓** | - | - | - |
-| `updateTreasury()` | ✓ | - | - | - |
-| `updateTokenMinDeposit()` | ✓ | - | - | - |
-| `createSessionJobForModel()` | - | - | ✓ | - |
-| `createSessionJobForModelWithToken()` | - | - | ✓ | - |
-| `submitProofOfWork()` | - | ✓* | - | - |
-| `completeSessionJob()` | - | ✓* | ✓* | - |
-| `triggerSessionTimeout()` | - | - | - | ✓ |
-| `withdrawTreasury()` | ✓ | - | - | - |
-| `withdrawTreasuryTokens()` | ✓ | - | - | - |
-| `upgradeToAndCall()` | ✓ | - | - | - |
+| Function | Owner | Admin† | Host | Depositor | Delegate | Treasury | Anyone |
+|----------|:-----:|:------:|:----:|:---------:|:--------:|:--------:|:------:|
+| `initialize()` | ✓ (once) | - | - | - | - | - | - |
+| `pause()` / `unpause()` | ✓ | ✓ | - | - | - | - | - |
+| `setTreasury()` | ✓ | - | - | - | - | - | - |
+| `setUsdcAddress()` | ✓ | - | - | - | - | - | - |
+| `setProofSystem()` | ✓ | ✓ | - | - | - | - | - |
+| `setMinTokensFee()` | ✓ | - | - | - | - | - | - |
+| `initializeChainConfig()` | ✓ | ✓ | - | - | - | - | - |
+| `addAcceptedToken()` | ✓ | ✓ | - | - | - | - | - |
+| `updateTokenMinDeposit()` | ✓ | ✓ | - | - | - | - | - |
+| `updateTokenMaxDeposit()` | ✓ | ✓ | - | - | - | - | - |
+| `createSessionJobForModel()` | - | - | - | ✓ | - | - | - |
+| `createSessionJobForModelWithToken()` | - | - | - | ✓ | - | - | - |
+| `createSessionFromDepositForModel()` | - | - | - | ✓ | - | - | - |
+| `createSessionForModelAsDelegate()` | - | - | - | ✓ | ✓ | - | - |
+| `depositNative()` / `depositToken()` | - | - | - | ✓ | - | - | - |
+| `withdrawNative()` / `withdrawToken()` | - | - | - | ✓ | - | - | - |
+| `authorizeDelegate()` | - | - | - | ✓ | - | - | - |
+| `configureDelegate()` | - | - | - | ✓ | - | - | - |
+| `submitProofOfWork()` | - | - | ✓* | - | - | - | - |
+| `completeSessionJob()` | - | - | ✓* | ✓* | - | - | - |
+| `triggerSessionTimeout()` | - | - | - | - | - | - | ✓ |
+| `withdrawTreasuryNative()` | - | - | - | - | - | ✓ | - |
+| `withdrawTreasuryTokens()` | - | - | - | - | - | ✓ | - |
+| `withdrawAllTreasuryFees()` | - | - | - | - | - | ✓ | - |
+| `upgradeToAndCall()` | ✓ | - | - | - | - | - | - |
 
 *\* Only for sessions where actor is the host or depositor*
 
-*\*\* Treasury address can also call these functions*
+*† Admin = Owner OR Treasury address*
 
 ### 3.2 NodeRegistryWithModelsUpgradeable
 
-| Function | Owner | Host | Depositor | Anyone |
-|----------|:-----:|:----:|:---------:|:------:|
+| Function | Owner | Slashing Auth | Host | Anyone |
+|----------|:-----:|:-------------:|:----:|:------:|
 | `initialize()` | ✓ (once) | - | - | - |
-| `registerNode()` | - | - | ✓ | - |
-| `unregisterNode()` | - | ✓ | - | - |
-| `updateSupportedModels()` | - | ✓ | - | - |
-| `updateMetadata()` | - | ✓ | - | - |
-| `updateApiUrl()` | - | ✓ | - | - |
-| `updatePricingNative()` | - | ✓ | - | - |
-| `updatePricingStable()` | - | ✓ | - | - |
-| `setModelPricing()` | - | ✓ | - | - |
-| `clearModelPricing()` | - | ✓ | - | - |
-| `setTokenPricing()` | - | ✓ | - | - |
-| `stake()` | - | ✓ | - | - |
+| `registerNode()` | - | - | - | ✓‡ |
+| `unregisterNode()` | - | - | ✓ | - |
+| `updateSupportedModels()` | - | - | ✓ | - |
+| `updateMetadata()` | - | - | ✓ | - |
+| `updateApiUrl()` | - | - | ✓ | - |
+| `setModelTokenPricing()` | - | - | ✓ | - |
+| `clearModelTokenPricing()` | - | - | ✓ | - |
+| `stake()` | - | - | ✓ | - |
 | `updateModelRegistry()` | ✓ | - | - | - |
+| `setSlashingAuthority()` | ✓ | - | - | - |
+| `setTreasury()` | ✓ | - | - | - |
+| `initializeSlashing()` | ✓ | - | - | - |
+| `slashStake()` | - | ✓ | - | - |
+| `repairCorruptNode()` | ✓ | - | - | - |
 | `upgradeToAndCall()` | ✓ | - | - | - |
-| `getNodePricing()` | - | - | - | ✓ |
+| `getModelPricing()` | - | - | - | ✓ |
+| `getHostModelPrices()` | - | - | - | ✓ |
 | `getNodeFullInfo()` | - | - | - | ✓ |
 | `isActiveNode()` | - | - | - | ✓ |
 
+*‡ Anyone with sufficient FAB stake can register as a host*
+
 ### 3.3 ModelRegistryUpgradeable
 
-| Function | Owner | Host | Depositor | Anyone |
-|----------|:-----:|:----:|:---------:|:------:|
-| `initialize()` | ✓ (once) | - | - | - |
-| `addTrustedModel()` | ✓ | - | - | - |
-| `batchAddTrustedModels()` | ✓ | - | - | - |
-| `deactivateModel()` | ✓ | - | - | - |
-| `reactivateModel()` | ✓ | - | - | - |
-| `proposeModel()` | - | - | - | ✓ |
-| `voteOnProposal()` | - | - | - | ✓ |
-| `executeProposal()` | - | - | - | ✓ |
-| `withdrawVotes()` | - | - | - | ✓ |
-| `upgradeToAndCall()` | ✓ | - | - | - |
-| `isModelApproved()` | - | - | - | ✓ |
-| `isTrustedModel()` | - | - | - | ✓ |
+| Function | Owner | Anyone |
+|----------|:-----:|:------:|
+| `initialize()` | ✓ (once) | - |
+| `addTrustedModel()` | ✓ | - |
+| `batchAddTrustedModels()` | ✓ | - |
+| `deactivateModel()` | ✓ | - |
+| `reactivateModel()` | ✓ | - |
+| `setModelRateLimit()` | ✓ | - |
+| `withdrawRejectedFees()` | ✓ | - |
+| `proposeModel()` | - | ✓ |
+| `voteOnProposal()` | - | ✓ |
+| `executeProposal()` | - | ✓ |
+| `withdrawVotes()` | - | ✓ |
+| `upgradeToAndCall()` | ✓ | - |
+| `isModelApproved()` | - | ✓ |
+| `isTrustedModel()` | - | ✓ |
+| `getModelRateLimit()` | - | ✓ |
 
 ### 3.4 ProofSystemUpgradeable
 
-| Function | Owner | Host | Depositor | Anyone |
-|----------|:-----:|:----:|:---------:|:------:|
-| `initialize()` | ✓ (once) | - | - | - |
-| `setAuthorizedCaller()` | ✓ | - | - | - |
-| `registerModelCircuit()` | ✓ | - | - | - |
-| `recordVerifiedProof()` | ✓ | AC | - | - |
-| `verifyHostSignature()` | - | - | - | ✓ |
-| `verifyAndMarkComplete()` | ✓ | AC | - | - |
-| `verifyBatch()` | ✓ | AC | - | - |
-| `upgradeToAndCall()` | ✓ | - | - | - |
+| Function | Owner | AC | Anyone |
+|----------|:-----:|:--:|:------:|
+| `initialize()` | ✓ (once) | - | - |
+| `setAuthorizedCaller()` | ✓ | - | - |
+| `markProofUsed()` | - | ✓ | - |
+| `upgradeToAndCall()` | ✓ | - | - |
 
-*AC = Authorized Caller only*
+*AC = Authorized Caller (JobMarketplace)*
+
+> **Note**: Signature verification functions (`recordVerifiedProof`, `verifyHostSignature`, `verifyAndMarkComplete`, `verifyBatch`, `registerModelCircuit`) were removed as dead code — proof authentication is handled by `msg.sender == host` check in JobMarketplace.
 
 ### 3.5 HostEarningsUpgradeable
 
-| Function | Owner | Host | Depositor | Anyone |
-|----------|:-----:|:----:|:---------:|:------:|
+| Function | Owner | AC | Host | Anyone |
+|----------|:-----:|:--:|:----:|:------:|
 | `initialize()` | ✓ (once) | - | - | - |
 | `setAuthorizedCaller()` | ✓ | - | - | - |
-| `creditEarnings()` | ✓ | AC | - | - |
-| `creditEarningsToken()` | ✓ | AC | - | - |
-| `withdraw()` | - | ✓ | - | - |
-| `withdrawToken()` | - | ✓ | - | - |
+| `creditEarnings()` | - | ✓ | - | - |
+| `withdraw()` | - | - | ✓ | - |
+| `withdrawAll()` | - | - | ✓ | - |
+| `withdrawMultiple()` | - | - | ✓ | - |
+| `rescueTokens()` | ✓ | - | - | - |
 | `upgradeToAndCall()` | ✓ | - | - | - |
-| `getEarnings()` | - | - | - | ✓ |
+| `getBalance()` | - | - | - | ✓ |
+| `getBalances()` | - | - | - | ✓ |
+| `getTokenStats()` | - | - | - | ✓ |
 
-*AC = Authorized Caller only*
+*AC = Authorized Caller (JobMarketplace)*
 
 ---
 
@@ -184,7 +205,7 @@ Fabstir Compute solves these problems by:
 | **SM-1** | Session state transitions: Active → Completed/TimedOut | Status enum and require checks |
 | **SM-2** | Completed sessions cannot be modified | `require(status == SessionStatus.Active)` |
 | **SM-3** | Proofs can only be submitted to active sessions | Status check in `submitProofOfWork()` |
-| **SM-4** | Timeout can only trigger after 3× proofInterval | Time check in `triggerSessionTimeout()` |
+| **SM-4** | Timeout triggers after proofTimeoutWindow elapses or session exceeds maxDuration | Time check in `triggerSessionTimeout()` |
 | **SM-5** | tokensUsed monotonically increases | `tokensUsed += tokensClaimed` only |
 
 ### 4.3 Access Control Invariants
@@ -193,16 +214,19 @@ Fabstir Compute solves these problems by:
 |----|-----------|-------------|
 | **AC-1** | Only session host can submit proofs | `require(session.host == msg.sender)` |
 | **AC-2** | Only owner can upgrade contracts | `_authorizeUpgrade()` with onlyOwner |
-| **AC-3** | Only owner can pause/unpause | `onlyOwner` modifier |
+| **AC-3** | Only owner/treasury can pause/unpause | `require(msg.sender == treasuryAddress \|\| msg.sender == owner())` |
 | **AC-4** | Only registered nodes can serve sessions | Host validation in session creation |
 | **AC-5** | Only owner can add trusted models | `onlyOwner` on `addTrustedModel()` |
+| **AC-6** | Delegates can only spend authorized depositor's funds | `delegateConfigs` checked in `createSessionForModelAsDelegate()` |
+| **AC-7** | Delegate spending cannot exceed configured caps | `maxPerSession` and `totalCap` enforced before session creation |
+| **AC-8** | Only slashing authority can slash host stakes | `onlySlashingAuthority` modifier |
 
 ### 4.4 Economic Invariants
 
 | ID | Invariant | Enforcement |
 |----|-----------|-------------|
 | **EC-1** | Host must stake MIN_STAKE (1000 FAB) to register | `require` in `registerNode()` |
-| **EC-2** | Session price ≥ host minimum price | Price validation in session creation |
+| **EC-2** | Session price ≥ host model-token price | Price validation via `getModelPricing()` in session creation |
 | **EC-3** | Model proposal requires PROPOSAL_FEE (100 FAB) | Transfer in `proposeModel()` |
 | **EC-4** | Approval requires APPROVAL_THRESHOLD (100k FAB votes) | Check in `executeProposal()` |
 
@@ -223,7 +247,7 @@ Fabstir Compute solves these problems by:
 │                                                             │
 │  ECONOMICALLY SECURED:                                      │
 │    • Hosts behave honestly due to stake at risk            │
-│    • Hosts sign accurate token counts (reputation risk)     │
+│    • Hosts submit accurate token counts (stake at risk)     │
 │    • FAB token has market value (stake is meaningful)       │
 │                                                             │
 │  UNTRUSTED:                                                 │
@@ -237,7 +261,6 @@ Fabstir Compute solves these problems by:
 
 | Assumption | Basis |
 |------------|-------|
-| ECDSA signatures are unforgeable | secp256k1 security (128-bit) |
 | SHA256/Keccak256 are collision-resistant | Standard assumption |
 | Block timestamps accurate within 15 seconds | Ethereum consensus rules |
 
@@ -268,9 +291,11 @@ Fabstir Compute solves these problems by:
 | FR-HOST-1 | Host must stake minimum 1000 FAB tokens | NodeRegistry | `registerNode()` |
 | FR-HOST-2 | Host must specify at least one approved model | NodeRegistry | `registerNode()` |
 | FR-HOST-3 | Host must provide non-empty metadata and API URL | NodeRegistry | `registerNode()` |
-| FR-HOST-4 | Host must set valid dual pricing (native + stable) | NodeRegistry | `registerNode()` |
-| FR-HOST-5 | Host can update pricing while active | NodeRegistry | `updatePricing*()` |
+| FR-HOST-4 | Host must set per-model per-token pricing for each model+token combo | NodeRegistry | `setModelTokenPricing()` |
+| FR-HOST-5 | Host can update pricing per model per token while active | NodeRegistry | `setModelTokenPricing()` |
 | FR-HOST-6 | Host can unregister and reclaim stake | NodeRegistry | `unregisterNode()` |
+| FR-HOST-7 | Host can add additional stake | NodeRegistry | `stake()` |
+| FR-HOST-8 | Slashing authority can slash host stake with evidence | NodeRegistry | `slashStake()` |
 
 ### 6.2 Session Management (FR-SESSION)
 
@@ -286,7 +311,29 @@ Fabstir Compute solves these problems by:
 | FR-SESSION-8 | Session can be completed by host or depositor | JobMarketplace | `completeSessionJob()` |
 | FR-SESSION-9 | Inactive session can be timed out by anyone | JobMarketplace | `triggerSessionTimeout()` |
 
-### 6.3 Payment Settlement (FR-PAYMENT)
+### 6.3 Delegated Sessions (FR-DELEGATE)
+
+| ID | Requirement | Contract | Function |
+|----|-------------|----------|----------|
+| FR-DELEGATE-1 | Depositor can authorize a delegate sub-account | JobMarketplace | `authorizeDelegate()` |
+| FR-DELEGATE-2 | Depositor can configure delegate with spending limits | JobMarketplace | `configureDelegate()` |
+| FR-DELEGATE-3 | Delegate config supports per-session cap, total cap, expiry, host/model scope | JobMarketplace | `configureDelegate()` |
+| FR-DELEGATE-4 | Delegate can create sessions using depositor's funds | JobMarketplace | `createSessionForModelAsDelegate()` |
+| FR-DELEGATE-5 | Delegate spending is tracked and enforced against caps | JobMarketplace | `createSessionForModelAsDelegate()` |
+| FR-DELEGATE-6 | Session ownership stays with depositor (refunds go to depositor) | JobMarketplace | `createSessionForModelAsDelegate()` |
+| FR-DELEGATE-7 | Depositor can revoke delegate authorization | JobMarketplace | `authorizeDelegate(delegate, false)` |
+
+### 6.4 Deposit Management (FR-DEPOSIT)
+
+| ID | Requirement | Contract | Function |
+|----|-------------|----------|----------|
+| FR-DEPOSIT-1 | Depositor can pre-deposit ETH | JobMarketplace | `depositNative()` |
+| FR-DEPOSIT-2 | Depositor can pre-deposit ERC20 tokens | JobMarketplace | `depositToken()` |
+| FR-DEPOSIT-3 | Depositor can create sessions from pre-deposited funds | JobMarketplace | `createSessionFromDepositForModel()` |
+| FR-DEPOSIT-4 | Depositor can withdraw unused deposited funds | JobMarketplace | `withdrawNative()` / `withdrawToken()` |
+| FR-DEPOSIT-5 | Locked balances (in active sessions) cannot be withdrawn | JobMarketplace | Balance tracking |
+
+### 6.5 Payment Settlement (FR-PAYMENT)
 
 | ID | Requirement | Contract | Function |
 |----|-------------|----------|----------|
@@ -296,7 +343,7 @@ Fabstir Compute solves these problems by:
 | FR-PAYMENT-4 | Host earnings accumulate in HostEarnings | HostEarnings | `creditEarnings*()` |
 | FR-PAYMENT-5 | Host can withdraw accumulated earnings | HostEarnings | `withdraw*()` |
 
-### 6.4 Model Governance (FR-MODEL)
+### 6.6 Model Governance (FR-MODEL)
 
 | ID | Requirement | Contract | Function |
 |----|-------------|----------|----------|
@@ -306,6 +353,10 @@ Fabstir Compute solves these problems by:
 | FR-MODEL-4 | Proposals execute after 3-day voting period | ModelRegistry | `executeProposal()` |
 | FR-MODEL-5 | 100k FAB threshold required for approval | ModelRegistry | `executeProposal()` |
 | FR-MODEL-6 | Voters can withdraw locked tokens after vote | ModelRegistry | `withdrawVotes()` |
+| FR-MODEL-7 | Owner can set per-model rate limits (tokens/sec) | ModelRegistry | `setModelRateLimit()` |
+| FR-MODEL-8 | Owner can batch-add trusted models | ModelRegistry | `batchAddTrustedModels()` |
+| FR-MODEL-9 | Owner can withdraw accumulated rejected proposal fees | ModelRegistry | `withdrawRejectedFees()` |
+| FR-MODEL-10 | Re-proposal cooldown (30 days) prevents spam | ModelRegistry | `_checkReproposalCooldown()` |
 
 ---
 
@@ -332,11 +383,12 @@ Fabstir Compute solves these problems by:
 
 | Requirement | Implementation |
 |-------------|----------------|
-| Reentrancy protection | `nonReentrant` modifier |
+| Reentrancy protection | `ReentrancyGuardTransient` (EIP-1153 transient storage) |
 | Safe token transfers | OpenZeppelin SafeERC20 |
 | Safe ETH transfers | `Address.sendValue()` |
-| Access control | `onlyOwner`, custom checks |
+| Access control | `onlyOwner`, admin checks, delegate configs |
 | Emergency stop | `pause()`/`unpause()` |
+| Delegate spending limits | `DelegateConfig` with per-session cap, total cap, expiry |
 
 ---
 
@@ -345,11 +397,18 @@ Fabstir Compute solves these problems by:
 | Contract | Key Functions | Requirements |
 |----------|---------------|--------------|
 | JobMarketplace | `createSessionJobForModel()` | FR-SESSION-1, FR-SESSION-3, FR-SESSION-4 |
+| JobMarketplace | `createSessionJobForModelWithToken()` | FR-SESSION-2, FR-SESSION-3, FR-SESSION-4 |
 | JobMarketplace | `submitProofOfWork()` | FR-SESSION-5, FR-SESSION-6 |
 | JobMarketplace | `completeSessionJob()` | FR-SESSION-7, FR-SESSION-8, FR-PAYMENT-1-3 |
-| NodeRegistry | `registerNode()` | FR-HOST-1-4 |
-| NodeRegistry | `updatePricingNative()` | FR-HOST-5 |
+| JobMarketplace | `depositNative()` / `depositToken()` | FR-DEPOSIT-1, FR-DEPOSIT-2 |
+| JobMarketplace | `createSessionFromDepositForModel()` | FR-DEPOSIT-3 |
+| JobMarketplace | `authorizeDelegate()` / `configureDelegate()` | FR-DELEGATE-1, FR-DELEGATE-2, FR-DELEGATE-3 |
+| JobMarketplace | `createSessionForModelAsDelegate()` | FR-DELEGATE-4, FR-DELEGATE-5, FR-DELEGATE-6 |
+| NodeRegistry | `registerNode()` | FR-HOST-1-3 |
+| NodeRegistry | `setModelTokenPricing()` | FR-HOST-4, FR-HOST-5 |
+| NodeRegistry | `slashStake()` | FR-HOST-8 |
 | ModelRegistry | `proposeModel()` | FR-MODEL-2 |
 | ModelRegistry | `executeProposal()` | FR-MODEL-4-5 |
-| HostEarnings | `withdraw()` | FR-PAYMENT-5 |
-| ProofSystem | `verifyHostSignature()` | Proof verification |
+| ModelRegistry | `setModelRateLimit()` | FR-MODEL-7 |
+| HostEarnings | `withdraw()` / `withdrawAll()` | FR-PAYMENT-5 |
+| ProofSystem | `markProofUsed()` | Proof replay protection |

@@ -8,13 +8,14 @@ import "../../mocks/ERC20Mock.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
- * @title NodeRegistry Access Control Negative Tests
+ * @title NodeRegistry Access Control Negative Tests (Phase 18)
  * @notice Tests for access control violations and unauthorized operations
  */
 contract NodeRegistryAccessControlTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     ERC20Mock public fabToken;
+    ERC20Mock public usdcToken;
 
     address public owner = address(this);
     address public host1 = address(0x1);
@@ -27,8 +28,9 @@ contract NodeRegistryAccessControlTest is Test {
     uint256 public constant MIN_PRICE_STABLE = 1;
 
     function setUp() public {
-        // Deploy FAB token
+        // Deploy FAB token and USDC mock
         fabToken = new ERC20Mock("FAB", "FAB");
+        usdcToken = new ERC20Mock("USDC", "USDC");
 
         // Deploy ModelRegistry
         ModelRegistryUpgradeable modelImpl = new ModelRegistryUpgradeable();
@@ -107,97 +109,73 @@ contract NodeRegistryAccessControlTest is Test {
         nodeRegistry.updateApiUrl("");
     }
 
-    // ============ updatePricingStable ============
+    // ============ setModelTokenPricing ============
 
-    function test_UpdatePricingStable_RejectsUnregistered() public {
+    function test_SetModelTokenPricing_RejectsUnregistered() public {
         vm.prank(nonHost);
         vm.expectRevert("Not registered");
-        nodeRegistry.updatePricingStable(100);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
     }
 
-    function test_UpdatePricingStable_SucceedsForRegisteredHost() public {
-        uint256 newPrice = 50_000;
-        vm.prank(host1);
-        nodeRegistry.updatePricingStable(newPrice);
-
-        (,,,,,,, uint256 stablePrice) = nodeRegistry.getNodeFullInfo(host1);
-        assertEq(stablePrice, newPrice);
-    }
-
-    // ============ setModelPricing ============
-
-    function test_SetModelPricing_RejectsUnregistered() public {
-        vm.prank(nonHost);
-        vm.expectRevert("Not registered");
-        nodeRegistry.setModelPricing(modelId, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
-    }
-
-    function test_SetModelPricing_RejectsUnsupportedModel() public {
+    function test_SetModelTokenPricing_RejectsUnsupportedModel() public {
         bytes32 unsupportedModel = keccak256("unsupported");
         vm.prank(host1);
         vm.expectRevert("Model not supported");
-        nodeRegistry.setModelPricing(unsupportedModel, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(unsupportedModel, address(usdcToken), MIN_PRICE_STABLE);
     }
 
-    function test_SetModelPricing_SucceedsForSupportedModel() public {
-        uint256 nativePrice = MIN_PRICE_NATIVE * 2;
+    function test_SetModelTokenPricing_SucceedsForSupportedModel() public {
         uint256 stablePrice = MIN_PRICE_STABLE * 2;
 
         vm.prank(host1);
-        nodeRegistry.setModelPricing(modelId, nativePrice, stablePrice);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), stablePrice);
 
-        uint256 resultNative = nodeRegistry.getModelPricing(host1, modelId, address(0));
-        uint256 resultStable = nodeRegistry.getModelPricing(host1, modelId, address(fabToken));
-
-        assertEq(resultNative, nativePrice);
-        assertEq(resultStable, stablePrice);
+        uint256 result = nodeRegistry.getModelPricing(host1, modelId, address(usdcToken));
+        assertEq(result, stablePrice);
     }
 
-    // ============ clearModelPricing ============
+    function test_SetModelTokenPricing_Native_SucceedsForSupportedModel() public {
+        uint256 nativePrice = MIN_PRICE_NATIVE * 2;
 
-    function test_ClearModelPricing_RejectsUnregistered() public {
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), nativePrice);
+
+        uint256 result = nodeRegistry.getModelPricing(host1, modelId, address(0));
+        assertEq(result, nativePrice);
+    }
+
+    // ============ clearModelTokenPricing ============
+
+    function test_ClearModelTokenPricing_RejectsUnregistered() public {
         vm.prank(nonHost);
         vm.expectRevert("Not registered");
-        nodeRegistry.clearModelPricing(modelId);
+        nodeRegistry.clearModelTokenPricing(modelId, address(usdcToken));
     }
 
-    function test_ClearModelPricing_SucceedsForRegisteredHost() public {
-        // First set model pricing
+    function test_ClearModelTokenPricing_SucceedsForRegisteredHost() public {
+        // First set model-token pricing
         vm.startPrank(host1);
-        nodeRegistry.setModelPricing(modelId, MIN_PRICE_NATIVE * 2, MIN_PRICE_STABLE * 2);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE * 2);
 
         // Then clear it
-        nodeRegistry.clearModelPricing(modelId);
+        nodeRegistry.clearModelTokenPricing(modelId, address(usdcToken));
         vm.stopPrank();
 
-        // Should fall back to default pricing
-        uint256 resultNative = nodeRegistry.getModelPricing(host1, modelId, address(0));
-        (,,,,,, uint256 defaultNative,) = nodeRegistry.getNodeFullInfo(host1);
-        assertEq(resultNative, defaultNative);
+        // Should revert since no modelTokenPricing is set
+        vm.expectRevert("No model pricing");
+        nodeRegistry.getModelPricing(host1, modelId, address(usdcToken));
     }
 
-    // ============ setTokenPricing ============
+    function test_ClearModelTokenPricing_NativeRevertsAfterClear() public {
+        // Set then clear native model-token pricing
+        vm.startPrank(host1);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE * 3);
+        nodeRegistry.clearModelTokenPricing(modelId, address(0));
+        vm.stopPrank();
 
-    function test_SetTokenPricing_RejectsUnregistered() public {
-        vm.prank(nonHost);
-        vm.expectRevert("Not registered");
-        nodeRegistry.setTokenPricing(address(fabToken), 100);
-    }
-
-    function test_SetTokenPricing_RejectsZeroAddress() public {
-        vm.prank(host1);
-        vm.expectRevert("Use updatePricingNative for native token");
-        nodeRegistry.setTokenPricing(address(0), MIN_PRICE_STABLE);
-    }
-
-    function test_SetTokenPricing_SucceedsForValidToken() public {
-        uint256 customPrice = MIN_PRICE_STABLE * 3;
-
-        vm.prank(host1);
-        nodeRegistry.setTokenPricing(address(fabToken), customPrice);
-
-        uint256 result = nodeRegistry.getNodePricing(host1, address(fabToken));
-        assertEq(result, customPrice);
+        // Should revert since no modelTokenPricing is set (no fallback)
+        vm.expectRevert("No model pricing");
+        nodeRegistry.getModelPricing(host1, modelId, address(0));
     }
 
     // ============ stake ============

@@ -132,6 +132,8 @@ contract SafeTransferMethodsTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
         nodeRegistry.registerNode("host-metadata", "https://api.host.com", models, 1e9, 100);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdc), 100);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), 1e9);
         vm.stopPrank();
     }
 
@@ -227,7 +229,8 @@ contract SafeTransferMethodsTest is Test {
             500 * 1e6,     // deposit
             100,           // pricePerToken
             1 days,        // maxDuration
-            100            // proofInterval
+            100,           // proofInterval
+            300            // proofTimeoutWindow
         );
         vm.stopPrank();
 

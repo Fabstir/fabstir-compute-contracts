@@ -6,7 +6,7 @@
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg)](https://getfoundry.sh/)
 [![Base Sepolia](https://img.shields.io/badge/Network-Base%20Sepolia-0052FF.svg)](https://sepolia.basescan.org)
 
-**Last Updated**: December 14, 2025
+**Last Updated**: February 26, 2026
 
 ## Overview
 
@@ -34,33 +34,35 @@ Fabstir Compute is a **peer-to-peer AI inference marketplace** that connects GPU
 - Current: Base Sepolia (Testnet)
 - Future: Base Mainnet, opBNB
 - Native token agnostic (ETH/BNB)
-- Dual pricing (native + stablecoin)
+- Per-model per-token pricing
 
 🎯 **Model Governance**
-- 2 approved models: TinyVicuna-1B, TinyLlama-1.1B
+- 5 approved models: TinyVicuna-1B, TinyLlama-1.1B, GPT-OSS-20B, GPT-OSS-120B, GLM-4.7-Flash
 - Community voting for new models via ModelRegistry
 
 ⚡ **Gas Optimized**
 - HostEarnings accumulation: ~80% gas savings
 - Anyone-can-complete: Gasless UX for renters
 - S5 storage: ~$0.001 vs ~$50 for on-chain proofs
+- Per-model per-token pricing (Phase 18)
 
 🔄 **Upgradeable (UUPS)**
 - All contracts use UUPS proxy pattern
 - Future upgrades without data migration
 - Owner-controlled upgrade authorization
 
+🔒 **Security Audited** - 20 findings addressed in Feb 2026 audit remediation
+
 ## Current Deployment (Base Sepolia)
 
-> **All contracts use UUPS Upgradeable pattern** (December 14, 2025)
-> Minimum deposits reduced to ~$0.50 (ETH: 0.0001, USDC: 500000)
+> **POST-AUDIT REMEDIATION** (Feb 22-26, 2026) — All 20 audit findings addressed + Phase 18 per-model per-token pricing. See [CHANGELOG](client-abis/CHANGELOG.md).
 
 | Contract | Proxy Address | Status |
 |----------|---------------|--------|
-| **JobMarketplace** | `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D` | ✅ UUPS + updateTokenMinDeposit |
-| **NodeRegistry** | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | ✅ UUPS + PRICE_PRECISION=1000 |
-| **ModelRegistry** | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | ✅ UUPS |
-| **ProofSystem** | `0x5afB91977e69Cc5003288849059bc62d47E7deeb` | ✅ UUPS |
+| **JobMarketplace** | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | ✅ FRESH PROXY — All 20 audit findings (Feb 22) |
+| **NodeRegistry** | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | ✅ Per-model per-token pricing (needs redeployment) |
+| **ModelRegistry** | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | ✅ Per-model rate limits (Feb 22) |
+| **ProofSystem** | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | ✅ markProofUsed (Feb 22) |
 | **HostEarnings** | `0xE4F33e9e132E60fc3477509f99b9E1340b91Aee0` | ✅ UUPS |
 | **FAB Token** | `0xC78949004B4EB6dEf2D66e49Cd81231472612D62` | Testnet |
 | **USDC** | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Testnet |
@@ -74,22 +76,25 @@ See [client-abis/README.md](client-abis/README.md) for full integration details.
 ```javascript
 import { ethers } from 'ethers';
 
-// 1. Query host pricing (REQUIRED before creating session)
-const [nativeMin, stableMin] = await nodeRegistry.getNodePricing(hostAddress);
+// 1. Query model pricing (REQUIRED before creating session)
+const modelId = ethers.keccak256(ethers.toUtf8Bytes('TinyVicuna-1B'));
+const modelPrice = await nodeRegistry.getModelPricing(hostAddress, modelId, ethers.ZeroAddress);
 
 // 2. Create session with ETH
 const marketplace = new ethers.Contract(
-  '0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D',  // UUPS Proxy
+  '0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4',  // UUPS Proxy
   JobMarketplaceABI,
   signer
 );
 
-const tx = await marketplace.createSessionJob(
+const tx = await marketplace.createSessionJobForModel(
   hostAddress,
-  pricePerToken,    // Must be >= nativeMin
+  modelId,          // Specify model
+  modelPrice,       // Must be >= host's model pricing
   3600,             // 1 hour max duration
   100,              // Proof every 100 tokens
-  { value: ethers.utils.parseEther("0.1") }
+  300,              // 5 min proof timeout window
+  { value: ethers.parseEther("0.1") }
 );
 
 console.log('Session created! Start your AI conversation.');
@@ -103,29 +108,34 @@ import { S5Client } from '@lumeweb/s5-js';
 
 const s5 = new S5Client('https://s5.lumeweb.com');
 
-// 1. Register node with dual pricing
-await fabToken.approve(nodeRegistry.address, ethers.utils.parseEther("1000"));
+// 1. Register node
+await fabToken.approve(nodeRegistry.address, ethers.parseEther("1000"));
 await nodeRegistry.registerNode(
   metadata,
   apiUrl,
   supportedModels,
-  minPriceNative,   // e.g., 3000000000 wei
-  minPriceStable    // e.g., 15000 (0.000015 USDC)
+  minPriceNative,   // Legacy field (retained for storage layout)
+  minPriceStable    // Legacy field (retained for storage layout)
 );
 
-// 2. Process inference and generate proof
+// 2. Set per-model per-token pricing (REQUIRED for each model+token combo)
+const modelId = ethers.keccak256(ethers.toUtf8Bytes('TinyVicuna-1B'));
+await nodeRegistry.setModelTokenPricing(modelId, usdcAddress, 15000);
+await nodeRegistry.setModelTokenPricing(modelId, ethers.ZeroAddress, 3000000000);
+
+// 3. Process inference and generate proof
 const proof = await generateRisc0Proof(jobData);
 
-// 3. Upload to S5
+// 4. Upload to S5
 const proofCID = await s5.uploadBlob(proof);
 
-// 4. Calculate hash
+// 5. Calculate hash
 const proofHash = '0x' + crypto.createHash('sha256').update(proof).digest('hex');
 
-// 5. Submit hash + CID (NOT full proof)
-await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, proofCID);
+// 6. Submit hash + CID (no signature needed — msg.sender auth)
+await marketplace.submitProofOfWork(jobId, tokensClaimed, proofHash, proofCID, deltaCID);
 
-// 6. Complete session to claim payment
+// 7. Complete session to claim payment
 await marketplace.completeSessionJob(jobId, conversationCID);
 ```
 
@@ -204,7 +214,7 @@ forge verify-contract <ADDRESS> <CONTRACT> \
   --etherscan-api-key $BASESCAN_API_KEY
 
 # Query contract (example)
-cast call 0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D \
+cast call 0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4 \
   "nextJobId()" \
   --rpc-url "https://sepolia.base.org"
 ```
@@ -213,12 +223,12 @@ cast call 0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D \
 
 ```
 ┌──────────────────────────┐
-│   ModelRegistry          │  ← AI model governance (2 approved models)
+│   ModelRegistry          │  ← AI model governance (5 approved models)
 └───────────┬──────────────┘
             │
             ▼
 ┌──────────────────────────┐
-│ NodeRegistryWithModels   │  ← Host registration + dual pricing
+│ NodeRegistryWithModels   │  ← Host registration + per-model per-token pricing
 └───────────┬──────────────┘
             │
             ▼
@@ -231,7 +241,7 @@ cast call 0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D \
         │          └──────────────┘
         │
         ├─────────►┌──────────────┐
-        │          │ ProofSystem  │  ← Dispute resolution
+        │          │ ProofSystem  │  ← Proof replay protection
         │          └──────────────┘
         │
         └─────────►┌──────────────┐
@@ -240,6 +250,22 @@ cast call 0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D \
 ```
 
 ## Breaking Changes
+
+### February 22-26, 2026: Post-Audit Security Remediation + Phase 18 Pricing
+
+All 20 security audit findings addressed with post-audit remediation deployment, plus Phase 18 pricing migration:
+
+**Breaking Changes:**
+- **Per-model per-token pricing (Phase 18):** Hosts MUST call `setModelTokenPricing(modelId, token, price)` for each model+token combo. `getModelPricing()` reads only from `modelTokenPricing` mapping -- reverts with "No model pricing" if not set. Removed functions: `getNodePricing`, `setTokenPricing`, `updatePricingNative`, `updatePricingStable`, `setModelPricing`, `clearModelPricing`, `createSessionJob`, `createSessionJobWithToken`, `createSessionFromDeposit`.
+- **Proof signature removed:** `submitProofOfWork()` no longer requires ECDSA signature parameter. Authentication via `msg.sender == session.host`.
+- **proofTimeoutWindow:** All session creation functions now require an additional `proofTimeoutWindow` parameter.
+- **Shortened error strings (F202615067):** Error messages shortened for EVM size compliance.
+- **Early cancellation fees:** Sessions completed before dispute window may incur minimum billing.
+- **Pull-pattern refunds:** Refunds use pull pattern to prevent host payment blocking.
+- **Fresh JobMarketplace proxy:** New proxy at `0xD067...adA4` (old proxy `0x95132...` deprecated).
+- **New ProofSystem proxy:** `0xE8DC...` (old `0x5afB...` frozen).
+
+See [client-abis/CHANGELOG.md](client-abis/CHANGELOG.md) for full migration details.
 
 ### December 14, 2025: UUPS Upgradeable Migration
 
@@ -261,13 +287,15 @@ function submitProofOfWork(
 ) external
 ```
 
-**New Contract**: `0xeebEEbc9BCD35e81B06885b63f980FeC71d56e2D` (UUPS Proxy)
+**Current Contract** (Feb 2026 post-audit remediation): `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` (UUPS Proxy)
 ```solidity
+// Current (Feb 2026 post-audit remediation)
 function submitProofOfWork(
     uint256 jobId,
     uint256 tokensClaimed,
     bytes32 proofHash,         // ✅ 32 bytes - SHA256 hash
-    string calldata proofCID   // ✅ S5 CID for retrieval
+    string calldata proofCID,  // ✅ S5 CID for retrieval
+    string calldata deltaCID   // ✅ S5 CID for delta changes
 ) external
 ```
 
@@ -276,14 +304,19 @@ See [Breaking Changes](docs/BREAKING_CHANGES.md) for full migration guide.
 ## Security
 
 ### Audits
-- [ ] External audit pending
+- [x] Security audit completed (January 2026)
+- [x] 20 findings remediated (February 2026)
 
 ### Security Features
-- ReentrancyGuard on all payment functions
+- ReentrancyGuardTransient on all payment functions (EIP-1153)
 - SHA256 hash verification for proof integrity
 - S5 decentralized storage for proof availability
-- Dual pricing validation (prevents under-payment)
-- Access control for treasury functions
+- Per-model per-token pricing validation (prevents under-payment)
+- Pull-pattern refunds (prevents host payment blocking)
+- Delegated session authorization
+- Emergency pause/unpause on JobMarketplace
+- Access control for treasury and admin functions
+- Per-model rate limits
 
 ### Bug Bounty
 - Coming soon
@@ -327,10 +360,12 @@ See [LICENSE](LICENSE), [NOTICE](NOTICE), and [NETWORKS.md](NETWORKS.md) for com
 - [x] Dual pricing (native + stable) (Jan 2025)
 - [x] S5 off-chain proof storage (Oct 2025)
 - [x] UUPS upgradeable contracts (Dec 2025)
+- [x] Security audit (Jan 2026)
+- [x] Audit remediation — 20 findings (Feb 2026)
+- [x] Per-model per-token pricing (Phase 18) (Feb 2026)
+- [x] Additional approved models (5 total)
 - [ ] Base Mainnet deployment
 - [ ] opBNB testnet deployment
-- [ ] Additional approved models
-- [ ] External audit
 - [ ] Multi-chain support (opBNB Mainnet)
 
 ---

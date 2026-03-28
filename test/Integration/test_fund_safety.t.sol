@@ -7,6 +7,7 @@ import {JobMarketplaceWithModelsUpgradeable} from "../../src/JobMarketplaceWithM
 import {NodeRegistryWithModelsUpgradeable} from "../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {ModelRegistryUpgradeable} from "../../src/ModelRegistryUpgradeable.sol";
 import {HostEarningsUpgradeable} from "../../src/HostEarningsUpgradeable.sol";
+import {ProofSystemUpgradeable} from "../../src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "../mocks/ERC20Mock.sol";
 
 /**
@@ -21,12 +22,15 @@ contract FundSafetyTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
     ERC20Mock public fabToken;
     ERC20Mock public usdcToken;
 
     address public owner = address(0x1);
-    address public host = address(0x2);
-    address public host2 = address(0x22);
+    uint256 public hostPrivateKey = 0x2;
+    address public host;
+    uint256 public host2PrivateKey = 0x22;
+    address public host2;
     address public user = address(0x3);
     address public user2 = address(0x33);
 
@@ -39,10 +43,9 @@ contract FundSafetyTest is Test {
     uint256 constant MIN_PRICE_STABLE = 1;
     uint256 constant PRICE_PRECISION = 1000;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
-
     function setUp() public {
+        host = vm.addr(hostPrivateKey);
+        host2 = vm.addr(host2PrivateKey);
         fabToken = new ERC20Mock("FAB Token", "FAB");
         usdcToken = new ERC20Mock("USDC", "USDC");
 
@@ -90,6 +93,20 @@ contract FundSafetyTest is Test {
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
         marketplace.addAcceptedToken(address(usdcToken), 500000, 1_000_000 * 10**6);
 
+        // Deploy ProofSystem
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        address proofSystemProxy = address(new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        ));
+        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
+
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
+
+        // Authorize marketplace in ProofSystem
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         vm.stopPrank();
 
         // Register hosts
@@ -115,7 +132,7 @@ contract FundSafetyTest is Test {
         bytes32[] memory models = new bytes32[](1);
         models[0] = modelId;
 
-        vm.prank(hostAddr);
+        vm.startPrank(hostAddr);
         nodeRegistry.registerNode(
             '{"hardware": "GPU"}',
             "https://api.host.example.com",
@@ -123,6 +140,16 @@ contract FundSafetyTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        vm.stopPrank();
+    }
+
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal pure returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
     }
 
     // ============================================================
@@ -140,22 +167,25 @@ contract FundSafetyTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Verify: user paid, contract received
         assertEq(user.balance, userInitialBalance - deposit, "User should have paid deposit");
         assertEq(address(marketplace).balance, contractInitialBalance + deposit, "Contract should hold deposit");
 
-        // Host submits proof (claims some tokens)
-        uint256 tokensUsed = 500;
+        // Host submits proof (claims some tokens, >= proofInterval for first proof)
+        uint256 tokensUsed = 1000;
+        bytes32 proofHash1 = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensUsed, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, tokensUsed, proofHash1, "QmProof", "");
 
         // Complete session
         vm.warp(startTime + disputeWindow + 2);
@@ -192,22 +222,25 @@ contract FundSafetyTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJobWithToken(
+        uint256 sessionId = marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             deposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(usdcToken.balanceOf(user), userInitialBalance - deposit, "User should have paid deposit");
 
         // Host submits proof
         uint256 tokensUsed = 1000;
+        bytes32 proofHash2 = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensUsed, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, tokensUsed, proofHash2, "QmProof", "");
 
         // Complete session
         vm.warp(startTime + disputeWindow + 2);
@@ -237,18 +270,19 @@ contract FundSafetyTest is Test {
 
         // User creates 3 sessions with different amounts
         vm.startPrank(user);
-        uint256 s1 = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        uint256 s2 = marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        uint256 s3 = marketplace.createSessionJob{value: 3 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 s1 = marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s2 = marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        uint256 s3 = marketplace.createSessionJobForModel{value: 3 ether}(host2, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.stopPrank();
 
         // Verify locked balance = 6 ETH
         assertEq(marketplace.getLockedBalanceNative(user), 6 ether, "Locked should be 6 ETH");
 
-        // Host submits proofs to session 1
+        // Host submits proofs to session 1 (>= proofInterval for first proof)
+        bytes32 ph1 = bytes32(uint256(0x1));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(s1, 100, bytes32(uint256(0x1)), DUMMY_SIG, "QmProof1", "");
+        marketplace.submitProofOfWork(s1, 1000, ph1, "QmProof1", "");
 
         // Complete session 1
         vm.warp(startTime + disputeWindow + 2);
@@ -258,17 +292,19 @@ contract FundSafetyTest is Test {
         // Verify locked balance decreased
         assertEq(marketplace.getLockedBalanceNative(user), 5 ether, "Locked should be 5 ETH after s1 complete");
 
-        // Complete remaining sessions (MIN_PROVEN_TOKENS = 100)
+        // Complete remaining sessions (first proof >= proofInterval)
+        bytes32 ph2 = bytes32(uint256(0x2));
         vm.warp(startTime + disputeWindow + 3);
         vm.prank(host);
-        marketplace.submitProofOfWork(s2, 150, bytes32(uint256(0x2)), DUMMY_SIG, "QmProof2", "");
+        marketplace.submitProofOfWork(s2, 1000, ph2, "QmProof2", "");
         vm.warp(startTime + 2*disputeWindow + 4);
         vm.prank(user);
         marketplace.completeSessionJob(s2, "QmConvo2");
 
+        bytes32 ph3 = bytes32(uint256(0x3));
         vm.warp(startTime + 2*disputeWindow + 5);
         vm.prank(host2);
-        marketplace.submitProofOfWork(s3, 200, bytes32(uint256(0x3)), DUMMY_SIG, "QmProof3", "");
+        marketplace.submitProofOfWork(s3, 1000, ph3, "QmProof3", "");
         vm.warp(startTime + 3*disputeWindow + 6);
         vm.prank(user);
         marketplace.completeSessionJob(s3, "QmConvo3");
@@ -287,11 +323,11 @@ contract FundSafetyTest is Test {
 
         // User1 creates session
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // User2 creates session
         vm.prank(user2);
-        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJobForModel{value: 3 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Verify independent locked balances
         assertEq(marketplace.getLockedBalanceNative(user), 2 ether, "User1 locked should be 2 ETH");
@@ -314,17 +350,20 @@ contract FundSafetyTest is Test {
 
         // Create session with 1 hour max duration
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             maxDuration,
-            1000
+            1000,
+            300
         );
 
-        // Host submits some proofs
+        // Host submits some proofs (>= proofInterval for first proof)
+        bytes32 phTimeout = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 200, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 1000, phTimeout, "QmProof", "");
 
         // Session times out
         vm.warp(startTime + maxDuration + 1);
@@ -333,8 +372,8 @@ contract FundSafetyTest is Test {
         vm.prank(address(0x999)); // Random address
         marketplace.triggerSessionTimeout(sessionId);
 
-        // Calculate expected distributions
-        uint256 hostPaymentGross = (200 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
+        // Calculate expected distributions (1000 tokens submitted)
+        uint256 hostPaymentGross = (1000 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
         uint256 treasuryFee = (hostPaymentGross * feeBasisPoints) / 10000;
         uint256 hostPaymentNet = hostPaymentGross - treasuryFee;
         uint256 userRefund = deposit - hostPaymentGross;
@@ -362,11 +401,13 @@ contract FundSafetyTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Host never submits any proofs
@@ -388,17 +429,20 @@ contract FundSafetyTest is Test {
 
         // Create session
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: deposit}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: deposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
-        // Host submits some proofs
+        // Host submits some proofs (>= proofInterval for first proof)
+        bytes32 phPartial = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, 300, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId, 1000, phPartial, "QmProof", "");
 
         // User completes session after some work done
         vm.warp(startTime + disputeWindow + 2);
@@ -406,7 +450,7 @@ contract FundSafetyTest is Test {
         marketplace.completeSessionJob(sessionId, "QmConversation");
 
         // Verify host got paid for work done
-        uint256 hostPaymentGross = (300 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
+        uint256 hostPaymentGross = (1000 * MIN_PRICE_NATIVE) / PRICE_PRECISION;
         uint256 treasuryFee = (hostPaymentGross * feeBasisPoints) / 10000;
         uint256 hostPaymentNet = hostPaymentGross - treasuryFee;
 
@@ -433,7 +477,7 @@ contract FundSafetyTest is Test {
 
         // Create session from pre-deposit
         vm.prank(user);
-        marketplace.createSessionFromDeposit(host, address(0), sessionAmount, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionFromDepositForModel(modelId, host, address(0), sessionAmount, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Verify balance deducted from pre-deposit, added to locked
         assertEq(marketplace.userDepositsNative(user), preDeposit - sessionAmount, "Pre-deposit should be reduced");
@@ -484,14 +528,14 @@ contract FundSafetyTest is Test {
 
         // Create inline session
         vm.prank(user);
-        marketplace.createSessionJob{value: sessionDeposit}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJobForModel{value: sessionDeposit}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Pre-deposit balance should be 0 (not credited)
         assertEq(marketplace.userDepositsNative(user), 0, "Pre-deposit should NOT be credited for inline session");
 
         // Cannot withdraw
         vm.prank(user);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("Low balance");
         marketplace.withdrawNative(sessionDeposit);
 
         // Locked should equal deposit
@@ -513,7 +557,7 @@ contract FundSafetyTest is Test {
             uint256 deposit = ((seed / (i + 1)) % 3 + 1) * 0.5 ether; // 0.5-1.5 ETH
             deposits[i] = deposit;
             totalDeposited += deposit;
-            sessionIds[i] = marketplace.createSessionJob{value: deposit}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+            sessionIds[i] = marketplace.createSessionJobForModel{value: deposit}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         }
         vm.stopPrank();
 
@@ -539,10 +583,10 @@ contract FundSafetyTest is Test {
         vm.prank(user);
         marketplace.depositNative{value: 3 ether}();
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.prank(user2);
-        marketplace.createSessionJob{value: 4 ether}(host2, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJobForModel{value: 4 ether}(host2, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Contract balance should equal sum of all deposits and sessions
         uint256 expectedBalance = 3 ether + 2 ether + 4 ether; // 9 ETH total

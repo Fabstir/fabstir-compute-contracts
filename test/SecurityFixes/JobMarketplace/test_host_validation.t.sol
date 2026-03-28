@@ -107,6 +107,10 @@ contract HostValidationTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        vm.prank(registeredHost);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        vm.prank(registeredHost);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
 
         // Setup user with ETH
         vm.deal(user, 100 ether);
@@ -127,25 +131,29 @@ contract HostValidationTest is Test {
 
     function test_ZeroAddressFailsValidation() public {
         vm.prank(user);
-        vm.expectRevert("Invalid host");
-        marketplace.createSessionJob{value: 0.01 ether}(
+        vm.expectRevert("No host");
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
             address(0),
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
     function test_ZeroAddressFailsValidationWithToken() public {
         vm.prank(user);
-        vm.expectRevert("Invalid host");
-        marketplace.createSessionJobWithToken(
+        vm.expectRevert("No host");
+        marketplace.createSessionJobForModelWithToken(
             address(0),
+            modelId,
             address(usdcToken),
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -156,43 +164,20 @@ contract HostValidationTest is Test {
     function test_UnregisteredHostFailsValidation() public {
         // unregisteredHost is not registered in NodeRegistry
         vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.01 ether}(
-            unregisteredHost,
-            MIN_PRICE_NATIVE,
-            1 days,
-            1000
-        );
-    }
-
-    function test_UnregisteredHostFailsValidationWithToken() public {
-        vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJobWithToken(
-            unregisteredHost,
-            address(usdcToken),
-            1 * 10**6,
-            MIN_PRICE_STABLE,
-            1 days,
-            1000
-        );
-    }
-
-    function test_UnregisteredHostFailsValidationForModel() public {
-        vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 0.01 ether}(
             unregisteredHost,
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
-    function test_UnregisteredHostFailsValidationForModelWithToken() public {
+    function test_UnregisteredHostFailsValidationWithToken() public {
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModelWithToken(
             unregisteredHost,
             modelId,
@@ -200,7 +185,36 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
+        );
+    }
+
+    function test_UnregisteredHostFailsValidationForModel() public {
+        vm.prank(user);
+        vm.expectRevert("No host reg");
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
+            unregisteredHost,
+            modelId,
+            MIN_PRICE_NATIVE,
+            1 days,
+            1000,
+            300
+        );
+    }
+
+    function test_UnregisteredHostFailsValidationForModelWithToken() public {
+        vm.prank(user);
+        vm.expectRevert("No host reg");
+        marketplace.createSessionJobForModelWithToken(
+            unregisteredHost,
+            modelId,
+            address(usdcToken),
+            1 * 10**6,
+            MIN_PRICE_STABLE,
+            1 days,
+            1000,
+            300
         );
     }
 
@@ -232,11 +246,13 @@ contract HostValidationTest is Test {
         // Now try to create session - should fail
         vm.prank(user);
         vm.expectRevert("Host not active");
-        marketplace.createSessionJob{value: 0.01 ether}(
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
             registeredHost,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -252,13 +268,15 @@ contract HostValidationTest is Test {
 
         vm.prank(user);
         vm.expectRevert("Host not active");
-        marketplace.createSessionJobWithToken(
+        marketplace.createSessionJobForModelWithToken(
             registeredHost,
+            modelId,
             address(usdcToken),
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -272,11 +290,13 @@ contract HostValidationTest is Test {
 
         // Should succeed
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             registeredHost,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -284,13 +304,15 @@ contract HostValidationTest is Test {
 
     function test_RegisteredActiveHostPassesValidationWithToken() public {
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJobWithToken(
+        uint256 sessionId = marketplace.createSessionJobForModelWithToken(
             registeredHost,
+            modelId,
             address(usdcToken),
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -303,7 +325,8 @@ contract HostValidationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -318,7 +341,8 @@ contract HostValidationTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -360,12 +384,14 @@ contract HostValidationTest is Test {
 
         // Now try to create session - should fail
         vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.01 ether}(
+        vm.expectRevert("No host reg");
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
             tempHost,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 

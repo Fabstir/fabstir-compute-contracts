@@ -108,6 +108,8 @@ contract TokenMaxDepositTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
         vm.stopPrank();
 
         // Setup user
@@ -185,12 +187,14 @@ contract TokenMaxDepositTest is Test {
         vm.deal(user, tooMuchDeposit);
 
         vm.prank(user);
-        vm.expectRevert("Deposit too large");
-        marketplace.createSessionJob{value: tooMuchDeposit}(
+        vm.expectRevert("Over max");
+        marketplace.createSessionJobForModel{value: tooMuchDeposit}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -211,14 +215,16 @@ contract TokenMaxDepositTest is Test {
         vm.startPrank(user);
         usdcToken.approve(address(marketplace), tooMuchDeposit);
 
-        vm.expectRevert("Deposit too large");
-        marketplace.createSessionJobWithToken(
+        vm.expectRevert("Over max");
+        marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             tooMuchDeposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
         vm.stopPrank();
     }
@@ -256,13 +262,15 @@ contract TokenMaxDepositTest is Test {
         uint256 validDeposit = 100 * 10**6;
 
         vm.startPrank(user);
-        uint256 sessionId = marketplace.createSessionJobWithToken(
+        uint256 sessionId = marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             validDeposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
         vm.stopPrank();
 
@@ -283,7 +291,7 @@ contract TokenMaxDepositTest is Test {
         uint256 maxDeposit = 1 * 10**18; // Same as min (invalid)
 
         vm.prank(owner);
-        vm.expectRevert("Max must exceed min");
+        vm.expectRevert("Max < min");
         marketplace.addAcceptedToken(address(daiToken), minDeposit, maxDeposit);
     }
 
@@ -295,7 +303,7 @@ contract TokenMaxDepositTest is Test {
         uint256 maxDeposit = 50 * 10**18;  // 50 DAI (less than min)
 
         vm.prank(owner);
-        vm.expectRevert("Max must exceed min");
+        vm.expectRevert("Max < min");
         marketplace.addAcceptedToken(address(daiToken), minDeposit, maxDeposit);
     }
 
@@ -374,7 +382,7 @@ contract TokenMaxDepositTest is Test {
     function test_13_4_UpdateTokenMaxDeposit_NonAcceptedTokenReverts() public {
         // Try to update max for a token that was never added
         vm.prank(owner);
-        vm.expectRevert("Token not accepted");
+        vm.expectRevert("Bad token");
         marketplace.updateTokenMaxDeposit(address(daiToken), 10000 * 10**18);
     }
 
@@ -390,7 +398,7 @@ contract TokenMaxDepositTest is Test {
 
         // Try to set max to equal min (should fail)
         vm.prank(owner);
-        vm.expectRevert("Max must exceed min");
+        vm.expectRevert("Max < min");
         marketplace.updateTokenMaxDeposit(address(daiToken), minDeposit);
     }
 
@@ -404,7 +412,7 @@ contract TokenMaxDepositTest is Test {
 
         // Random user tries to update
         vm.prank(user);
-        vm.expectRevert("Only treasury or owner");
+        vm.expectRevert("Not admin");
         marketplace.updateTokenMaxDeposit(address(daiToken), 50000 * 10**18);
     }
 

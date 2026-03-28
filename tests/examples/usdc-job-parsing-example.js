@@ -10,9 +10,13 @@ async function testUSDCWithCorrectParsing() {
     const USDC = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
     const HOST = '0x4594F755F593B517Bb3194F4DeC20C48a3f04504';
     
-    // Wallets
-    const userWallet = new ethers.Wallet('0x2d5db36770a53811d9a11163a5e6577bb867e19552921bf40f74064308bea952', provider);
-    const hostWallet = new ethers.Wallet('0xe7855c0ea54ccca55126d40f97d90868b2a73bad0363e92ccdec0c4fbd6c0ce2', provider);
+    // Wallets — F202615280: use environment variables instead of hardcoded keys
+    if (!process.env.USER_PRIVATE_KEY || !process.env.HOST_PRIVATE_KEY) {
+        console.error('Set USER_PRIVATE_KEY and HOST_PRIVATE_KEY environment variables');
+        process.exit(1);
+    }
+    const userWallet = new ethers.Wallet(process.env.USER_PRIVATE_KEY, provider);
+    const hostWallet = new ethers.Wallet(process.env.HOST_PRIVATE_KEY, provider);
     
     console.log('USDC Payment Test with Correct Job ID Parsing');
     console.log('==============================================\n');

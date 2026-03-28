@@ -63,4 +63,6 @@ script/DeployOptimizedMarketplace.s.sol
 
 images/
 docs/audit
+docs/sdk-reference/
+docs/node-reference/
 mythril.config.json

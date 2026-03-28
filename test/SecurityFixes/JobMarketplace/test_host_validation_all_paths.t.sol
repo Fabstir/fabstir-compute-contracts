@@ -14,11 +14,9 @@ import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
  * @dev Tests for Sub-phase 2.2: Ensure all session creation paths validate host
  *
  * Verifies that _validateHostRegistration is called in:
- * 1. createSessionJob
- * 2. createSessionJobWithToken
- * 3. createSessionJobForModel
- * 4. createSessionJobForModelWithToken
- * 5. createSessionFromDeposit
+ * 1. createSessionJobForModel
+ * 2. createSessionJobForModelWithToken
+ * 3. createSessionFromDepositForModel
  *
  * Also verifies validation happens BEFORE any state changes.
  */
@@ -113,6 +111,10 @@ contract HostValidationAllPathsTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        vm.prank(registeredHost);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        vm.prank(registeredHost);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
 
         // Setup user with ETH
         vm.deal(user, 100 ether);
@@ -124,108 +126,19 @@ contract HostValidationAllPathsTest is Test {
     }
 
     // ============================================================
-    // Path 1: createSessionJob
-    // ============================================================
-
-    function test_CreateSessionJob_ValidatesHost() public {
-        vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.01 ether}(
-            unregisteredHost,
-            MIN_PRICE_NATIVE,
-            1 days,
-            1000
-        );
-    }
-
-    function test_CreateSessionJob_SucceedsWithRegisteredHost() public {
-        vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
-            registeredHost,
-            MIN_PRICE_NATIVE,
-            1 days,
-            1000
-        );
-        assertEq(sessionId, 1);
-    }
-
-    function test_CreateSessionJob_NoStateChangeOnRevert() public {
-        uint256 nextJobIdBefore = marketplace.nextJobId();
-
-        vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.01 ether}(
-            unregisteredHost,
-            MIN_PRICE_NATIVE,
-            1 days,
-            1000
-        );
-
-        // Verify no state change
-        assertEq(marketplace.nextJobId(), nextJobIdBefore);
-    }
-
-    // ============================================================
-    // Path 2: createSessionJobWithToken
-    // ============================================================
-
-    function test_CreateSessionJobWithToken_ValidatesHost() public {
-        vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJobWithToken(
-            unregisteredHost,
-            address(usdcToken),
-            1 * 10**6,
-            MIN_PRICE_STABLE,
-            1 days,
-            1000
-        );
-    }
-
-    function test_CreateSessionJobWithToken_SucceedsWithRegisteredHost() public {
-        vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJobWithToken(
-            registeredHost,
-            address(usdcToken),
-            1 * 10**6,
-            MIN_PRICE_STABLE,
-            1 days,
-            1000
-        );
-        assertEq(sessionId, 1);
-    }
-
-    function test_CreateSessionJobWithToken_NoTokenTransferOnRevert() public {
-        uint256 userBalanceBefore = usdcToken.balanceOf(user);
-
-        vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJobWithToken(
-            unregisteredHost,
-            address(usdcToken),
-            1 * 10**6,
-            MIN_PRICE_STABLE,
-            1 days,
-            1000
-        );
-
-        // Verify no token transfer occurred
-        assertEq(usdcToken.balanceOf(user), userBalanceBefore);
-    }
-
-    // ============================================================
-    // Path 3: createSessionJobForModel
+    // Path 1: createSessionJobForModel
     // ============================================================
 
     function test_CreateSessionJobForModel_ValidatesHost() public {
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 0.01 ether}(
             unregisteredHost,
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -236,31 +149,37 @@ contract HostValidationAllPathsTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
         assertEq(sessionId, 1);
     }
 
-    function test_CreateSessionJobForModel_ValidationBeforeModelCheck() public {
-        // With unregistered host, should get "Host not registered" NOT "Host does not support model"
+    function test_CreateSessionJobForModel_NoStateChangeOnRevert() public {
+        uint256 nextJobIdBefore = marketplace.nextJobId();
+
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModel{value: 0.01 ether}(
             unregisteredHost,
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
+
+        // Verify no state change
+        assertEq(marketplace.nextJobId(), nextJobIdBefore);
     }
 
     // ============================================================
-    // Path 4: createSessionJobForModelWithToken
+    // Path 2: createSessionJobForModelWithToken
     // ============================================================
 
     function test_CreateSessionJobForModelWithToken_ValidatesHost() public {
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModelWithToken(
             unregisteredHost,
             modelId,
@@ -268,7 +187,8 @@ contract HostValidationAllPathsTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -281,14 +201,17 @@ contract HostValidationAllPathsTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
         assertEq(sessionId, 1);
     }
 
-    function test_CreateSessionJobForModelWithToken_ValidationBeforeModelCheck() public {
+    function test_CreateSessionJobForModelWithToken_NoTokenTransferOnRevert() public {
+        uint256 userBalanceBefore = usdcToken.balanceOf(user);
+
         vm.prank(user);
-        vm.expectRevert("Host not registered");
+        vm.expectRevert("No host reg");
         marketplace.createSessionJobForModelWithToken(
             unregisteredHost,
             modelId,
@@ -296,33 +219,39 @@ contract HostValidationAllPathsTest is Test {
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
+
+        // Verify no token transfer occurred
+        assertEq(usdcToken.balanceOf(user), userBalanceBefore);
     }
 
     // ============================================================
-    // Path 5: createSessionFromDeposit
+    // Path 3: createSessionFromDepositForModel
     // ============================================================
 
-    function test_CreateSessionFromDeposit_ValidatesHostNative() public {
+    function test_CreateSessionFromDepositForModel_ValidatesHostNative() public {
         // First deposit some ETH
         vm.prank(user);
         marketplace.depositNative{value: 1 ether}();
 
         // Try to create session with unregistered host
         vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionFromDeposit(
+        vm.expectRevert("No host reg");
+        marketplace.createSessionFromDepositForModel(
+            modelId,
             unregisteredHost,
             address(0), // native token
             0.01 ether,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
-    function test_CreateSessionFromDeposit_ValidatesHostToken() public {
+    function test_CreateSessionFromDepositForModel_ValidatesHostToken() public {
         // First deposit some USDC
         vm.prank(user);
         usdcToken.approve(address(marketplace), type(uint256).max);
@@ -331,36 +260,40 @@ contract HostValidationAllPathsTest is Test {
 
         // Try to create session with unregistered host
         vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionFromDeposit(
+        vm.expectRevert("No host reg");
+        marketplace.createSessionFromDepositForModel(
+            modelId,
             unregisteredHost,
             address(usdcToken),
             1 * 10**6,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
-    function test_CreateSessionFromDeposit_SucceedsWithRegisteredHost() public {
+    function test_CreateSessionFromDepositForModel_SucceedsWithRegisteredHost() public {
         // First deposit some ETH
         vm.prank(user);
         marketplace.depositNative{value: 1 ether}();
 
         // Create session with registered host
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionFromDeposit(
+        uint256 sessionId = marketplace.createSessionFromDepositForModel(
+            modelId,
             registeredHost,
             address(0),
             0.01 ether,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
         assertEq(sessionId, 1);
     }
 
-    function test_CreateSessionFromDeposit_NoBalanceChangeOnRevert() public {
+    function test_CreateSessionFromDepositForModel_NoBalanceChangeOnRevert() public {
         // First deposit some ETH
         vm.prank(user);
         marketplace.depositNative{value: 1 ether}();
@@ -369,14 +302,16 @@ contract HostValidationAllPathsTest is Test {
 
         // Try to create session with unregistered host
         vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionFromDeposit(
+        vm.expectRevert("No host reg");
+        marketplace.createSessionFromDepositForModel(
+            modelId,
             unregisteredHost,
             address(0),
             0.01 ether,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Verify no balance change
@@ -388,56 +323,38 @@ contract HostValidationAllPathsTest is Test {
     // ============================================================
 
     function test_AllPaths_UnregisteredHostRevertsWithCorrectError() public {
-        // Path 1: createSessionJob
+        // Path 1: createSessionJobForModel
         vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJob{value: 0.01 ether}(unregisteredHost, MIN_PRICE_NATIVE, 1 days, 1000);
+        vm.expectRevert("No host reg");
+        marketplace.createSessionJobForModel{value: 0.01 ether}(unregisteredHost, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
-        // Path 2: createSessionJobWithToken
+        // Path 2: createSessionJobForModelWithToken
         vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJobWithToken(unregisteredHost, address(usdcToken), 1 * 10**6, MIN_PRICE_STABLE, 1 days, 1000);
+        vm.expectRevert("No host reg");
+        marketplace.createSessionJobForModelWithToken(unregisteredHost, modelId, address(usdcToken), 1 * 10**6, MIN_PRICE_STABLE, 1 days, 1000, 300);
 
-        // Path 3: createSessionJobForModel
-        vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJobForModel{value: 0.01 ether}(unregisteredHost, modelId, MIN_PRICE_NATIVE, 1 days, 1000);
-
-        // Path 4: createSessionJobForModelWithToken
-        vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionJobForModelWithToken(unregisteredHost, modelId, address(usdcToken), 1 * 10**6, MIN_PRICE_STABLE, 1 days, 1000);
-
-        // Path 5: createSessionFromDeposit (need to deposit first)
+        // Path 3: createSessionFromDepositForModel (need to deposit first)
         vm.prank(user);
         marketplace.depositNative{value: 1 ether}();
         vm.prank(user);
-        vm.expectRevert("Host not registered");
-        marketplace.createSessionFromDeposit(unregisteredHost, address(0), 0.01 ether, MIN_PRICE_NATIVE, 1 days, 1000);
+        vm.expectRevert("No host reg");
+        marketplace.createSessionFromDepositForModel(modelId, unregisteredHost, address(0), 0.01 ether, MIN_PRICE_NATIVE, 1 days, 1000, 300);
     }
 
     function test_AllPaths_RegisteredHostSucceeds() public {
         // Path 1
         vm.prank(user);
-        assertEq(marketplace.createSessionJob{value: 0.01 ether}(registeredHost, MIN_PRICE_NATIVE, 1 days, 1000), 1);
+        assertEq(marketplace.createSessionJobForModel{value: 0.01 ether}(registeredHost, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300), 1);
 
         // Path 2
         vm.prank(user);
-        assertEq(marketplace.createSessionJobWithToken(registeredHost, address(usdcToken), 1 * 10**6, MIN_PRICE_STABLE, 1 days, 1000), 2);
+        assertEq(marketplace.createSessionJobForModelWithToken(registeredHost, modelId, address(usdcToken), 1 * 10**6, MIN_PRICE_STABLE, 1 days, 1000, 300), 2);
 
         // Path 3
         vm.prank(user);
-        assertEq(marketplace.createSessionJobForModel{value: 0.01 ether}(registeredHost, modelId, MIN_PRICE_NATIVE, 1 days, 1000), 3);
-
-        // Path 4
-        vm.prank(user);
-        assertEq(marketplace.createSessionJobForModelWithToken(registeredHost, modelId, address(usdcToken), 1 * 10**6, MIN_PRICE_STABLE, 1 days, 1000), 4);
-
-        // Path 5
-        vm.prank(user);
         marketplace.depositNative{value: 1 ether}();
         vm.prank(user);
-        assertEq(marketplace.createSessionFromDeposit(registeredHost, address(0), 0.01 ether, MIN_PRICE_NATIVE, 1 days, 1000), 5);
+        assertEq(marketplace.createSessionFromDepositForModel(modelId, registeredHost, address(0), 0.01 ether, MIN_PRICE_NATIVE, 1 days, 1000, 300), 3);
     }
 
     // ============================================================
@@ -457,12 +374,12 @@ contract HostValidationAllPathsTest is Test {
         // Path 1
         vm.prank(user);
         vm.expectRevert("Host not active");
-        marketplace.createSessionJob{value: 0.01 ether}(registeredHost, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJobForModel{value: 0.01 ether}(registeredHost, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Path 2
         vm.prank(user);
         vm.expectRevert("Host not active");
-        marketplace.createSessionJobWithToken(registeredHost, address(usdcToken), 1 * 10**6, MIN_PRICE_STABLE, 1 days, 1000);
+        marketplace.createSessionJobForModelWithToken(registeredHost, modelId, address(usdcToken), 1 * 10**6, MIN_PRICE_STABLE, 1 days, 1000, 300);
 
         // Clear mock for deposit
         vm.clearMockedCalls();
@@ -480,9 +397,9 @@ contract HostValidationAllPathsTest is Test {
             )
         );
 
-        // Path 5
+        // Path 3
         vm.prank(user);
         vm.expectRevert("Host not active");
-        marketplace.createSessionFromDeposit(registeredHost, address(0), 0.01 ether, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionFromDepositForModel(modelId, registeredHost, address(0), 0.01 ether, MIN_PRICE_NATIVE, 1 days, 1000, 300);
     }
 }

@@ -38,8 +38,10 @@ contract FullFlowIntegrationTest is Test {
 
     address public deployer = address(0x1);
     address public treasury = address(0x2);
-    address public host1 = address(0x100);
-    address public host2 = address(0x101);
+    uint256 public host1PrivateKey = 0x100;
+    address public host1;
+    uint256 public host2PrivateKey = 0x101;
+    address public host2;
     address public user1 = address(0x200);
     address public user2 = address(0x201);
 
@@ -52,10 +54,17 @@ contract FullFlowIntegrationTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal view returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
+    }
 
     function setUp() public {
+        host1 = vm.addr(host1PrivateKey);
+        host2 = vm.addr(host2PrivateKey);
+
         vm.startPrank(deployer);
 
         // Deploy mock tokens
@@ -132,6 +141,12 @@ contract FullFlowIntegrationTest is Test {
 
         // Authorize JobMarketplace to credit earnings
         hostEarnings.setAuthorizedCaller(address(jobMarketplace), true);
+
+        // Configure ProofSystem in marketplace
+        jobMarketplace.setProofSystem(address(proofSystem));
+
+        // Authorize marketplace in ProofSystem
+        proofSystem.setAuthorizedCaller(address(jobMarketplace), true);
 
         // Set treasury
         jobMarketplace.setTreasury(treasury);
@@ -231,13 +246,18 @@ contract FullFlowIntegrationTest is Test {
             MIN_PRICE_STABLE
         );
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Step 2: Create session
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 1 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
         assertEq(sessionId, 1, "Session ID should be 1");
 
@@ -245,12 +265,12 @@ contract FullFlowIntegrationTest is Test {
         vm.warp(block.timestamp + 1); // Advance time
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), DUMMY_SIG, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), "QmProof1", "");
 
         vm.warp(block.timestamp + 2);
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(456)), DUMMY_SIG, "QmProof2", "");
+        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(456)), "QmProof2", "");
 
         // Step 4: Complete session
         vm.prank(user1);
@@ -285,16 +305,22 @@ contract FullFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU1"}', "https://host1.com", models1, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         vm.prank(host2);
         nodeRegistry.registerNode('{"hardware": "GPU2"}', "https://host2.com", models2, MIN_PRICE_NATIVE * 2, MIN_PRICE_STABLE * 2);
 
+        vm.prank(host2);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE * 2);
+
         // User1 creates session with host1
         vm.prank(user1);
-        uint256 session1 = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 session1 = jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // User2 creates session with host2
         vm.prank(user2);
-        uint256 session2 = jobMarketplace.createSessionJob{value: 0.5 ether}(host2, MIN_PRICE_NATIVE * 2, 1 days, 1000);
+        uint256 session2 = jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host2, modelId1, MIN_PRICE_NATIVE * 2, 1 days, 1000, 300);
 
         assertEq(session1, 1, "Session 1 ID");
         assertEq(session2, 2, "Session 2 ID");
@@ -303,10 +329,10 @@ contract FullFlowIntegrationTest is Test {
         vm.warp(block.timestamp + 1);
 
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(session1, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof1", "");
+        jobMarketplace.submitProofOfWork(session1, 1000, bytes32(uint256(1)), "QmProof1", "");
 
         vm.prank(host2);
-        jobMarketplace.submitProofOfWork(session2, 500, bytes32(uint256(2)), DUMMY_SIG, "QmProof2", "");
+        jobMarketplace.submitProofOfWork(session2, 1000, bytes32(uint256(2)), "QmProof2", "");
 
         // Complete both sessions
         vm.prank(user1);
@@ -332,6 +358,9 @@ contract FullFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Create model-specific session
         vm.prank(user1);
         uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 0.5 ether}(
@@ -339,7 +368,8 @@ contract FullFlowIntegrationTest is Test {
             modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Verify model is tracked
@@ -348,7 +378,7 @@ contract FullFlowIntegrationTest is Test {
         // Complete flow
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 500, bytes32(uint256(1)), DUMMY_SIG, "QmProof", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");
@@ -368,13 +398,16 @@ contract FullFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Create and complete session
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 1 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 1 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), DUMMY_SIG, "QmProof", "");
+        jobMarketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(1)), "QmProof", "");
 
         vm.prank(user1);
         jobMarketplace.completeSessionJob(sessionId, "QmConv");
@@ -405,9 +438,12 @@ contract FullFlowIntegrationTest is Test {
         vm.prank(host1);
         nodeRegistry.registerNode('{"hardware": "GPU"}', "https://host1.com", models, MIN_PRICE_NATIVE, MIN_PRICE_STABLE);
 
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
+
         // Create session before pause
         vm.prank(user1);
-        uint256 sessionId = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId = jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Pause the marketplace
         vm.prank(deployer);
@@ -416,7 +452,7 @@ contract FullFlowIntegrationTest is Test {
         // New sessions should be blocked
         vm.prank(user2);
         vm.expectRevert();
-        jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // But existing sessions can still be completed (critical for user safety)
         vm.prank(user1);
@@ -428,7 +464,7 @@ contract FullFlowIntegrationTest is Test {
 
         // New sessions work again
         vm.prank(user2);
-        uint256 newSession = jobMarketplace.createSessionJob{value: 0.5 ether}(host1, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 newSession = jobMarketplace.createSessionJobForModel{value: 0.5 ether}(host1, modelId1, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         assertEq(newSession, 2, "New session created after unpause");
     }
 

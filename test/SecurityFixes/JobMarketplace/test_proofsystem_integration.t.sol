@@ -12,16 +12,12 @@ import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
  * @title ProofSystem Integration Tests
- * @dev Tests for Sub-phase 6.2: Integrate ProofSystem Verification Call
+ * @dev Tests for ProofSystem integration with JobMarketplace.
  *
- * Issue: ProofSystem.verifyAndMarkComplete() exists but is NEVER CALLED
- * by JobMarketplace.submitProofOfWork(). This phase integrates the verification.
- *
- * After this phase:
- * - Valid signatures from host pass verification
- * - Invalid signatures revert
- * - Replay attacks are prevented
- * - ProofSubmission.verified reflects actual verification status
+ * After signature removal (F202614998+F202614976):
+ * - Authentication is via msg.sender == session.host
+ * - ProofSystem.markProofUsed() provides replay protection
+ * - ProofSubmission.verified reflects proof recording status
  */
 contract ProofSystemIntegrationTest is Test {
     JobMarketplaceWithModelsUpgradeable public marketplace;
@@ -140,6 +136,9 @@ contract ProofSystemIntegrationTest is Test {
             MIN_PRICE_STABLE
         );
 
+        vm.prank(host);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+
         // Setup user with ETH
         vm.deal(user, 100 ether);
         vm.deal(host, 100 ether);
@@ -152,7 +151,8 @@ contract ProofSystemIntegrationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days, // maxDuration
-            1000 // proof interval
+            1000, // proof interval
+            300 // proofTimeoutWindow
         );
 
         // Advance time so rate limiting passes
@@ -164,20 +164,17 @@ contract ProofSystemIntegrationTest is Test {
     // ============================================================
 
     /**
-     * @notice Test that valid signature from host passes verification
+     * @notice Test that valid proof from host passes verification
      */
-    function test_ValidSignaturePassesVerification() public {
+    function test_ValidProofPassesVerification() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        // Generate valid signature from host
-        bytes memory signature = _generateHostSignature(proofHash, host, tokensClaimed);
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
 
         // Verify tokens were credited (proof was accepted)
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokensClaimed, "Tokens should be credited");
 
         // Verify proof was marked as verified in ProofSystem
@@ -185,65 +182,29 @@ contract ProofSystemIntegrationTest is Test {
     }
 
     /**
-     * @notice Test that invalid signature reverts
-     */
-    function test_InvalidSignatureReverts() public {
-        bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        // Create invalid signature (random bytes)
-        bytes memory invalidSignature = new bytes(65);
-        invalidSignature[0] = 0x12;
-        invalidSignature[64] = 0x1b; // v = 27
-
-        vm.prank(host);
-        vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, invalidSignature, "QmTestCID", "");
-    }
-
-    /**
-     * @notice Test that signature from wrong signer (not host) reverts
-     */
-    function test_WrongSignerReverts() public {
-        bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        // Generate signature from attacker (not the session host)
-        bytes memory attackerSignature = _generateHostSignature(proofHash, attacker, tokensClaimed);
-
-        // Host submits proof but with attacker's signature
-        vm.prank(host);
-        vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, attackerSignature, "QmTestCID", "");
-    }
-
-    /**
      * @notice Test that replay attack (same proofHash twice) reverts
      */
     function test_ReplayAttackReverts() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        // Generate valid signature
-        bytes memory signature = _generateHostSignature(proofHash, host, tokensClaimed);
+        uint256 tokensClaimed = 1000;
 
         // First submission should succeed
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
 
         // Advance time for rate limiting
         vm.warp(block.timestamp + 5);
 
         // Second submission with same proofHash should fail (replay attack)
         vm.prank(host);
-        vm.expectRevert("Invalid proof signature");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID2", "");
+        vm.expectRevert("Proof already used");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID2", "");
     }
 
     /**
-     * @notice Test that ProofSystem not set (address(0)) still works (graceful degradation)
+     * @notice Test that ProofSystem not set (address(0)) reverts (F202614909)
      */
-    function test_ProofSystemNotSetStillWorks() public {
+    function test_ProofSystemNotSetReverts() public {
         // Deploy a new marketplace without ProofSystem configured
         vm.startPrank(owner);
         JobMarketplaceWithModelsUpgradeable marketplaceImpl = new JobMarketplaceWithModelsUpgradeable();
@@ -269,7 +230,8 @@ contract ProofSystemIntegrationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Advance time
@@ -278,17 +240,10 @@ contract ProofSystemIntegrationTest is Test {
         bytes32 proofHash = keccak256("test proof");
         uint256 tokensClaimed = 500;
 
-        // Any 65-byte signature should work when ProofSystem not set
-        bytes memory dummySignature = new bytes(65);
-        dummySignature[64] = 0x1b; // v = 27
-
+        // Should revert when ProofSystem not set (F202614909)
         vm.prank(host);
-        // Should NOT revert - graceful degradation
-        marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, dummySignature, "QmTestCID", "");
-
-        // Verify tokens were credited
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplaceNoProof.sessionJobs(newSessionId);
-        assertEq(tokensUsed, tokensClaimed, "Tokens should be credited even without ProofSystem");
+        vm.expectRevert("No proof sys");
+        marketplaceNoProof.submitProofOfWork(newSessionId, tokensClaimed, proofHash, "QmTestCID", "");
     }
 
     /**
@@ -296,12 +251,10 @@ contract ProofSystemIntegrationTest is Test {
      */
     function test_ProofSubmissionMarkedAsVerified() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        bytes memory signature = _generateHostSignature(proofHash, host, tokensClaimed);
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
 
         // Get the proof submission and check verified flag
         (
@@ -317,9 +270,9 @@ contract ProofSystemIntegrationTest is Test {
     }
 
     /**
-     * @notice Test that ProofSubmission.verified is false when ProofSystem not configured
+     * @notice Test that proof submission reverts when ProofSystem not configured (F202614909)
      */
-    function test_ProofSubmissionNotVerifiedWithoutProofSystem() public {
+    function test_ProofSubmissionRevertsWithoutProofSystem() public {
         // Deploy a new marketplace without ProofSystem configured
         vm.startPrank(owner);
         JobMarketplaceWithModelsUpgradeable marketplaceImpl = new JobMarketplaceWithModelsUpgradeable();
@@ -343,21 +296,18 @@ contract ProofSystemIntegrationTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         vm.warp(block.timestamp + 10);
 
         bytes32 proofHash = keccak256("test proof");
-        bytes memory dummySignature = new bytes(65);
-        dummySignature[64] = 0x1b;
 
+        // Should revert when ProofSystem not set (F202614909)
         vm.prank(host);
-        marketplaceNoProof.submitProofOfWork(newSessionId, 500, proofHash, dummySignature, "QmTestCID", "");
-
-        // Get proof and check verified is false
-        (,,, bool verified, ) = marketplaceNoProof.getProofSubmission(newSessionId, 0);
-        assertFalse(verified, "Proof should NOT be verified when ProofSystem not configured");
+        vm.expectRevert("No proof sys");
+        marketplaceNoProof.submitProofOfWork(newSessionId, 500, proofHash, "QmTestCID", "");
     }
 
     // ============================================================

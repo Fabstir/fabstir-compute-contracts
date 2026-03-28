@@ -8,13 +8,14 @@ import "../../mocks/ERC20Mock.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
- * @title NodeRegistry Boundary Conditions Tests
- * @notice Tests for min/max values, edge cases, and boundary conditions
+ * @title NodeRegistry Boundary Conditions Tests (Phase 18)
+ * @notice Tests for min/max values, edge cases, and boundary conditions using setModelTokenPricing
  */
 contract NodeRegistryBoundaryConditionsTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     ERC20Mock public fabToken;
+    ERC20Mock public usdcToken;
 
     address public owner = address(this);
     address public host1 = address(0x1);
@@ -31,8 +32,9 @@ contract NodeRegistryBoundaryConditionsTest is Test {
     uint256 public constant MAX_PRICE_PER_TOKEN_NATIVE = 22_727_272_727_273_000;
 
     function setUp() public {
-        // Deploy FAB token
+        // Deploy FAB token and USDC mock
         fabToken = new ERC20Mock("FAB", "FAB");
+        usdcToken = new ERC20Mock("USDC", "USDC");
 
         // Deploy ModelRegistry
         ModelRegistryUpgradeable modelImpl = new ModelRegistryUpgradeable();
@@ -171,164 +173,136 @@ contract NodeRegistryBoundaryConditionsTest is Test {
         assertTrue(nodeRegistry.isActiveNode(host1));
     }
 
-    // ============ Update Pricing Boundaries ============
+    // ============ setModelTokenPricing Boundaries (Native) ============
 
-    function test_UpdatePricingNative_RejectsBelowMinimum() public {
-        _registerHost1();
-
-        vm.prank(host1);
-        vm.expectRevert("Price below minimum");
-        nodeRegistry.updatePricingNative(MIN_PRICE_PER_TOKEN_NATIVE - 1);
-    }
-
-    function test_UpdatePricingNative_RejectsAboveMaximum() public {
-        _registerHost1();
-
-        vm.prank(host1);
-        vm.expectRevert("Price above maximum");
-        nodeRegistry.updatePricingNative(MAX_PRICE_PER_TOKEN_NATIVE + 1);
-    }
-
-    function test_UpdatePricingStable_RejectsBelowMinimum() public {
-        _registerHost1();
-
-        vm.prank(host1);
-        vm.expectRevert("Price below minimum");
-        nodeRegistry.updatePricingStable(0);
-    }
-
-    function test_UpdatePricingStable_RejectsAboveMaximum() public {
-        _registerHost1();
-
-        vm.prank(host1);
-        vm.expectRevert("Price above maximum");
-        nodeRegistry.updatePricingStable(MAX_PRICE_PER_TOKEN_STABLE + 1);
-    }
-
-    // ============ Model Pricing Boundaries ============
-
-    function test_SetModelPricing_RejectsNativeBelowMinimum() public {
+    function test_SetModelTokenPricing_Native_RejectsBelowMinimum() public {
         _registerHost1();
 
         vm.prank(host1);
         vm.expectRevert("Native price below minimum");
-        nodeRegistry.setModelPricing(modelId, MIN_PRICE_PER_TOKEN_NATIVE - 1, 0);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_PER_TOKEN_NATIVE - 1);
     }
 
-    function test_SetModelPricing_RejectsNativeAboveMaximum() public {
+    function test_SetModelTokenPricing_Native_RejectsAboveMaximum() public {
         _registerHost1();
 
         vm.prank(host1);
         vm.expectRevert("Native price above maximum");
-        nodeRegistry.setModelPricing(modelId, MAX_PRICE_PER_TOKEN_NATIVE + 1, 0);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MAX_PRICE_PER_TOKEN_NATIVE + 1);
     }
 
-    function test_SetModelPricing_RejectsStableBelowMinimum() public {
+    function test_SetModelTokenPricing_Native_AcceptsMinimum() public {
         _registerHost1();
 
         vm.prank(host1);
-        // Stable price of 0 means "no override", so we need a value > 0 but < MIN
-        // Since MIN is 1, there's no valid value below minimum > 0
-        // Test with native = 0 (no override) and stable below min
-        // Actually, the contract checks stablePrice > 0 before validating
-        // So we can't really test "below minimum" for stable since 0 means no override
-        // Let's skip this edge case as the contract design prevents it
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_PER_TOKEN_NATIVE);
+
+        uint256 price = nodeRegistry.getModelPricing(host1, modelId, address(0));
+        assertEq(price, MIN_PRICE_PER_TOKEN_NATIVE);
     }
 
-    function test_SetModelPricing_RejectsStableAboveMaximum() public {
+    function test_SetModelTokenPricing_Native_AcceptsMaximum() public {
+        _registerHost1();
+
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MAX_PRICE_PER_TOKEN_NATIVE);
+
+        uint256 price = nodeRegistry.getModelPricing(host1, modelId, address(0));
+        assertEq(price, MAX_PRICE_PER_TOKEN_NATIVE);
+    }
+
+    // ============ setModelTokenPricing Boundaries (Stable) ============
+
+    function test_SetModelTokenPricing_Stable_RejectsBelowMinimum() public {
+        _registerHost1();
+
+        vm.prank(host1);
+        // MIN is 1, so 0 should revert (setModelTokenPricing does NOT allow zero for stable)
+        vm.expectRevert("Stable price below minimum");
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), 0);
+    }
+
+    function test_SetModelTokenPricing_Stable_RejectsAboveMaximum() public {
         _registerHost1();
 
         vm.prank(host1);
         vm.expectRevert("Stable price above maximum");
-        nodeRegistry.setModelPricing(modelId, 0, MAX_PRICE_PER_TOKEN_STABLE + 1);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MAX_PRICE_PER_TOKEN_STABLE + 1);
     }
 
-    function test_SetModelPricing_AllowsZeroPrices() public {
+    function test_SetModelTokenPricing_Stable_AcceptsMinimum() public {
         _registerHost1();
 
         vm.prank(host1);
-        // Zero means "no override", should succeed
-        nodeRegistry.setModelPricing(modelId, 0, 0);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_PER_TOKEN_STABLE);
 
-        // Should fall back to default
-        uint256 result = nodeRegistry.getModelPricing(host1, modelId, address(0));
-        assertEq(result, MIN_PRICE_PER_TOKEN_NATIVE);
+        uint256 price = nodeRegistry.getModelPricing(host1, modelId, address(usdcToken));
+        assertEq(price, MIN_PRICE_PER_TOKEN_STABLE);
     }
 
-    // ============ Token Pricing Boundaries ============
-
-    function test_SetTokenPricing_RejectsBelowMinimum() public {
+    function test_SetModelTokenPricing_Stable_AcceptsMaximum() public {
         _registerHost1();
 
         vm.prank(host1);
-        // 0 means "no override", so can't test below minimum in traditional sense
-        // The contract only validates if price > 0
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MAX_PRICE_PER_TOKEN_STABLE);
+
+        uint256 price = nodeRegistry.getModelPricing(host1, modelId, address(usdcToken));
+        assertEq(price, MAX_PRICE_PER_TOKEN_STABLE);
     }
 
-    function test_SetTokenPricing_RejectsAboveMaximum() public {
-        _registerHost1();
+    // ============ clearModelTokenPricing ============
 
-        vm.prank(host1);
-        vm.expectRevert("Price above maximum");
-        nodeRegistry.setTokenPricing(address(fabToken), MAX_PRICE_PER_TOKEN_STABLE + 1);
-    }
-
-    function test_SetTokenPricing_AllowsZeroToClearOverride() public {
+    function test_ClearModelTokenPricing_MakesPricingRevertAgain() public {
         _registerHost1();
 
         vm.startPrank(host1);
-        // First set a custom price
-        nodeRegistry.setTokenPricing(address(fabToken), 50_000);
-        assertEq(nodeRegistry.getNodePricing(host1, address(fabToken)), 50_000);
+        // Set then clear
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), 50_000);
+        assertEq(nodeRegistry.getModelPricing(host1, modelId, address(usdcToken)), 50_000);
 
-        // Then clear it with 0
-        nodeRegistry.setTokenPricing(address(fabToken), 0);
+        nodeRegistry.clearModelTokenPricing(modelId, address(usdcToken));
         vm.stopPrank();
 
-        // Should fall back to default stable price
-        uint256 result = nodeRegistry.getNodePricing(host1, address(fabToken));
-        (,,,,,,, uint256 defaultStable) = nodeRegistry.getNodeFullInfo(host1);
-        assertEq(result, defaultStable);
+        // After clearing, getModelPricing should revert since no modelTokenPricing is set
+        vm.expectRevert("No model pricing");
+        nodeRegistry.getModelPricing(host1, modelId, address(usdcToken));
     }
 
-    // ============ getHostModelPrices ============
+    // ============ getHostModelPrices (new 2-arg signature) ============
 
     function test_GetHostModelPrices_ReturnsEmptyForNonRegistered() public view {
-        (bytes32[] memory modelIds, uint256[] memory nativePrices, uint256[] memory stablePrices) =
-            nodeRegistry.getHostModelPrices(address(0x999));
+        (bytes32[] memory modelIds, uint256[] memory prices) =
+            nodeRegistry.getHostModelPrices(address(0x999), address(usdcToken));
 
         assertEq(modelIds.length, 0);
-        assertEq(nativePrices.length, 0);
-        assertEq(stablePrices.length, 0);
+        assertEq(prices.length, 0);
     }
 
     function test_GetHostModelPrices_ReturnsCorrectPrices() public {
         _registerHost1();
 
-        (bytes32[] memory modelIds, uint256[] memory nativePrices, uint256[] memory stablePrices) =
-            nodeRegistry.getHostModelPrices(host1);
+        // Set model-token pricing
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_PER_TOKEN_STABLE * 5);
+
+        (bytes32[] memory modelIds, uint256[] memory prices) =
+            nodeRegistry.getHostModelPrices(host1, address(usdcToken));
 
         assertEq(modelIds.length, 1);
         assertEq(modelIds[0], modelId);
-        assertEq(nativePrices[0], MIN_PRICE_PER_TOKEN_NATIVE);
-        assertEq(stablePrices[0], MIN_PRICE_PER_TOKEN_STABLE);
+        assertEq(prices[0], MIN_PRICE_PER_TOKEN_STABLE * 5);
     }
 
-    function test_GetHostModelPrices_IncludesOverrides() public {
+    function test_GetHostModelPrices_ReturnsZeroWhenNoPricingSet() public {
         _registerHost1();
 
-        uint256 customNative = MIN_PRICE_PER_TOKEN_NATIVE * 2;
-        uint256 customStable = MIN_PRICE_PER_TOKEN_STABLE * 2;
-
-        vm.prank(host1);
-        nodeRegistry.setModelPricing(modelId, customNative, customStable);
-
-        (bytes32[] memory modelIds, uint256[] memory nativePrices, uint256[] memory stablePrices) =
-            nodeRegistry.getHostModelPrices(host1);
+        // Don't set model-token pricing — should return 0
+        (bytes32[] memory modelIds, uint256[] memory prices) =
+            nodeRegistry.getHostModelPrices(host1, address(usdcToken));
 
         assertEq(modelIds.length, 1);
-        assertEq(nativePrices[0], customNative);
-        assertEq(stablePrices[0], customStable);
+        assertEq(modelIds[0], modelId);
+        assertEq(prices[0], 0);
     }
 
     // ============ getModelPricing fallback behavior ============
@@ -338,16 +312,20 @@ contract NodeRegistryBoundaryConditionsTest is Test {
         assertEq(result, 0);
     }
 
-    function test_GetModelPricing_FallsBackToDefault() public {
+    function test_GetModelPricing_NativeRevertsWhenNoPricing() public {
         _registerHost1();
 
-        // Native pricing
-        uint256 nativeResult = nodeRegistry.getModelPricing(host1, modelId, address(0));
-        assertEq(nativeResult, MIN_PRICE_PER_TOKEN_NATIVE);
+        // No modelTokenPricing set for native — should revert (no fallback)
+        vm.expectRevert("No model pricing");
+        nodeRegistry.getModelPricing(host1, modelId, address(0));
+    }
 
-        // Stable pricing
-        uint256 stableResult = nodeRegistry.getModelPricing(host1, modelId, address(fabToken));
-        assertEq(stableResult, MIN_PRICE_PER_TOKEN_STABLE);
+    function test_GetModelPricing_StableRevertsWhenNoPricing() public {
+        _registerHost1();
+
+        // No modelTokenPricing set for stable — should revert
+        vm.expectRevert("No model pricing");
+        nodeRegistry.getModelPricing(host1, modelId, address(usdcToken));
     }
 
     // ============ Helper Functions ============

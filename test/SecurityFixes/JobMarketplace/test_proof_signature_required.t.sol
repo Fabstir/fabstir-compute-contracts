@@ -11,30 +11,27 @@ import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
- * @title Proof Signature Required Tests
- * @dev Tests for Sub-phase 6.1: Modify submitProofOfWork Signature
+ * @title Proof Submission Tests (Post Signature Removal)
+ * @dev Tests for F202614998+F202614976: Signature removal from submitProofOfWork.
  *
- * Issue: submitProofOfWork currently accepts proofHash without signature.
- * This phase adds a required `bytes calldata signature` parameter (65 bytes).
- *
- * The NEW signature will be:
- * submitProofOfWork(uint256 jobId, uint256 tokensClaimed, bytes32 proofHash, bytes calldata signature, string calldata proofCID)
+ * After signature removal:
+ * - submitProofOfWork accepts 5 parameters (no signature bytes)
+ * - Authentication is via msg.sender == session.host
+ * - Replay protection via ProofSystem.markProofUsed()
+ * - ProofSubmission.verified reflects proof recording status
  */
-contract ProofSignatureRequiredTest is Test {
+contract ProofNoSignatureTest is Test {
     JobMarketplaceWithModelsUpgradeable public marketplace;
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
     ProofSystemUpgradeable public proofSystem;
     ERC20Mock public fabToken;
-    ERC20Mock public usdcToken;
 
     address public owner = address(0x1);
+    address public host = address(0x2);
     address public user = address(0x4);
-
-    // Use a proper private key for host so we can sign messages
-    uint256 public hostPrivateKey = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
-    address public host;
+    address public nonHost = address(0x5);
 
     bytes32 public modelId;
     uint256 public sessionId;
@@ -45,15 +42,10 @@ contract ProofSignatureRequiredTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
     uint256 constant MIN_PROVEN_TOKENS = 100;
-    uint256 constant PRICE_PRECISION = 1e18;
 
     function setUp() public {
-        // Derive host address from private key
-        host = vm.addr(hostPrivateKey);
-
         // Deploy mock tokens
         fabToken = new ERC20Mock("FAB Token", "FAB");
-        usdcToken = new ERC20Mock("USDC", "USDC");
 
         vm.startPrank(owner);
 
@@ -109,6 +101,9 @@ contract ProofSignatureRequiredTest is Test {
         // Authorize marketplace in HostEarnings
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
+
         // Authorize marketplace in ProofSystem
         proofSystem.setAuthorizedCaller(address(marketplace), true);
 
@@ -131,6 +126,9 @@ contract ProofSignatureRequiredTest is Test {
             MIN_PRICE_STABLE
         );
 
+        vm.prank(host);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+
         // Setup user with ETH
         vm.deal(user, 100 ether);
         vm.deal(host, 100 ether);
@@ -142,7 +140,8 @@ contract ProofSignatureRequiredTest is Test {
             modelId,
             MIN_PRICE_NATIVE,
             1 days, // maxDuration
-            1000 // proof interval
+            1000, // proof interval
+            300 // proofTimeoutWindow
         );
 
         // Advance time so rate limiting passes
@@ -150,106 +149,46 @@ contract ProofSignatureRequiredTest is Test {
     }
 
     // ============================================================
-    // Sub-phase 6.1 Tests: Signature Parameter Required
+    // F202614998+F202614976: Proof Submission Without Signature
     // ============================================================
 
     /**
-     * @notice Test that submitProofOfWork now requires 5 parameters including signature
-     * @dev The new signature is: (jobId, tokensClaimed, proofHash, signature, proofCID)
-     *      This test verifies the function accepts the new 5-parameter format
+     * @notice Test that submitProofOfWork accepts the new 5-parameter format (no signature)
      */
-    function test_SubmitProofWithSignature_AcceptsNewFormat() public {
+    function test_SubmitProofWithoutSignature_AcceptsNewFormat() public {
         bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        // Generate valid signature from host
-        bytes memory signature = _generateHostSignature(proofHash, tokensClaimed);
+        uint256 tokensClaimed = 1000;
 
         vm.prank(host);
-        // NEW 5-parameter call
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
 
-        // Verify proof was stored - use tuple unpacking for all 17 fields
-        // SessionJob: id, depositor, host, paymentToken, deposit, pricePerToken, tokensUsed,
-        //             maxDuration, startTime, lastProofTime, proofInterval, status, withdrawnByHost,
-        //             refundedToUser, conversationCID, lastProofHash, lastProofCID
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        // Verify proof was stored
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokensClaimed);
     }
 
     /**
-     * @notice Test that signature must be exactly 65 bytes
-     * @dev ECDSA signatures are exactly 65 bytes: r (32) + s (32) + v (1)
+     * @notice Test that only host (msg.sender) can submit proofs
      */
-    function test_SubmitProofWithSignature_RevertsOnInvalidLength() public {
+    function test_OnlyHostCanSubmitProof() public {
         bytes32 proofHash = keccak256("test proof data");
         uint256 tokensClaimed = 500;
 
-        // Create invalid signature (64 bytes instead of 65)
-        bytes memory invalidSignature = new bytes(64);
-
-        vm.prank(host);
-        vm.expectRevert("Invalid signature length");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, invalidSignature, "QmTestCID", "");
+        vm.prank(nonHost);
+        vm.expectRevert("Not host");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
     }
 
     /**
-     * @notice Test that empty signature reverts
+     * @notice Test that multiple proofs can be submitted without signatures
      */
-    function test_SubmitProofWithSignature_RevertsOnEmptySignature() public {
-        bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        bytes memory emptySignature = "";
-
-        vm.prank(host);
-        vm.expectRevert("Invalid signature length");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, emptySignature, "QmTestCID", "");
-    }
-
-    /**
-     * @notice Test that signature with 66 bytes reverts
-     */
-    function test_SubmitProofWithSignature_RevertsOnTooLongSignature() public {
-        bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        // Create invalid signature (66 bytes instead of 65)
-        bytes memory tooLongSignature = new bytes(66);
-
-        vm.prank(host);
-        vm.expectRevert("Invalid signature length");
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, tooLongSignature, "QmTestCID", "");
-    }
-
-    /**
-     * @notice Test that valid 65-byte signature is accepted
-     */
-    function test_SubmitProofWithSignature_Accepts65Bytes() public {
-        bytes32 proofHash = keccak256("test proof data");
-        uint256 tokensClaimed = 500;
-
-        // Generate valid 65-byte signature
-        bytes memory signature = _generateHostSignature(proofHash, tokensClaimed);
-        assertEq(signature.length, 65, "Signature should be 65 bytes");
-
-        vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, signature, "QmTestCID", "");
-
-        // Success - no revert
-    }
-
-    /**
-     * @notice Test that multiple proofs can be submitted with valid signatures
-     */
-    function test_SubmitMultipleProofs_WithSignatures() public {
-        // Submit first proof
+    function test_SubmitMultipleProofs_WithoutSignatures() public {
+        // Submit first proof (>= proofInterval=1000)
         bytes32 proofHash1 = keccak256("proof 1");
-        uint256 tokens1 = 200;
-        bytes memory sig1 = _generateHostSignature(proofHash1, tokens1);
+        uint256 tokens1 = 1000;
 
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokens1, proofHash1, sig1, "QmCID1", "");
+        marketplace.submitProofOfWork(sessionId, tokens1, proofHash1, "QmCID1", "");
 
         // Advance time for rate limiting
         vm.warp(block.timestamp + 5);
@@ -257,38 +196,58 @@ contract ProofSignatureRequiredTest is Test {
         // Submit second proof
         bytes32 proofHash2 = keccak256("proof 2");
         uint256 tokens2 = 300;
-        bytes memory sig2 = _generateHostSignature(proofHash2, tokens2);
 
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId, tokens2, proofHash2, sig2, "QmCID2", "");
+        marketplace.submitProofOfWork(sessionId, tokens2, proofHash2, "QmCID2", "");
 
         // Verify total tokens
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
         assertEq(tokensUsed, tokens1 + tokens2);
     }
 
-    // ============================================================
-    // Helper Functions
-    // ============================================================
+    /**
+     * @notice Test replay attack is still prevented via ProofSystem.markProofUsed
+     */
+    function test_ReplayAttackStillPrevented() public {
+        bytes32 proofHash = keccak256("test proof data");
+        uint256 tokensClaimed = 1000;
+
+        // First submission succeeds
+        vm.prank(host);
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmCID1", "");
+
+        // Advance time for rate limiting
+        vm.warp(block.timestamp + 5);
+
+        // Second submission with same proofHash reverts
+        vm.prank(host);
+        vm.expectRevert("Proof already used");
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmCID2", "");
+    }
 
     /**
-     * @dev Generate a valid ECDSA signature from the host for the given proof
+     * @notice Test that proof is marked as verified and recorded in ProofSystem
      */
-    function _generateHostSignature(bytes32 proofHash, uint256 tokensClaimed) internal view returns (bytes memory) {
-        // Create the message hash that will be signed
-        // Format: keccak256(proofHash, host, tokensClaimed)
-        bytes32 messageHash = keccak256(abi.encodePacked(proofHash, host, tokensClaimed));
+    function test_ProofMarkedAsVerified() public {
+        bytes32 proofHash = keccak256("test proof data");
+        uint256 tokensClaimed = 1000;
 
-        // Create Ethereum signed message hash (EIP-191)
-        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked(
-            "\x19Ethereum Signed Message:\n32",
-            messageHash
-        ));
+        vm.prank(host);
+        marketplace.submitProofOfWork(sessionId, tokensClaimed, proofHash, "QmTestCID", "");
 
-        // Sign with host's private key
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(hostPrivateKey, ethSignedMessageHash);
+        // Verify proof was marked as verified in ProofSystem
+        assertTrue(proofSystem.verifiedProofs(proofHash), "Proof should be marked as verified");
 
-        // Return 65-byte signature
-        return abi.encodePacked(r, s, v);
+        // Check the proof submission record
+        (
+            bytes32 storedHash,
+            uint256 storedTokens,
+            ,
+            bool verified,
+        ) = marketplace.getProofSubmission(sessionId, 0);
+
+        assertEq(storedHash, proofHash, "Proof hash should match");
+        assertEq(storedTokens, tokensClaimed, "Tokens claimed should match");
+        assertTrue(verified, "Proof should be marked as verified");
     }
 }

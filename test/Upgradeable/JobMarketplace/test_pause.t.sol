@@ -7,6 +7,7 @@ import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWi
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
 import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol";
+import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
@@ -19,10 +20,12 @@ contract JobMarketplacePauseTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
     ERC20Mock public fabToken;
 
     address public owner = address(0x1);
-    address public host1 = address(0x2);
+    uint256 public host1PrivateKey = 0x2;
+    address public host1;
     address public user1 = address(0x3);
     address public treasury = address(0x4);
 
@@ -33,10 +36,15 @@ contract JobMarketplacePauseTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal view returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
+    }
 
     function setUp() public {
+        host1 = vm.addr(host1PrivateKey);
         // Deploy mock token
         fabToken = new ERC20Mock("FAB Token", "FAB");
 
@@ -94,6 +102,23 @@ contract JobMarketplacePauseTest is Test {
         vm.prank(owner);
         hostEarnings.setAuthorizedCaller(address(marketplace), true);
 
+        // Deploy ProofSystem
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        vm.prank(owner);
+        address proofSystemProxy = address(new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        ));
+        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
+
+        // Configure ProofSystem in marketplace
+        vm.prank(owner);
+        marketplace.setProofSystem(address(proofSystem));
+
+        // Authorize marketplace in ProofSystem
+        vm.prank(owner);
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         // Setup host
         fabToken.mint(host1, 10000 * 10**18);
         vm.prank(host1);
@@ -110,6 +135,9 @@ contract JobMarketplacePauseTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+
+        vm.prank(host1);
+        nodeRegistry.setModelTokenPricing(modelId1, address(0), MIN_PRICE_NATIVE);
 
         // Setup user with ETH
         vm.deal(user1, 100 ether);
@@ -135,7 +163,7 @@ contract JobMarketplacePauseTest is Test {
 
     function test_RandomUserCannotPause() public {
         vm.prank(user1);
-        vm.expectRevert("Only treasury or owner");
+        vm.expectRevert("Not admin");
         marketplace.pause();
     }
 
@@ -164,7 +192,7 @@ contract JobMarketplacePauseTest is Test {
         marketplace.pause();
 
         vm.prank(user1);
-        vm.expectRevert("Only treasury or owner");
+        vm.expectRevert("Not admin");
         marketplace.unpause();
     }
 
@@ -199,11 +227,13 @@ contract JobMarketplacePauseTest is Test {
 
         vm.prank(user1);
         vm.expectRevert();
-        marketplace.createSessionJob{value: 0.01 ether}(
+        marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -215,11 +245,13 @@ contract JobMarketplacePauseTest is Test {
         marketplace.unpause();
 
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1);
@@ -236,7 +268,8 @@ contract JobMarketplacePauseTest is Test {
             modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
     }
 
@@ -247,11 +280,13 @@ contract JobMarketplacePauseTest is Test {
     function test_SubmitProofBlockedWhenPaused() public {
         // Create session first
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pause contract
@@ -264,17 +299,19 @@ contract JobMarketplacePauseTest is Test {
         // Try to submit proof
         vm.prank(host1);
         vm.expectRevert();
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), "QmProofCID", "");
     }
 
     function test_SubmitProofWorksWhenUnpaused() public {
         // Create session first
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pause and unpause
@@ -287,14 +324,14 @@ contract JobMarketplacePauseTest is Test {
         // Advance time
         vm.warp(block.timestamp + 1);
 
-        // Submit proof should work
+        // Submit proof should work (first proof >= proofInterval=1000)
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 100, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), "QmProofCID", "");
 
         // Verify tokens used (skip 6 fields: id, depositor, host, paymentToken, deposit, pricePerToken)
-        // Total 17 return values (all except ProofSubmission[] array)
-        (,,,,,, uint256 tokensUsed,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
-        assertEq(tokensUsed, 100);
+        // Total 18 return values (all except ProofSubmission[] array)
+        (,,,,,, uint256 tokensUsed,,,,,,,,,,, ) = marketplace.sessionJobs(sessionId);
+        assertEq(tokensUsed, 1000);
     }
 
     // ============================================================
@@ -330,11 +367,13 @@ contract JobMarketplacePauseTest is Test {
     function test_CompleteSessionNotBlockedWhenPaused() public {
         // Create session
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Pause contract
@@ -347,7 +386,7 @@ contract JobMarketplacePauseTest is Test {
         marketplace.completeSessionJob(sessionId, "QmConversationCID");
 
         // Verify session is completed by checking it no longer reverts on re-complete attempt
-        vm.expectRevert("Session not active");
+        vm.expectRevert("Not active");
         vm.prank(user1);
         marketplace.completeSessionJob(sessionId, "QmAnotherCID");
     }
@@ -373,17 +412,19 @@ contract JobMarketplacePauseTest is Test {
     function test_TreasuryWithdrawalNotBlockedWhenPaused() public {
         // Create and complete a session to accumulate treasury fees
         vm.prank(user1);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host1,
+            modelId1,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Submit proof
         vm.warp(block.timestamp + 1);
         vm.prank(host1);
-        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), DUMMY_SIG, "QmProofCID", "");
+        marketplace.submitProofOfWork(sessionId, 1000, bytes32(uint256(123)), "QmProofCID", "");
 
         // Complete session
         vm.prank(user1);

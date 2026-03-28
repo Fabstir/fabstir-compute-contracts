@@ -145,6 +145,7 @@ contract JobMarketplaceDeploymentScriptTest is Test {
             227_273,  // MIN_PRICE_NATIVE
             1         // MIN_PRICE_STABLE
         );
+        nodeRegistry.setModelTokenPricing(modelId, address(0), 227_273);
         vm.stopPrank();
 
         // Create session
@@ -152,11 +153,13 @@ contract JobMarketplaceDeploymentScriptTest is Test {
         vm.deal(user, 10 ether);
 
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 0.01 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 0.01 ether}(
             host,
+            modelId,
             227_273,
             1 days,
-            1000
+            1000,
+            300
         );
 
         assertEq(sessionId, 1, "Session should be created");

@@ -7,6 +7,7 @@ import {JobMarketplaceWithModelsUpgradeable} from "../../../src/JobMarketplaceWi
 import {NodeRegistryWithModelsUpgradeable} from "../../../src/NodeRegistryWithModelsUpgradeable.sol";
 import {ModelRegistryUpgradeable} from "../../../src/ModelRegistryUpgradeable.sol";
 import {HostEarningsUpgradeable} from "../../../src/HostEarningsUpgradeable.sol";
+import {ProofSystemUpgradeable} from "../../../src/ProofSystemUpgradeable.sol";
 import {ERC20Mock} from "../../mocks/ERC20Mock.sol";
 
 /**
@@ -23,11 +24,13 @@ contract BalanceSeparationTest is Test {
     NodeRegistryWithModelsUpgradeable public nodeRegistry;
     ModelRegistryUpgradeable public modelRegistry;
     HostEarningsUpgradeable public hostEarnings;
+    ProofSystemUpgradeable public proofSystem;
     ERC20Mock public fabToken;
     ERC20Mock public usdcToken;
 
     address public owner = address(0x1);
-    address public host = address(0x2);
+    uint256 public hostPrivateKey = 0x2;
+    address public host;
     address public user = address(0x3);
 
     bytes32 public modelId;
@@ -38,10 +41,16 @@ contract BalanceSeparationTest is Test {
     uint256 constant MIN_PRICE_NATIVE = 227_273;
     uint256 constant MIN_PRICE_STABLE = 1;
 
-    // Dummy 65-byte signature for Sub-phase 6.1 (length validation only)
-    bytes constant DUMMY_SIG = hex"0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000101";
+    function _generateSignature(uint256 privateKey, bytes32 proofHash, address prover, uint256 tokensClaimed) internal view returns (bytes memory) {
+        bytes32 dataHash = keccak256(abi.encodePacked(proofHash, prover, tokensClaimed));
+        bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", dataHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
+        return abi.encodePacked(r, s, v);
+    }
 
     function setUp() public {
+        host = vm.addr(hostPrivateKey);
+
         // Deploy mock tokens
         fabToken = new ERC20Mock("FAB Token", "FAB");
         usdcToken = new ERC20Mock("USDC", "USDC");
@@ -95,6 +104,20 @@ contract BalanceSeparationTest is Test {
         // Add mock USDC to accepted tokens
         marketplace.addAcceptedToken(address(usdcToken), 500000, 1_000_000 * 10**6);
 
+        // Deploy ProofSystem
+        ProofSystemUpgradeable proofSystemImpl = new ProofSystemUpgradeable();
+        address proofSystemProxy = address(new ERC1967Proxy(
+            address(proofSystemImpl),
+            abi.encodeCall(ProofSystemUpgradeable.initialize, ())
+        ));
+        proofSystem = ProofSystemUpgradeable(proofSystemProxy);
+
+        // Configure ProofSystem in marketplace
+        marketplace.setProofSystem(address(proofSystem));
+
+        // Authorize marketplace in ProofSystem
+        proofSystem.setAuthorizedCaller(address(marketplace), true);
+
         vm.stopPrank();
 
         // Register host
@@ -123,6 +146,10 @@ contract BalanceSeparationTest is Test {
             MIN_PRICE_NATIVE,
             MIN_PRICE_STABLE
         );
+        vm.prank(hostAddr);
+        nodeRegistry.setModelTokenPricing(modelId, address(0), MIN_PRICE_NATIVE);
+        vm.prank(hostAddr);
+        nodeRegistry.setModelTokenPricing(modelId, address(usdcToken), MIN_PRICE_STABLE);
     }
 
     // ============================================================
@@ -147,11 +174,13 @@ contract BalanceSeparationTest is Test {
     function test_GetLockedBalanceReturnsSessionFunds_ETH() public {
         // Create inline session with 2 ETH
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(
+        marketplace.createSessionJobForModel{value: 2 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // userDepositsNative should be 0 (inline session doesn't credit it)
@@ -171,22 +200,26 @@ contract BalanceSeparationTest is Test {
 
         // Create session from pre-deposit with 1 ETH
         vm.prank(user);
-        marketplace.createSessionFromDeposit(
+        marketplace.createSessionFromDepositForModel(
+            modelId,
             host,
             address(0), // native
             1 ether,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Create inline session with 2 ETH
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(
+        marketplace.createSessionJobForModel{value: 2 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Withdrawable should be 2 ETH (3 - 1 used for session)
@@ -206,11 +239,13 @@ contract BalanceSeparationTest is Test {
         // Create session with 1 ETH at very high price
         uint256 pricePerToken = 1e12; // 1e12 wei per token = 1e6 tokens per ETH
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host,
+            modelId,
             pricePerToken,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Initial locked = 1 ETH
@@ -218,12 +253,12 @@ contract BalanceSeparationTest is Test {
 
         // Host submits proof for some tokens
         vm.warp(startTime + 1);
+        bytes32 proofHash = bytes32(uint256(0x1234));
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
             1000, // tokens used
-            bytes32(uint256(0x1234)),
-            DUMMY_SIG,
+            proofHash,
             "QmProof",
             ""
         );
@@ -243,24 +278,26 @@ contract BalanceSeparationTest is Test {
 
         // Create session with 1 ETH
         vm.prank(user);
-        uint256 sessionId = marketplace.createSessionJob{value: 1 ether}(
+        uint256 sessionId = marketplace.createSessionJobForModel{value: 1 ether}(
             host,
+            modelId,
             MIN_PRICE_NATIVE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Locked = 1 ETH initially
         assertEq(marketplace.getLockedBalanceNative(user), 1 ether, "Initial locked should be 1 ETH");
 
-        // Host submits proof
+        // Host submits proof (first proof >= proofInterval=1000)
+        bytes32 ph = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
         marketplace.submitProofOfWork(
             sessionId,
-            500,
-            bytes32(uint256(0x1234)),
-            DUMMY_SIG,
+            1000,
+            ph,
             "QmProof",
             ""
         );
@@ -300,13 +337,15 @@ contract BalanceSeparationTest is Test {
 
         // Create inline session with USDC
         vm.prank(user);
-        marketplace.createSessionJobWithToken(
+        marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             sessionDeposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // userDepositsToken should be 0 (inline session doesn't credit it)
@@ -330,24 +369,28 @@ contract BalanceSeparationTest is Test {
 
         // Create session from pre-deposit with 10 USDC
         vm.prank(user);
-        marketplace.createSessionFromDeposit(
+        marketplace.createSessionFromDepositForModel(
+            modelId,
             host,
             address(usdcToken),
             sessionFromDeposit,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Create inline session with 15 USDC
         vm.prank(user);
-        marketplace.createSessionJobWithToken(
+        marketplace.createSessionJobForModelWithToken(
             host,
+            modelId,
             address(usdcToken),
             inlineSession,
             MIN_PRICE_STABLE,
             1 days,
-            1000
+            1000,
+            300
         );
 
         // Withdrawable should be 20 USDC (30 - 10)
@@ -367,9 +410,9 @@ contract BalanceSeparationTest is Test {
     function test_LockedBalanceAcrossMultipleSessions_ETH() public {
         // Create 3 sessions with different amounts
         vm.startPrank(user);
-        marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
-        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
+        marketplace.createSessionJobForModel{value: 3 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.stopPrank();
 
         // Total locked should be 6 ETH
@@ -389,11 +432,11 @@ contract BalanceSeparationTest is Test {
 
         // Create session from deposit (5 ETH)
         vm.prank(user);
-        marketplace.createSessionFromDeposit(host, address(0), 5 ether, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionFromDepositForModel(modelId, host, address(0), 5 ether, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Create inline session (3 ETH)
         vm.prank(user);
-        marketplace.createSessionJob{value: 3 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJobForModel{value: 3 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Pre-deposit more (2 ETH)
         vm.prank(user);
@@ -429,17 +472,18 @@ contract BalanceSeparationTest is Test {
 
         // Create 2 sessions
         vm.prank(user);
-        uint256 sessionId1 = marketplace.createSessionJob{value: 1 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        uint256 sessionId1 = marketplace.createSessionJobForModel{value: 1 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
         vm.prank(user);
-        marketplace.createSessionJob{value: 2 ether}(host, MIN_PRICE_NATIVE, 1 days, 1000);
+        marketplace.createSessionJobForModel{value: 2 ether}(host, modelId, MIN_PRICE_NATIVE, 1 days, 1000, 300);
 
         // Locked should be 3 ETH
         assertEq(marketplace.getLockedBalanceNative(user), 3 ether, "Locked should be 3 ETH");
 
-        // Complete first session
+        // Complete first session (first proof >= proofInterval=1000)
+        bytes32 ph3 = bytes32(uint256(0x1234));
         vm.warp(startTime + 1);
         vm.prank(host);
-        marketplace.submitProofOfWork(sessionId1, 100, bytes32(uint256(0x1234)), DUMMY_SIG, "QmProof", "");
+        marketplace.submitProofOfWork(sessionId1, 1000, ph3, "QmProof", "");
         vm.warp(startTime + disputeWindow + 2);
         vm.prank(user);
         marketplace.completeSessionJob(sessionId1, "QmConversation");
