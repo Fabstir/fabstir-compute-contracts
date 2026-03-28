@@ -1,6 +1,6 @@
 # Fabstir LLM Marketplace - API Reference
 
-**Last Updated:** March 8, 2026
+**Last Updated:** March 28, 2026
 **Network:** Base Sepolia (Chain ID: 84532)
 
 ---
@@ -26,9 +26,9 @@ const contracts = {
   usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
 };
 
-// Implementation addresses (for verification only) - Updated Mar 8, 2026
+// Implementation addresses (for verification only) - Updated Mar 28, 2026
 const implementations = {
-  jobMarketplace: "0x54F2154979E590C3fdae6560d237FEB91eB9661d", // Hardening: treasury nonReentrant (Mar 8)
+  jobMarketplace: "0xCCd2426A644Ef5Ef69B128b31a0A42Ecb3855c86", // Phase 32: delegate token restriction (Mar 28)
   nodeRegistry: "0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0",   // Per-model per-token pricing (Feb 26)
   modelRegistry: "0xF12a0A07d4230E0b045dB22057433a9826d21652",   // Rate limits + rejected fee (Feb 22)
   proofSystem: "0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963",    // markProofUsed + dead code removal (Feb 22)
@@ -500,7 +500,7 @@ function lastSlashTime(address host) external view returns (uint256)
 Session management and payments.
 
 **Proxy Address:** `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4`
-**Implementation:** `0x54F2154979E590C3fdae6560d237FEB91eB9661d` (Hardening: treasury nonReentrant - Mar 8, 2026)
+**Implementation:** `0xCCd2426A644Ef5Ef69B128b31a0A42Ecb3855c86` (Phase 32: delegate token restriction - Mar 28, 2026)
 
 ### Constants
 
@@ -1150,9 +1150,9 @@ const config = {
     usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
   },
 
-  // Implementation addresses (for contract verification) - Mar 8, 2026
+  // Implementation addresses (for contract verification) - Mar 28, 2026
   implementations: {
-    jobMarketplace: "0x54F2154979E590C3fdae6560d237FEB91eB9661d", // Hardening: treasury nonReentrant (Mar 8)
+    jobMarketplace: "0xCCd2426A644Ef5Ef69B128b31a0A42Ecb3855c86", // Phase 32: delegate token restriction (Mar 28)
     nodeRegistry: "0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0",   // Per-model per-token pricing (Feb 26)
     modelRegistry: "0xF12a0A07d4230E0b045dB22057433a9826d21652",   // Rate limits + rejected fee (Feb 22)
     proofSystem: "0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963",    // markProofUsed + dead code removal (Feb 22)

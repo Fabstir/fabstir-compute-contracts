@@ -2,14 +2,14 @@
 
 ---
 
-## March 2026: Final Audit Remediation (Phases 19-28)
+## March 2026: Final Audit Remediation (Phases 19-32)
 
 **Contracts Affected**: All upgradeable contracts
 **Impact Level**: HIGH — New features, function consolidation, dead code removal
 
 ### Summary
 
-Final audit remediation added delegated sessions with spending limits, deposit management, slashing, and consolidated several contract interfaces. 866 tests passing.
+Final audit remediation added delegated sessions with spending limits and token restriction, deposit management, slashing, and consolidated several contract interfaces. 883 tests passing.
 
 | Change | Impact | Action Required |
 |--------|--------|-----------------|
@@ -83,7 +83,8 @@ function configureDelegate(
     uint128 totalCap,        // 0 = unlimited
     uint64 validUntil,       // 0 = no expiry
     address allowedHost,     // address(0) = any host
-    bytes32 allowedModel     // bytes32(0) = any model
+    bytes32 allowedModel,    // bytes32(0) = any model
+    address allowedToken     // address(0) = any token
 ) external
 
 // Delegate creates session using depositor's funds
@@ -100,7 +101,7 @@ function isDelegateAuthorized(address depositor, address delegate) external view
 **New events:**
 ```solidity
 event DelegateAuthorized(address indexed depositor, address indexed delegate, bool authorized);
-event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel);
+event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel, address allowedToken);
 event MinTokensFeeUpdated(uint256 oldFee, uint256 newFee);
 ```
 
@@ -178,11 +179,11 @@ Error messages were shortened for EVM contract size compliance. Update any strin
 | `"Fee cannot exceed 100%"` | `"Bad fee"` |
 | `"Wait dispute window"` | `"Dispute wait"` |
 
-### Updated Implementation Addresses (March 5, 2026)
+### Updated Implementation Addresses (March 28, 2026)
 
 | Contract | Proxy | Implementation |
 |----------|-------|----------------|
-| JobMarketplace | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0x6b57c61B1Ecd2451E34a662f8c873bCC573AC508` |
+| JobMarketplace | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0xCCd2426A644Ef5Ef69B128b31a0A42Ecb3855c86` |
 | NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0` |
 | ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xF12a0A07d4230E0b045dB22057433a9826d21652` |
 | ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` |

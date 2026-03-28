@@ -1,7 +1,7 @@
 # Architecture Documentation
 
 **Version:** 3.0
-**Last Updated:** March 8, 2026
+**Last Updated:** March 28, 2026
 **Network:** Base Sepolia (Testnet)
 
 ---
@@ -10,7 +10,7 @@
 
 | Contract | Proxy Address | Implementation |
 |----------|---------------|----------------|
-| JobMarketplace | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0x54F2154979E590C3fdae6560d237FEB91eB9661d` |
+| JobMarketplace | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0xCCd2426A644Ef5Ef69B128b31a0A42Ecb3855c86` |
 | NodeRegistry | `0x8BC0Af4aAa2dfb99699B1A24bA85E507de10Fd22` | `0xAd2D3F0E5364fD122acea081d91130FB3C0AA3e0` |
 | ModelRegistry | `0x1a9d91521c85bD252Ac848806Ff5096bBb9ACDb2` | `0xF12a0A07d4230E0b045dB22057433a9826d21652` |
 | ProofSystem | `0xE8DCa89e1588bbbdc4F7D5F78263632B35401B31` | `0xC46C84a612Cbf4C2eAaf5A9D1411aDA6309EC963` |

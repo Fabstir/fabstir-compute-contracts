@@ -12,7 +12,7 @@ This directory contains the Application Binary Interfaces (ABIs) for client inte
 
 ### JobMarketplaceWithModelsUpgradeable
 - **Proxy Address**: `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` (**FRESH PROXY** - Feb 22, 2026)
-- **Implementation**: `0x54F2154979E590C3fdae6560d237FEB91eB9661d` ✅ Hardening: treasury nonReentrant (Mar 8, 2026)
+- **Implementation**: `0xCCd2426A644Ef5Ef69B128b31a0A42Ecb3855c86` ✅ Phase 32: delegate token restriction — allowedToken (Mar 28, 2026)
 - **Network**: Base Sepolia
 - **Status**: ✅ ACTIVE - UUPS Upgradeable
 - **ABI File**: `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json`
@@ -887,9 +887,10 @@ const HOST_EARNINGS = '0x908962e8c6CE72610021586f85ebDE09aAc97776';
 - **Replacement**: 0xDFFDecDfa0CF5D6cbE299711C7e4559eB16F42D6
 
 ## Last Updated
-March 8, 2026 - Hardening phases 29-31: treasury nonReentrant + test coverage
+March 28, 2026 - Phase 32: delegate token restriction (allowedToken)
 
 ### Recent Changes
+- **Mar 28, 2026**: **Phase 32 — delegate token restriction** — JM implementation upgraded to `0xCCd2...c86`. Added `allowedToken` to `DelegateConfig` struct and `configureDelegate()` (now 7 params). `DelegateConfigured` event includes `allowedToken`. Enforcement: delegates with non-zero `allowedToken` must use that exact payment token. `configureDelegate` is not used by SDK/UI — ABI update only.
 - **Mar 8, 2026**: **Hardening phases 29-31** — JM implementation upgraded to `0x54F2...661d`. Added `nonReentrant` to treasury withdrawal functions (defense-in-depth). 13 new tests covering timeout-after-partial-proofs, delegate lifecycle end-to-end, mid-session host unregister blocking, and event verification. No ABI breaking changes — proxy address unchanged.
 - **Mar 5, 2026**: **Final audit remediation** — JM implementation upgraded to `0x6b57...C508`. 8 new findings from Hacken final report addressed: safe ERC20 refund (F202615254), timeout fee exemption (F202615257), delegate spending limits and scope restrictions (F202615255/F202615256), fee cap with event (F202615258), host active check (F202615278). Code deduplication in delegate session creation. No ABI breaking changes — proxy address unchanged.
 - **Feb 26, 2026**: **Phase 18 — Per-model per-token pricing migration**. Removed `getNodePricing`, `setTokenPricing`, `updatePricingNative`, `updatePricingStable`, `setModelPricing`, `clearModelPricing` from NodeRegistry. Added `setModelTokenPricing(modelId, token, price)`, `clearModelTokenPricing(modelId, token)`. `getModelPricing` now reads from `modelTokenPricing` only (reverts with `"No model pricing"` if not set). `getHostModelPrices(operator, token)` now takes a `token` parameter. Removed `createSessionJob`, `createSessionJobWithToken`, `createSessionFromDeposit` from JobMarketplace (use model-specific variants). Supersedes Phase 17 (F202614977).

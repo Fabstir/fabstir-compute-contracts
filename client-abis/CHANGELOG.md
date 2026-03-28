@@ -1,5 +1,41 @@
 # Client ABIs Changelog
 
+## March 28, 2026 - Phase 32: Delegate Token Restriction (BREAKING CHANGE for `configureDelegate`)
+
+### ⚠️ BREAKING CHANGE — `configureDelegate` gains 7th parameter
+`configureDelegate()` now takes an `allowedToken` address as the 7th parameter. Pass `address(0)` for "any token" (backward-compatible behavior). The `DelegateConfigured` event also includes the new `allowedToken` field.
+
+**Note**: Per SDK developer confirmation, `configureDelegate` is **not used** anywhere in the SDK or UI. No SDK/UI code changes required — only ABI update needed.
+
+### Implementation Upgrade
+| Contract | Proxy (unchanged) | New Implementation |
+|----------|-------------------|-------------------|
+| JobMarketplace | `0xD067719Ee4c514B5735d1aC0FfB46FECf2A9adA4` | `0xCCd2426A644Ef5Ef69B128b31a0A42Ecb3855c86` |
+
+### Changed Function
+```solidity
+// OLD (6 params):
+function configureDelegate(address delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel) external
+
+// NEW (7 params):
+function configureDelegate(address delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel, address allowedToken) external
+```
+
+### Changed Event
+```solidity
+// NEW: includes allowedToken field
+event DelegateConfigured(address indexed depositor, address indexed delegate, uint128 maxPerSession, uint128 totalCap, uint64 validUntil, address allowedHost, bytes32 allowedModel, address allowedToken);
+```
+
+### New Behavioral Check
+- If `allowedToken != address(0)`, delegate must use that exact payment token or `createSessionForModelAsDelegate` reverts with `"Wrong token"`
+- `address(0)` means any accepted token (default, backward-compatible)
+
+### ABI File Updated
+- `JobMarketplaceWithModelsUpgradeable-CLIENT-ABI.json` — regenerated with 7-param `configureDelegate`
+
+---
+
 ## March 8, 2026 - Hardening Phases 29-31: Treasury Reentrancy Guard + Test Coverage
 
 ### No Breaking Changes
